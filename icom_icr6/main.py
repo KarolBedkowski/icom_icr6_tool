@@ -13,6 +13,7 @@ import struct
 import typing as ty
 from collections import abc
 from dataclasses import dataclass
+from pathlib import Path
 
 import icecream
 import serial
@@ -62,42 +63,47 @@ class RadioModel:
 
 class Radio:
     def __init__(self) -> None:
-        self.ser = serial.Serial("/dev/ttyUSB0", 9600)
+        self.ser = serial.Serial("/dev/ttyUSB1", 9600)
 
     def _write(self, payload: bytes) -> None:
         LOG.debug("write: %s", binascii.hexlify(payload))
         self.ser.write(payload)
 
     def read_frame(self) -> Frame | None:
-        while True:
-            buf = []
+        buf : list[bytes]= []
 
-            while len(buf) < 1024:
-                if d := self.ser.read(1):
-                    buf.append(d)
-                    if d == b"\xfd":
-                        break
-                else:
-                    break
+        while True:
+            if d := self.ser.read(1):
+                buf.append(d)
+                if d != b"\xfd":
+                    continue
+            else:
+                LOG.error("no data")
+                break
 
             data = b"".join(buf)
 
             if not data:
                 return None
 
-            if not data.startswith(b"\xfe\xfe") or len(data) < 5:
+            if not data.startswith(b"\xFE\xFE"):
                 LOG.error("frame out of sync: %r", data)
+                raise ValueError("out of sync")
+
+            if len(data) < 5:
                 continue
 
             # ic(data, len(data))
             while data.startswith(b"\xfe\xfe\xfe"):
+                LOG.debug("remove prefix")
                 data = data[1:]
 
-            if len(data) < 4:
-                raise ValueError
+            if len(data) < 5:
+                continue
 
             if data[2] == ADDR_PC and data[3] == ADDR_RADIO:
                 LOG.debug("got echo")
+                buf.clear()
                 continue
 
             # ic(data)
@@ -106,16 +112,14 @@ class Radio:
         return None
 
     def get_model(self) -> RadioModel:
-        frame = Frame(0xE0, b"\x00\x00\x00\x00")
-        self._write(frame.pack())
+        self._write(Frame(0xE0, b"\x00\x00\x00\x00").pack())
         frame = self.read_frame()
-        LOG.debug("%r", frame)
+        LOG.debug("%d: %r", len(frame.payload), frame)
         pl = frame.payload
         return RadioModel(pl[5], pl[6:22])
 
-    def clone_from(self, out):
-        frame = Frame(0xE2, b"\x32\x50\x00\x01")
-        self._write(frame.pack())
+    def clone_from(self, out: ty.TextIO) -> list[int]:
+        self._write(Frame(0xE2, b"\x32\x50\x00\x01").pack())
         mem = [0] * 0x6E60
         addr = 0
         while True:
@@ -132,9 +136,12 @@ class Radio:
                         (daddr,) = struct.unpack(">H", data[0:2])
                         (length,) = struct.unpack("B", data[2:3])
                         #ic(daddr, length, data[3 : 3 + length], data)
-                        mem[daddr : daddr + length] = data[3 : 3 + length]
-                        out.write(repr(data))
-                        out.write("\n")
+                        real_data = data[3 : 3 + length]
+                        mem[daddr : daddr + length] = real_data
+                        #out.write(f"{daddr} {length} {real_data!r}\n")
+                        out.write(f"{frame.payload[:-2].decode()}\n")
+                        #out.write(binascii.hexlify(real_data).decode())
+                        #out.write("\n")
                         addr = daddr + length
 
                     case _:
@@ -145,11 +152,11 @@ class Radio:
 
 def main() -> None:
 
-    f = Frame(0, b'014020E89502CF30FF7CFFFF72000FFFFFFFFFE89502CF30FF7CFFFF72000FFFFFFFFFB7')
-    d = f.decode_payload()
-    assert d == b'\x01@ \xe8\x95\x02\xcf0\xff|\xff\xffr\x00\x0f\xff\xff\xff\xff\xe8\x95\x02\xcf0\xff|\xff\xffr\x00\x0f\xff\xff\xff\xff\xb7'
+    # f = Frame(0, b'014020E89502CF30FF7CFFFF72000FFFFFFFFFE89502CF30FF7CFFFF72000FFFFFFFFFB7')
+    # d = f.decode_payload()
+    # assert d == b'\x01@ \xe8\x95\x02\xcf0\xff|\xff\xffr\x00\x0f\xff\xff\xff\xff\xe8\x95\x02\xcf0\xff|\xff\xffr\x00\x0f\xff\xff\xff\xff\xb7'
 
     radio = Radio()
-#    print(repr(radio.get_model()))
-    with open("data.txt", "wt") as out:
-        print(radio.clone_from(out))
+    print(repr(radio.get_model()))
+    with Path("data.txt").open("wt") as out:
+        radio.clone_from(out)
