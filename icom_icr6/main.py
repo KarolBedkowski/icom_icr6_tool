@@ -45,13 +45,13 @@ class Frame:
         )
 
     def decode_payload(self) -> bytes:
-        print("in", repr(self.payload))
+        #print("in", repr(self.payload))
         res = b"".join(
             struct.pack("B", int(self.payload[i : i + 2], 16))
             for i in range(0, len(self.payload) - 1, 2)
         )
 
-        print("out", repr(res))
+        #print("out", repr(res))
         return res
 
 
@@ -59,6 +59,22 @@ class Frame:
 class RadioModel:
     rev: int
     comment: bytes
+
+class RadioMemory:
+    def __init__(self) -> None:
+        self.mem = [0]*0x6e60
+
+
+    def update(self, addr: int, length: int, data: bytes) -> None:
+        assert len(data) == length
+        self.mem[addr:addr+length] = data
+
+    def dump(self, step:int=16) -> ty.Iterator[str]:
+        for idx in range(0, 0x6e60, step):
+            data = self.mem[idx:idx+step]
+            data_hex = binascii.hexlify(bytes(data)).decode()
+            res = f"{idx:04x}{step:02x}{data_hex}"
+            yield res.upper()
 
 
 class Radio:
@@ -111,38 +127,33 @@ class Radio:
 
         return None
 
-    def get_model(self) -> RadioModel:
+    def get_model(self) -> RadioModel|None:
         self._write(Frame(0xE0, b"\x00\x00\x00\x00").pack())
-        frame = self.read_frame()
-        LOG.debug("%d: %r", len(frame.payload), frame)
-        pl = frame.payload
-        return RadioModel(pl[5], pl[6:22])
+        if frame := self.read_frame():
+            LOG.debug("%d: %r", len(frame.payload), frame)
+            pl = frame.payload
+            return RadioModel(pl[5], pl[6:22])
 
-    def clone_from(self, out: ty.TextIO) -> list[int]:
+        return None
+
+    def clone_from(self, out: ty.TextIO) -> RadioMemory:
         self._write(Frame(0xE2, b"\x32\x50\x00\x01").pack())
-        mem = [0] * 0x6E60
-        addr = 0
+        mem = RadioMemory()
         while True:
             if frame := self.read_frame():
-                LOG.debug("read: %r", frame.payload)
+                LOG.debug("read: %r", frame)
                 match int(frame.cmd):
                     case 0xE5:  # clone_end
-                        mem = mem[:addr]
                         break
 
                     case 0xE4:  # clone_dat
                         data = frame.decode_payload()
-                        LOG.debug("decoded: %s", binascii.hexlify(data))
+                        #LOG.debug("decoded: %s", binascii.hexlify(data))
                         (daddr,) = struct.unpack(">H", data[0:2])
                         (length,) = struct.unpack("B", data[2:3])
-                        #ic(daddr, length, data[3 : 3 + length], data)
-                        real_data = data[3 : 3 + length]
-                        mem[daddr : daddr + length] = real_data
-                        #out.write(f"{daddr} {length} {real_data!r}\n")
+                        # TODO: checksum?
+                        mem.update(daddr, length, data[3 : 3 + length])
                         out.write(f"{frame.payload[:-2].decode()}\n")
-                        #out.write(binascii.hexlify(real_data).decode())
-                        #out.write("\n")
-                        addr = daddr + length
 
                     case _:
                         raise ValueError
@@ -159,4 +170,8 @@ def main() -> None:
     radio = Radio()
     print(repr(radio.get_model()))
     with Path("data.txt").open("wt") as out:
-        radio.clone_from(out)
+        mem = radio.clone_from(out)
+    with Path("mem.txt").open("wt") as out:
+        for line in mem.dump():
+            out.write(line)
+            out.write("\n")
