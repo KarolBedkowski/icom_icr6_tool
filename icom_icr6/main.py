@@ -82,6 +82,7 @@ STEPS = [
     "Auto",
 ]
 SKIPS = ["", "S", "", "P"]
+BANK_NAMES = "ABCDEFGHIJKLMNOPQRTUWY"
 
 
 @dataclass
@@ -106,9 +107,17 @@ class Channel:
     # control flags
     hide_channel: bool
     skip: int
+    # 31 = no bank
+    bank: int
+    bank_pos: int
 
     def __str__(self) -> str:
         #ic(self)
+        try:
+            bank=f"{BANK_NAMES[self.bank]}/{self.bank_pos}"
+        except IndexError:
+            bank=f"{self.bank}/{self.bank_pos}"
+
         return (
             "Channel {self.number}: "
             f"f={self.freq}, "
@@ -126,8 +135,30 @@ class Channel:
             f"c={self.canceller}, "
             f"name={self.name!r}, "
             f"hide={self.hide_channel}, "
-            f"skip={SKIPS[self.skip]}"
+            f"skip={SKIPS[self.skip]}, "
+            f"bank={bank}"
         )
+
+
+@dataclass
+class Bank:
+    name: str
+
+@dataclass
+class ScanLink:
+    name: str
+    edges: list[int]
+
+
+@dataclass
+class ScanEdge:
+    start: int
+    end: int
+    disabled: int
+    mode: int
+    ts: int
+    attn: int
+    name: str
 
 
 class RadioMemory:
@@ -156,6 +187,9 @@ class RadioMemory:
         self.mem[addr : addr + size] = data
 
     def get_channel(self, idx: int) -> Channel:
+        if idx < 0 or idx > 1299:
+            raise IndexError
+
         start = idx * 16
         data = self.mem[start : start + 16]
         #ic(data)
@@ -163,7 +197,7 @@ class RadioMemory:
         freq_flags = (data[2] & 0b11111100) >> 2
 
         cflags_start = idx * 2 + 0x5F80
-        cflags = self.mem[cflags_start : cflags_start + 1]
+        cflags = self.mem[cflags_start : cflags_start + 2]
 
         return Channel(
             number=idx,
@@ -183,6 +217,63 @@ class RadioMemory:
             name=decode_name(data[11:16]),
             hide_channel=bool(cflags[0] & 0b10000000),
             skip=(cflags[0] & 0b01100000) >> 5,
+            bank=(cflags[0] & 0b00011111), # TODO: verify
+            bank_pos=cflags[1],  # TODO: verify
+        )
+
+    def get_scan_edge(self, idx: int) -> ScanEdge:
+        if idx < 0 or idx > 24:
+            raise IndexError
+
+        start = 0x5dc0 + idx * 16
+        data = self.mem[start:start + 16]
+        start = (data[3] << 24) | (data[2] << 16) | (data[1] << 8) | data[0]
+        start *= 3
+        end = (data[7] << 24) | (data[6] << 16) | (data[5] << 8) | data[4]
+        end *= 3
+
+        return ScanEdge(
+            start=start,
+            end=end,
+            disabled=bool(data[8]&0b10000000),
+            mode=(data[8]&0b01110000) >> 4,
+            ts=(data[8] & 0b00001111),
+            attn=(data[9] & 0b00110000) >> 4,
+            name=bytes(data[10:16]).decode(),
+        )
+
+    def get_bank(self, idx: int) -> Bank:
+        if idx < 0 or idx > 22:
+            raise IndexError
+
+        start = 0x6d10 + idx * 8
+        data = self.mem[start:start+8]
+        return Bank(
+            name=bytes(data[0:6]).decode(),
+        )
+
+    def get_scan_link(self, idx: int) -> ScanLink:
+        if idx < 0 or idx > 9:
+            raise IndexError
+
+        start = 0x6dc0 + idx * 8
+        data = self.mem[start:start+8]
+
+        # mapping
+        start = 0x6c20 + 12 + 4 * idx
+        mdata = self.mem[start:start+4]
+        # 4 bytes, with 7bite padding
+        mask = (mdata[3] << 24) | (mdata[2] << 16) | (mdata[1] << 8) | mdata[0]
+        edges = []
+        for i in range(24):
+            if mask & 1:
+                edges.append(i)
+
+            mask >>= 1
+
+        return ScanLink(
+            name=bytes(data[0:6]).decode(),
+            edges=edges,
         )
 
 
@@ -213,7 +304,8 @@ def decode_freq(freq: int, flags: int) -> int:
         case 60:
             return 9000 * freq
 
-    raise ValueError(f"unknown flag {flag!r} for freq {freq}")
+    LOG.error(f"unknown flag {flags!r} for freq {freq}")
+    return 0
 
 
 class Radio:
@@ -333,5 +425,21 @@ def main() -> None:
         for line in inp:
             mem.read(line.strip())
 
-    for channel in range(500, 600):  # 1300):
-        print(channel, mem.get_channel(channel))
+#    print("channels")
+#    for channel in range(0, 1300):
+#        print(channel, mem.get_channel(channel))
+
+#    print("banks")
+#    for idx in range(22):
+#        print(idx, mem.get_bank(idx))
+
+    print("scan links")
+    for idx in range(10):
+        print(idx, mem.get_scan_link(idx))
+
+    print("scan edges")
+    for idx in range(25):
+        print(idx, mem.get_scan_edge(idx))
+
+#    with Path("mem.raw").open("wb") as out:
+#        out.write(bytes(mem.mem))
