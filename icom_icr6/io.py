@@ -9,6 +9,7 @@ import logging
 import struct
 import typing as ty
 from dataclasses import dataclass
+from pathlib import Path
 
 import serial
 
@@ -125,3 +126,45 @@ class Radio:
                         raise ValueError
 
         return mem
+
+
+class InvalidFileError(Exception):
+    pass
+
+
+def load_icf_file(file: Path) -> model.RadioMemory:
+    """Load icf file as RadioMemory."""
+    mem = model.RadioMemory()
+
+    with file.open("rt") as inp:
+        try:
+            if next(inp).strip() != "32500001":
+                raise InvalidFileError
+        except StopIteration as exc:
+            raise InvalidFileError from exc
+
+        for line in inp:
+            if line.startswith("#"):
+                continue
+
+            if line := line.strip():
+                mem.read(line)
+
+    return mem
+
+
+def save_icf_file(file: Path, mem: model.RadioMemory) -> None:
+    """Write RadioMemory to icf file."""
+    with file.open("wt") as out:
+        # header
+        out.write("32500001\n#Comment=\n#MapRev=1\n#EtcData=001A\n")
+        # data
+        for line in mem.dump():
+            out.write(line)
+            out.write("\n")
+
+
+def save_raw_memory(file: Path, mem: model.RadioMemory) -> None:
+    """Write RadioMemory to binary file."""
+    with file.open("wb") as out:
+        out.write(bytes(mem.mem))

@@ -51,18 +51,15 @@ def main2() -> None:
 
 
 def main() -> None:
-    mem = model.RadioMemory()
-    with Path("mem.txt").open("rt") as inp:
-        for line in inp:
-            mem.read(line.strip())
+    mem = io.load_icf_file(Path("mem.txt"))
 
-    #    print("channels")
-    #    for channel in range(0, 1300):
-    #        print(channel, mem.get_channel(channel))
+    print("channels")
+    for channel in range(1300):
+        print(channel, mem.get_channel(channel))
 
-    #    print("banks")
-    #    for idx in range(22):
-    #        print(idx, mem.get_bank(idx))
+    print("banks")
+    for idx in range(22):
+        print(idx, mem.get_bank(idx))
 
     print("scan links")
     for idx in range(10):
@@ -72,6 +69,4 @@ def main() -> None:
     for idx in range(25):
         print(idx, mem.get_scan_edge(idx))
 
-
-#    with Path("mem.raw").open("wb") as out:
-#        out.write(bytes(mem.mem))
+    # io.save_raw_memory(Path("mem.raw"), mem)
