@@ -102,7 +102,7 @@ class Channel:
 @dataclass
 class Bank:
     name: str
-    channels: list[Channel]
+    channels: list[Channel|None]
 
 
 @dataclass
@@ -156,6 +156,7 @@ class RadioMemory:
     def __init__(self) -> None:
         self.mem = [0] * 0x6E60
         self._cache_channels: dict[int, Channel] = {}
+        self._cache_banks: dict[int, Bank] = {}
 
     def update(self, addr: int, length: int, data: bytes) -> None:
         assert len(data) == length
@@ -253,6 +254,9 @@ class RadioMemory:
         if idx < 0 or idx > 22:
             raise IndexError
 
+        if bank := self._cache_banks.get(idx):
+            return bank
+
         start = 0x6D10 + idx * 8
         data = self.mem[start : start + 8]
 
@@ -264,10 +268,13 @@ class RadioMemory:
 
             channels[chan.bank_pos] = chan
 
-        return Bank(
-            name=bytes(data[0:6]).decode(),
+        bank = Bank(
+            name=bytes(data[0:6]).decode() if data[0] else "",
             channels=channels,
         )
+        self._cache_banks[idx] = bank
+
+        return bank
 
     def get_scan_link(self, idx: int) -> ScanLink:
         if idx < 0 or idx > 9:

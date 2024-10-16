@@ -4,6 +4,8 @@
 
 """ """
 
+import typing as ty
+
 import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
@@ -15,7 +17,7 @@ class App(tk.Frame):
     def __init__(self, master: tk.Tk) -> None:
         super().__init__(master)
 
-        self._last_dir = Path(".")
+        self._last_dir = Path()
         self._radio_memory = model.RadioMemory()
 
         self.pack(fill="both", expand=1)
@@ -69,47 +71,19 @@ class App(tk.Frame):
         pw.add(self._channel_ranges, weight=0)
         self._channel_ranges.bind("<<ListboxSelect>>", self.__fill_channels)
 
-        frame = tk.Frame(pw)
-        vert_scrollbar = ttk.Scrollbar(frame, orient="vertical")
-        vert_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        hor_scrollbar = ttk.Scrollbar(frame, orient="horizontal")
-        hor_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
-
         columns = (
-            "num",
-            "freq",
-            "name",
-            "af",
-            "att",
-            "mode",
-            "ts",
-            "vsc",
-            "skip",
-            "bank",
+            ("num", "Num", tk.E, 30),
+            ("freq", "Freq", tk.E, 80),
+            ("name", "Name", tk.W, 50),
+            ("af", "AF", tk.CENTER, 25),
+            ("att", "ATT", tk.CENTER, 25),
+            ("mode", "Mode", tk.CENTER, 25),
+            ("ts", "TS", tk.CENTER, 25),
+            ("vsc", "VSC", tk.CENTER, 25),
+            ("skip", "Skip", tk.CENTER, 25),
+            ("bank", "Bank", tk.W, 25),
         )
-        self._channels_content = ttk.Treeview(frame, columns=columns)
-        self._channels_content.column("#0", width=0, stretch=tk.NO)
-        self._channels_content.column("num", anchor=tk.E, width=30)
-        self._channels_content.column("freq", anchor=tk.E, width=80)
-        self._channels_content.column("name", anchor=tk.W, width=50)
-        self._channels_content.column("af", anchor=tk.CENTER, width=25)
-        self._channels_content.column("att", anchor=tk.CENTER, width=25)
-        self._channels_content.column("mode", anchor=tk.CENTER, width=25)
-        self._channels_content.column("ts", anchor=tk.CENTER, width=30)
-        self._channels_content.column("vsc", anchor=tk.CENTER, width=25)
-        self._channels_content.column("skip", anchor=tk.CENTER, width=25)
-        self._channels_content.column("bank", anchor=tk.CENTER, width=30)
-
-        for c in columns:
-            self._channels_content.heading(c, text=c, anchor=tk.CENTER)
-
-        self._channels_content.pack(fill=tk.BOTH, expand=True)
-        vert_scrollbar.config(command=self._channels_content.yview)
-        hor_scrollbar.config(command=self._channels_content.xview)
-        self._channels_content.configure(
-            yscrollcommand=vert_scrollbar.set, xscrollcommand=hor_scrollbar.set
-        )
-
+        frame, self._channels_content = _build_list(pw, columns)
         pw.add(frame, weight=1)
 
         return pw
@@ -117,53 +91,24 @@ class App(tk.Frame):
     def __create_nb_banks(self) -> ttk.PanedWindow:
         pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
         banks = self._banks = tk.Listbox(pw, selectmode=tk.SINGLE)
-        for bname in model.BANK_NAMES:
-            banks.insert(tk.END, bname)
+        self.__fill_banks()
 
         banks.bind("<<ListboxSelect>>", self.__fill_bank)
         pw.add(banks, weight=0)
 
-        frame = tk.Frame(pw)
-        vert_scrollbar = ttk.Scrollbar(frame, orient="vertical")
-        vert_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        hor_scrollbar = ttk.Scrollbar(frame, orient="horizontal")
-        hor_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
-
-        columns = (
-            "num",
-            "chn",
-            "freq",
-            "name",
-            "ts",
-            "mode",
-            "af",
-            "att",
-            "vsc",
-            "skip",
-        )
-        bcont = self._bank_content = ttk.Treeview(frame, columns=columns)
-        bcont.column("#0", width=0, stretch=tk.NO)
-        bcont.column("num", anchor=tk.E, width=30)
-        bcont.column("chn", anchor=tk.E, width=30)
-        bcont.column("freq", anchor=tk.E, width=80)
-        bcont.column("name", anchor=tk.W, width=50)
-        bcont.column("ts", anchor=tk.CENTER, width=30)
-        bcont.column("mode", anchor=tk.CENTER, width=25)
-        bcont.column("af", anchor=tk.CENTER, width=25)
-        bcont.column("att", anchor=tk.CENTER, width=25)
-        bcont.column("vsc", anchor=tk.CENTER, width=25)
-        bcont.column("skip", anchor=tk.CENTER, width=25)
-
-        for c in columns:
-            bcont.heading(c, text=c, anchor=tk.CENTER)
-
-        bcont.pack(fill=tk.BOTH, expand=True)
-        vert_scrollbar.config(command=bcont.yview)
-        hor_scrollbar.config(command=bcont.xview)
-        self._channels_content.configure(
-            yscrollcommand=vert_scrollbar.set, xscrollcommand=hor_scrollbar.set
-        )
-
+        columns = [
+            ("num", "Num", tk.E, 30),
+            ("chn", "Chn", tk.E, 30),
+            ("freq", "freq", tk.E, 30),
+            ("name", "name", tk.W, 30),
+            ("ts", "ts", tk.CENTER, 30),
+            ("mode", "mode", tk.CENTER, 30),
+            ("af", "af", tk.CENTER, 30),
+            ("att", "att", tk.CENTER, 30),
+            ("vsc", "vsc", tk.CENTER, 30),
+            ("skip", "skip", tk.CENTER, 30),
+        ]
+        frame, self._bank_content = _build_list(pw, columns)
         pw.add(frame, weight=1)
 
         return pw
@@ -192,8 +137,11 @@ class App(tk.Frame):
     def __fill_widgets(self) -> None:
         self._channel_ranges.selection_set(0)
         self._channel_ranges.activate(0)
+        self.__fill_banks()
+        self._banks.selection_set(0)
+        self._banks.activate(0)
 
-    def __fill_channels(self, event: tk.Event) -> None:
+    def __fill_channels(self, _event: tk.Event) -> None:
         selected_range = 0
         if sel := self._channel_ranges.curselection():
             selected_range = sel[0]
@@ -240,9 +188,18 @@ class App(tk.Frame):
         self._channels_content.yview(0)
         self._channels_content.xview(0)
 
-    def __fill_bank(self, event: tk.Event) -> None:
+    def __fill_banks(self) -> None:
+        banks = self._banks
+        banks.delete(0, banks.size())
+        for idx, bname in enumerate(model.BANK_NAMES):
+            bank = self._radio_memory.get_bank(idx)
+            name = f"{bname}: {bank.name}" if bank.name else bname
+            banks.insert(tk.END, name)
+
+
+    def __fill_bank(self, _event: tk.Event) -> None:
         selected_bank = 0
-        if sel := self._banks.curselection():
+        if sel := self._banks.curselection():  # type: ignore
             selected_bank = sel[0]
 
         bcont = self._bank_content
@@ -282,6 +239,32 @@ class App(tk.Frame):
 
         bcont.yview(0)
         bcont.xview(0)
+
+
+def _build_list(
+    parent: tk.Widget, columns: ty.Iterable[tuple[str, str, str, int]]
+) -> tuple[tk.Frame, ttk.Treeview]:
+    frame = tk.Frame(parent)
+    vert_scrollbar = ttk.Scrollbar(frame, orient="vertical")
+    vert_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+    hor_scrollbar = ttk.Scrollbar(frame, orient="horizontal")
+    hor_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
+
+    col_ids = [c[0] for c in columns]
+    tree = ttk.Treeview(frame, columns=col_ids)
+    tree.column("#0", width=0, stretch=tk.NO)
+    for col_id, title, anchor, width in columns:
+        tree.column(col_id, anchor=anchor, width=width)
+        tree.heading(col_id, text=title, anchor=tk.CENTER)
+
+    tree.pack(fill=tk.BOTH, expand=True)
+    vert_scrollbar.config(command=tree.yview)
+    hor_scrollbar.config(command=tree.xview)
+    tree.configure(
+        yscrollcommand=vert_scrollbar.set, xscrollcommand=hor_scrollbar.set
+    )
+
+    return frame, tree
 
 
 def _yes_no(value: bool | None) -> str:
