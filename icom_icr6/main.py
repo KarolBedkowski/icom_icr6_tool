@@ -12,7 +12,7 @@ from pathlib import Path
 
 import icecream
 
-from . import io, model
+from . import gui, io, model
 
 icecream.install()
 
@@ -50,7 +50,7 @@ def main2() -> None:
             out.write("\n")
 
 
-def main() -> None:
+def main3() -> None:
     mem = io.load_icf_file(Path("mem.txt"))
 
     print("channels")
@@ -70,3 +70,7 @@ def main() -> None:
         print(idx, mem.get_scan_edge(idx))
 
     # io.save_raw_memory(Path("mem.raw"), mem)
+
+
+def main() -> None:
+    gui.start_gui()
