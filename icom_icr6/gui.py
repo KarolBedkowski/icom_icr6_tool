@@ -24,6 +24,7 @@ class App(tk.Frame):
 
         self._ntb = ttk.Notebook(self)
         self._ntb.add(self.__create_nb_channels(), text="Channels")
+        self._ntb.add(self.__create_nb_banks(), text="Banks")
 
         self._ntb.pack(fill="both", expand=1)
 
@@ -67,39 +68,103 @@ class App(tk.Frame):
         )
         pw.add(self._channel_ranges, weight=0)
         self._channel_ranges.bind("<<ListboxSelect>>", self.__fill_channels)
-        columns=(
-                "num",
-                "freq",
-                "name",
-                "af",
-                "att",
-                "mode",
-                "ts",
-                "vsc",
-                "skip",
-                "bank",
-            )
-        self._channels_content = ttk.Treeview(
-            pw,
-            columns=columns,
+
+        frame = tk.Frame(pw)
+        vert_scrollbar = ttk.Scrollbar(frame, orient="vertical")
+        vert_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        hor_scrollbar = ttk.Scrollbar(frame, orient="horizontal")
+        hor_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
+
+        columns = (
+            "num",
+            "freq",
+            "name",
+            "af",
+            "att",
+            "mode",
+            "ts",
+            "vsc",
+            "skip",
+            "bank",
         )
-        self._channels_content.column("#0", width=0,  stretch=tk.NO)
-        self._channels_content.column("num",anchor=tk.E, width=40)
-        self._channels_content.column("freq",anchor=tk.E, width=80)
-        self._channels_content.column("name",anchor=tk.W, width=50)
-        self._channels_content.column("af",anchor=tk.CENTER, width=50)
-        self._channels_content.column("att",anchor=tk.CENTER, width=50)
-        self._channels_content.column("mode",anchor=tk.CENTER, width=50)
-        self._channels_content.column("ts",anchor=tk.CENTER, width=50)
-        self._channels_content.column("vsc",anchor=tk.CENTER, width=50)
-        self._channels_content.column("skip",anchor=tk.CENTER, width=50)
-        self._channels_content.column("bank",anchor=tk.CENTER, width=50)
+        self._channels_content = ttk.Treeview(frame, columns=columns)
+        self._channels_content.column("#0", width=0, stretch=tk.NO)
+        self._channels_content.column("num", anchor=tk.E, width=30)
+        self._channels_content.column("freq", anchor=tk.E, width=80)
+        self._channels_content.column("name", anchor=tk.W, width=50)
+        self._channels_content.column("af", anchor=tk.CENTER, width=25)
+        self._channels_content.column("att", anchor=tk.CENTER, width=25)
+        self._channels_content.column("mode", anchor=tk.CENTER, width=25)
+        self._channels_content.column("ts", anchor=tk.CENTER, width=30)
+        self._channels_content.column("vsc", anchor=tk.CENTER, width=25)
+        self._channels_content.column("skip", anchor=tk.CENTER, width=25)
+        self._channels_content.column("bank", anchor=tk.CENTER, width=30)
 
         for c in columns:
-            self._channels_content.heading(c,text=c,anchor=tk.CENTER)
+            self._channels_content.heading(c, text=c, anchor=tk.CENTER)
 
-        pw.add(self._channels_content, weight=1)
+        self._channels_content.pack(fill=tk.BOTH, expand=True)
+        vert_scrollbar.config(command=self._channels_content.yview)
+        hor_scrollbar.config(command=self._channels_content.xview)
+        self._channels_content.configure(
+            yscrollcommand=vert_scrollbar.set, xscrollcommand=hor_scrollbar.set
+        )
 
+        pw.add(frame, weight=1)
+
+        return pw
+
+    def __create_nb_banks(self) -> ttk.PanedWindow:
+        pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
+        banks = self._banks = tk.Listbox(pw, selectmode=tk.SINGLE)
+        for bname in model.BANK_NAMES:
+            banks.insert(tk.END, bname)
+
+        banks.bind("<<ListboxSelect>>", self.__fill_bank)
+        pw.add(banks, weight=0)
+
+        frame = tk.Frame(pw)
+        vert_scrollbar = ttk.Scrollbar(frame, orient="vertical")
+        vert_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        hor_scrollbar = ttk.Scrollbar(frame, orient="horizontal")
+        hor_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
+
+        columns = (
+            "num",
+            "chn",
+            "freq",
+            "name",
+            "ts",
+            "mode",
+            "af",
+            "att",
+            "vsc",
+            "skip",
+        )
+        bcont = self._bank_content = ttk.Treeview(frame, columns=columns)
+        bcont.column("#0", width=0, stretch=tk.NO)
+        bcont.column("num", anchor=tk.E, width=30)
+        bcont.column("chn", anchor=tk.E, width=30)
+        bcont.column("freq", anchor=tk.E, width=80)
+        bcont.column("name", anchor=tk.W, width=50)
+        bcont.column("ts", anchor=tk.CENTER, width=30)
+        bcont.column("mode", anchor=tk.CENTER, width=25)
+        bcont.column("af", anchor=tk.CENTER, width=25)
+        bcont.column("att", anchor=tk.CENTER, width=25)
+        bcont.column("vsc", anchor=tk.CENTER, width=25)
+        bcont.column("skip", anchor=tk.CENTER, width=25)
+
+        for c in columns:
+            bcont.heading(c, text=c, anchor=tk.CENTER)
+
+        bcont.pack(fill=tk.BOTH, expand=True)
+        vert_scrollbar.config(command=bcont.yview)
+        hor_scrollbar.config(command=bcont.xview)
+        self._channels_content.configure(
+            yscrollcommand=vert_scrollbar.set, xscrollcommand=hor_scrollbar.set
+        )
+
+        pw.add(frame, weight=1)
 
         return pw
 
@@ -117,6 +182,7 @@ class App(tk.Frame):
             file = Path(fname)
             self._radio_memory = io.load_icf_file(file)
             self._last_dir = file.parent
+            self.__fill_widgets()
 
         self.focus_set()
 
@@ -124,11 +190,10 @@ class App(tk.Frame):
         pass
 
     def __fill_widgets(self) -> None:
+        self._channel_ranges.selection_set(0)
         self._channel_ranges.activate(0)
-        pass
 
-    def __fill_channels(self, event) -> None:
-        ic(event)
+    def __fill_channels(self, event: tk.Event) -> None:
         selected_range = 0
         if sel := self._channel_ranges.curselection():
             selected_range = sel[0]
@@ -138,9 +203,13 @@ class App(tk.Frame):
         range_start = selected_range * 100
         for idx in range(range_start, range_start + 100):
             channel = self._radio_memory.get_channel(idx)
-            if channel.hide_channel:
+            if channel.hide_channel or not channel.freq:
                 self._channels_content.insert(
-                    parent="", index=tk.END, iid=idx, text=""
+                    parent="",
+                    index=tk.END,
+                    iid=idx,
+                    text="",
+                    values=(str(idx), "", "", "", "", "", "", "", "", ""),
                 )
                 continue
 
@@ -168,8 +237,54 @@ class App(tk.Frame):
                 ),
             )
 
+        self._channels_content.yview(0)
+        self._channels_content.xview(0)
 
-def _yes_no(value: bool|None) -> str:
+    def __fill_bank(self, event: tk.Event) -> None:
+        selected_bank = 0
+        if sel := self._banks.curselection():
+            selected_bank = sel[0]
+
+        bcont = self._bank_content
+        bcont.delete(*bcont.get_children())
+
+        bank = self._radio_memory.get_bank(selected_bank)
+
+        for idx, channel in enumerate(bank.channels):
+            if not channel or channel.hide_channel or not channel.freq:
+                bcont.insert(
+                    parent="",
+                    index=tk.END,
+                    iid=idx,
+                    text="",
+                    values=(str(idx), "", "", "", "", "", "", "", "", ""),
+                )
+                continue
+
+            bcont.insert(
+                parent="",
+                index=tk.END,
+                iid=idx,
+                text="",
+                values=(
+                    str(idx),
+                    str(channel.number),
+                    str(channel.freq),
+                    channel.name,
+                    model.STEPS[channel.tuning_step],
+                    model.MODES[channel.mode],
+                    _yes_no(channel.af_filter),
+                    _yes_no(channel.attenuator),
+                    _yes_no(channel.vsc),
+                    model.SKIPS[channel.skip],
+                ),
+            )
+
+        bcont.yview(0)
+        bcont.xview(0)
+
+
+def _yes_no(value: bool | None) -> str:
     match value:
         case None:
             return ""

@@ -78,4 +78,4 @@ except ImportError as err:
 
 from icom_icr6 import main
 
-main.main()
+main.main_gui()

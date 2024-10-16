@@ -6,5 +6,3 @@
 # Distributed under terms of the GPLv3 license.
 
 """ """
-
-from .main import main

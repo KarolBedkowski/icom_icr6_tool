@@ -50,7 +50,7 @@ def main2() -> None:
             out.write("\n")
 
 
-def main3() -> None:
+def main() -> None:
     mem = io.load_icf_file(Path("mem.txt"))
 
     print("channels")
@@ -72,5 +72,5 @@ def main3() -> None:
     # io.save_raw_memory(Path("mem.raw"), mem)
 
 
-def main() -> None:
+def main_gui() -> None:
     gui.start_gui()

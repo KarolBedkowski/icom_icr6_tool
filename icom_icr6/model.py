@@ -60,6 +60,7 @@ class Channel:
     vsc: bool
     canceller: int
     name: str
+    unknowns: list[str]
 
     # control flags
     hide_channel: bool
@@ -93,13 +94,15 @@ class Channel:
             f"name={self.name!r}, "
             f"hide={self.hide_channel}, "
             f"skip={SKIPS[self.skip]}, "
-            f"bank={bank}"
+            f"bank={bank}, "
+            f"unknowns={self.unknowns}"
         )
 
 
 @dataclass
 class Bank:
     name: str
+    channels: list[Channel]
 
 
 @dataclass
@@ -152,6 +155,7 @@ class RarioSettings:
 class RadioMemory:
     def __init__(self) -> None:
         self.mem = [0] * 0x6E60
+        self._cache_channels: dict[int, Channel] = {}
 
     def update(self, addr: int, length: int, data: bytes) -> None:
         assert len(data) == length
@@ -178,6 +182,9 @@ class RadioMemory:
         if idx < 0 or idx > 1299:
             raise IndexError
 
+        if chan := self._cache_channels.get(idx):
+            return chan
+
         start = idx * 16
         data = self.mem[start : start + 16]
         # ic(data)
@@ -187,7 +194,15 @@ class RadioMemory:
         cflags_start = idx * 2 + 0x5F80
         cflags = self.mem[cflags_start : cflags_start + 2]
 
-        return Channel(
+        unknowns = [
+            data[4] & 0b11000000,
+            data[4] & 0b00001000,
+            data[7] & 0b11111110,
+            data[8],
+            data[10] & 0b01111000,
+        ]
+
+        chan = Channel(
             number=idx,
             freq=decode_freq(freq, freq_flags),
             freq_flags=freq_flags,
@@ -207,7 +222,11 @@ class RadioMemory:
             skip=(cflags[0] & 0b01100000) >> 5,
             bank=(cflags[0] & 0b00011111),  # TODO: verify
             bank_pos=cflags[1],  # TODO: verify
+            unknowns=unknowns,
         )
+
+        self._cache_channels[idx] = chan
+        return chan
 
     def get_scan_edge(self, idx: int) -> ScanEdge:
         if idx < 0 or idx > 24:
@@ -236,8 +255,18 @@ class RadioMemory:
 
         start = 0x6D10 + idx * 8
         data = self.mem[start : start + 8]
+
+        channels: list[Channel | None] = [None] * 100
+        for cidx in range(1300):
+            chan = self.get_channel(cidx)
+            if chan.hide_channel or chan.freq == 0 or chan.bank != idx:
+                continue
+
+            channels[chan.bank_pos] = chan
+
         return Bank(
             name=bytes(data[0:6]).decode(),
+            channels=channels,
         )
 
     def get_scan_link(self, idx: int) -> ScanLink:
