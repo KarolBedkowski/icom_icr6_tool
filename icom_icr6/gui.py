@@ -4,9 +4,8 @@
 
 """ """
 
-import typing as ty
-
 import tkinter as tk
+import typing as ty
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
@@ -28,6 +27,7 @@ class App(tk.Frame):
         self._ntb.add(self.__create_nb_channels(), text="Channels")
         self._ntb.add(self.__create_nb_banks(), text="Banks")
         self._ntb.add(self.__create_nb_scan_edge(), text="Scan Edge")
+        self._ntb.add(self.__create_nb_scan_links(), text="Scan Link")
 
         self._ntb.pack(fill="both", expand=1)
 
@@ -127,6 +127,19 @@ class App(tk.Frame):
         frame, self._scan_edges = _build_list(self, columns)
         return frame
 
+    def __create_nb_scan_links(self) -> ttk.PanedWindow:
+        pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
+        sl = self._scan_links = tk.Listbox(pw, selectmode=tk.SINGLE)
+        self.__fill_scan_links()
+
+        sl.bind("<<ListboxSelect>>", self.__fill_scan_link)
+        pw.add(sl, weight=0)
+
+        self._scan_links_edges = tk.Listbox(pw, selectmode=tk.MULTIPLE)
+        pw.add(self._scan_links_edges, weight=1)
+
+        return pw
+
     def __about_handler(self) -> None:
         pass
 
@@ -155,6 +168,7 @@ class App(tk.Frame):
         self._banks.selection_set(0)
         self._banks.activate(0)
         self.__fill_scan_edges()
+        self.__fill_scan_links()
 
     def __fill_channels(self, _event: tk.Event) -> None:
         selected_range = 0
@@ -210,7 +224,6 @@ class App(tk.Frame):
             bank = self._radio_memory.get_bank(idx)
             name = f"{bname}: {bank.name}" if bank.name else bname
             banks.insert(tk.END, name)
-
 
     def __fill_bank(self, _event: tk.Event) -> None:
         selected_bank = 0
@@ -289,6 +302,36 @@ class App(tk.Frame):
 
         tree.yview(0)
         tree.xview(0)
+
+    def __fill_scan_links(self) -> None:
+        sls = self._scan_links
+        sls.delete(0, sls.size())
+        for idx in range(10):
+            sl = self._radio_memory.get_scan_link(idx)
+            name = f"{idx}: {sl.name}" if sl.name else str(idx)
+            sls.insert(tk.END, name)
+
+    def __fill_scan_link(self, event: tk.Event) -> None:
+        sel_sl = self._scan_links.curselection()
+        if not sel_sl:
+            return
+
+        slse = self._scan_links_edges
+        slse.delete(0, slse.size())
+        for idx in range(25):
+            se = self._radio_memory.get_scan_edge(idx)
+            if se.start:
+                sename = se.name or "-"
+                name = f"{idx}: {sename} {se.start} - {se.end} / {se.mode}"
+            else:
+                name = str(idx)
+
+            slse.insert(tk.END, name)
+
+        sl = self._radio_memory.get_scan_link(sel_sl[0])
+        for edge in sl.edges:
+            slse.selection_set(edge)
+
 
 def _build_list(
     parent: tk.Widget, columns: ty.Iterable[tuple[str, str, str, int]]

@@ -103,7 +103,7 @@ class Channel:
 @dataclass
 class Bank:
     name: str
-    channels: list[Channel|None]
+    channels: list[Channel | None]
 
 
 @dataclass
@@ -259,7 +259,7 @@ class RadioMemory:
             mode=(data[8] & 0b01110000) >> 4,
             ts=(data[8] & 0b00001111),
             attn=(data[9] & 0b00110000) >> 4,
-            name=bytes(data[10:16]).decode(),
+            name=bytes(data[10:16]).decode() if data[10] else "",
         )
 
     def get_bank(self, idx: int) -> Bank:
@@ -309,7 +309,7 @@ class RadioMemory:
             mask >>= 1
 
         return ScanLink(
-            name=bytes(data[0:6]).decode(),
+            name=bytes(data[0:6]).decode() if data[0] else "",
             edges=edges,
         )
 
