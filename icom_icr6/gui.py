@@ -27,6 +27,7 @@ class App(tk.Frame):
         self._ntb = ttk.Notebook(self)
         self._ntb.add(self.__create_nb_channels(), text="Channels")
         self._ntb.add(self.__create_nb_banks(), text="Banks")
+        self._ntb.add(self.__create_nb_scan_edge(), text="Scan Edge")
 
         self._ntb.pack(fill="both", expand=1)
 
@@ -113,6 +114,19 @@ class App(tk.Frame):
 
         return pw
 
+    def __create_nb_scan_edge(self) -> tk.Frame:
+        columns = [
+            ("no", "No", tk.E, 30),
+            ("name", "name", tk.W, 30),
+            ("start", "Start", tk.E, 30),
+            ("end", "End", tk.E, 30),
+            ("ts", "TS", tk.CENTER, 30),
+            ("mode", "Mode", tk.CENTER, 30),
+            ("att", "ATT", tk.CENTER, 30),
+        ]
+        frame, self._scan_edges = _build_list(self, columns)
+        return frame
+
     def __about_handler(self) -> None:
         pass
 
@@ -140,6 +154,7 @@ class App(tk.Frame):
         self.__fill_banks()
         self._banks.selection_set(0)
         self._banks.activate(0)
+        self.__fill_scan_edges()
 
     def __fill_channels(self, _event: tk.Event) -> None:
         selected_range = 0
@@ -240,6 +255,40 @@ class App(tk.Frame):
         bcont.yview(0)
         bcont.xview(0)
 
+    def __fill_scan_edges(self) -> None:
+        tree = self._scan_edges
+        tree.delete(*tree.get_children())
+
+        for idx in range(24):
+            se = self._radio_memory.get_scan_edge(idx)
+            if se.disabled or not se.start:
+                tree.insert(
+                    parent="",
+                    index=tk.END,
+                    iid=idx,
+                    text="",
+                    values=(str(idx), "", "", "", "", "", ""),
+                )
+                continue
+
+            tree.insert(
+                parent="",
+                index=tk.END,
+                iid=idx,
+                text="",
+                values=(
+                    str(idx),
+                    se.name,
+                    str(se.start),
+                    str(se.end),
+                    model.STEPS[se.ts],
+                    model.MODES[se.mode],
+                    se.human_attn(),
+                ),
+            )
+
+        tree.yview(0)
+        tree.xview(0)
 
 def _build_list(
     parent: tk.Widget, columns: ty.Iterable[tuple[str, str, str, int]]

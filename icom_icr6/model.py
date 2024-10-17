@@ -20,7 +20,7 @@ class RadioModel:
 
 TONE_MODES = ["", "TSQL", "TSQL-R", "DTCS", "DTCS-R", "", "", ""]
 DUPLEX_DIRS = ["", "-", "+"]
-MODES = ["FM", "WFM", "AM", "Auto"]
+MODES = ["FM", "WFM", "AM", "Auto", "-"]
 STEPS = [
     5,
     6.25,
@@ -37,6 +37,7 @@ STEPS = [
     125,
     200,
     "Auto",
+    "",
 ]
 SKIPS = ["", "S", "", "P"]
 BANK_NAMES = "ABCDEFGHIJKLMNOPQRTUWY"
@@ -120,6 +121,17 @@ class ScanEdge:
     ts: int
     attn: int
     name: str
+
+    def human_attn(self) -> str:
+        match self.attn:
+            case 0:
+                return "Off"
+            case 1:
+                return "On"
+            case 2:
+                return "-"
+            case _:
+                return str(self.attn)
 
 
 @dataclass
@@ -260,6 +272,7 @@ class RadioMemory:
         start = 0x6D10 + idx * 8
         data = self.mem[start : start + 8]
 
+        # TODO: confilicts / doubles
         channels: list[Channel | None] = [None] * 100
         for cidx in range(1300):
             chan = self.get_channel(cidx)
