@@ -41,6 +41,167 @@ STEPS = [
 ]
 SKIPS = ["", "S", "", "P"]
 BANK_NAMES = "ABCDEFGHIJKLMNOPQRTUWY"
+POLARITY = ["Reverse", "Normal"]
+
+# https://pl.wikipedia.org/wiki/CTCSS
+CTCSS_TONES = (
+    "67,0 ",
+    "69,3",
+    "71,9",
+    "74,4",
+    "77,0",
+    "79,7",
+    "82,5",
+    "85,4",
+    "88,5",
+    "91,5",
+    "94,8",
+    "97,4",
+    "100,03",
+    "103,54",
+    "107,25",
+    "110,96",
+    "114,87",
+    "118,88",
+    "123,09",
+    "127,30",
+    "131,81",
+    "136,52",
+    "141,33",
+    "146,24",
+    "151,45",
+    "156,76",
+    "159,87",
+    "162,28",
+    "165,59",
+    "167,90",
+    "171,31",
+    "173,82",
+    "177,33",
+    "179,94",
+    "183,55",
+    "186,26",
+    "189,97",
+    "192,88",
+    "196,69",
+    "199,50",
+    "203,51",
+    "206,52",
+    "210,73",
+    "218,14",
+    "225,75",
+    "229,16",
+    "233,67",
+    "241,88",
+    "250,39",
+    "254,10",
+)
+
+DTCS_CODES = [
+    "023",
+    "025",
+    "026",
+    "031",
+    "032",
+    "043",
+    "047",
+    "051",
+    "053",
+    "054",
+    "065",
+    "071",
+    "072",
+    "073",
+    "074",
+    "114",
+    "115",
+    "116",
+    "122",
+    "125",
+    "131",
+    "132",
+    "134",
+    "143",
+    "152",
+    "155",
+    "156",
+    "162",
+    "165",
+    "172",
+    "174",
+    "205",
+    "212",
+    "223",
+    "225",
+    "226",
+    "243",
+    "244",
+    "245",
+    "246",
+    "251",
+    "252",
+    "261",
+    "263",
+    "265",
+    "266",
+    "271",
+    "306",
+    "311",
+    "315",
+    "325",
+    "331",
+    "343",
+    "346",
+    "351",
+    "364",
+    "365",
+    "371",
+    "411",
+    "412",
+    "413",
+    "423",
+    "425",
+    "431",
+    "432",
+    "445",
+    "446",
+    "452",
+    "455",
+    "464",
+    "465",
+    "466",
+    "503",
+    "506",
+    "516",
+    "521",
+    "525",
+    "532",
+    "546",
+    "552",
+    "564",
+    "565",
+    "606",
+    "612",
+    "624",
+    "627",
+    "631",
+    "632",
+    "645",
+    "652",
+    "654",
+    "662",
+    "664",
+    "703",
+    "712",
+    "723",
+    "725",
+    "726",
+    "731",
+    "732",
+    "734",
+    "743",
+    "754",
+]
 
 
 @dataclass
@@ -49,18 +210,21 @@ class Channel:
 
     freq: int
     freq_flags: int
+    name: str
+    mode: int
     af_filter: bool
     attenuator: bool
-    mode: int
     tuning_step: int
     duplex: int
+    # tone
     tmode: int
     offset: int
     ctone: int
+    dtsc: int
     canceller_freq: int
     vsc: bool
     canceller: int
-    name: str
+    polarity: int
     unknowns: list[str]
 
     # control flags
@@ -69,6 +233,8 @@ class Channel:
     # 31 = no bank
     bank: int
     bank_pos: int
+
+    raw: bytes
 
     def __str__(self) -> str:
         # ic(self)
@@ -85,18 +251,21 @@ class Channel:
             f"att={self.attenuator}, "
             f"mode={MODES[self.mode]}, "
             f"ts={self.tuning_step}, "
-            f"duplex={self.duplex}, "
+            f"duplex={DUPLEX_DIRS[self.duplex]}, "
             f"tmode={TONE_MODES[self.tmode]}, "
             f"offset={self.offset}, "
-            f"ctone={self.ctone}, "
+            f"ctone={CTCSS_TONES[self.ctone]}, "
+            f"dtsc={DTCS_CODES[self.dtsc]}, "
             f"cf={self.canceller_freq}, "
             f"vsc={self.vsc}, "
             f"c={self.canceller}, "
             f"name={self.name!r}, "
             f"hide={self.hide_channel}, "
             f"skip={SKIPS[self.skip]}, "
+            f"polarity={POLARITY[self.polarity]}, "
             f"bank={bank}, "
-            f"unknowns={self.unknowns}"
+            f"unknowns={self.unknowns}, "
+            f"raws={binascii.hexlify(self.raw)}"
         )
 
 
@@ -223,10 +392,12 @@ class RadioMemory:
             attenuator=bool(data[3] & 0b01000000),
             mode=(data[3] & 0b00110000) >> 4,
             tuning_step=data[3] & 0b00001111,
-            duplex=(data[4] & 0b11000000) >> 6,
+            duplex=(data[4] & 0b00110000) >> 4,
             tmode=data[4] & 0b00000111,
             offset=decode_freq((data[6] << 8) | data[5], freq_flags),
             ctone=int(data[7]) & 0b00111111,
+            polarity=(data[8] & 0b10000000) >> 7,
+            dtsc=(data[8] & 0b01111111),
             canceller_freq=(data[9] << 1) | ((data[10] & 0b10000000) >> 7),
             vsc=bool(data[10] & 0b00000100),
             canceller=bool(data[10] & 0b00000011),
@@ -236,6 +407,7 @@ class RadioMemory:
             bank=(cflags[0] & 0b00011111),  # TODO: verify
             bank_pos=cflags[1],  # TODO: verify
             unknowns=unknowns,
+            raw=bytes(data),
         )
 
         self._cache_channels[idx] = chan
@@ -335,9 +507,9 @@ def decode_freq(freq: int, flags: int) -> int:
         case 0:
             return 5000 * freq
         case 20:
-            return 6250 * freq
+            return 6250 * freq  # unused
         case 40:
-            return int(8333.3333 * freq)
+            return int(8333.3333 * freq)  # unused?
         case 60:
             return 9000 * freq
 
