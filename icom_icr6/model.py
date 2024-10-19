@@ -19,27 +19,28 @@ class RadioModel:
 
 
 TONE_MODES = ["", "TSQL", "TSQL-R", "DTCS", "DTCS-R", "", "", ""]
-DUPLEX_DIRS = ["", "-", "+"]
+DUPLEX_DIRS = ["", "-", "+", ""]
 MODES = ["FM", "WFM", "AM", "Auto", "-"]
 STEPS = [
-    5,
-    6.25,
-    8.333333,
-    9,
-    10,
-    12.5,
-    15,
-    20,
-    25,
-    30,
-    50,
-    100,
-    125,
-    200,
+    "5",
+    "6.25",
+    "8.333333",
+    "9",
+    "10",
+    "12.5",
+    "15",
+    "20",
+    "25",
+    "30",
+    "50",
+    "100",
+    "125",
+    "200",
     "Auto",
     "",
 ]
 SKIPS = ["", "S", "", "P"]
+# 31 = not set
 BANK_NAMES = "ABCDEFGHIJKLMNOPQRTUWY"
 POLARITY = ["Reverse", "Normal"]
 
@@ -95,6 +96,7 @@ CTCSS_TONES = (
     "241,88",
     "250,39",
     "254,10",
+    "",
 )
 
 DTCS_CODES = [
@@ -201,7 +203,15 @@ DTCS_CODES = [
     "734",
     "743",
     "754",
+    "",
 ]
+
+
+def _try_get(inlist: list[str] | tuple[str, ...], idx: int) -> str:
+    try:
+        return inlist[idx]
+    except IndexError:
+        return f"<[{idx}]>"
 
 
 @dataclass
@@ -243,7 +253,7 @@ class Channel:
     raw: bytes
 
     def __str__(self) -> str:
-        # ic(self)
+        ic(self)
         try:
             bank = f"{BANK_NAMES[self.bank]}/{self.bank_pos}"
         except IndexError:
@@ -260,8 +270,8 @@ class Channel:
             f"duplex={DUPLEX_DIRS[self.duplex]}, "
             f"tmode={TONE_MODES[self.tmode]}, "
             f"offset={self.offset}, "
-            f"ctone={CTCSS_TONES[self.ctone]}, "
-            f"dtsc={DTCS_CODES[self.dtsc]}, "
+            f"ctone={_try_get(CTCSS_TONES, self.ctone)}, "
+            f"dtsc={_try_get(DTCS_CODES, self.dtsc)}, "
             f"cf={self.canceller_freq}, "
             f"vsc={self.vsc}, "
             f"c={self.canceller}, "

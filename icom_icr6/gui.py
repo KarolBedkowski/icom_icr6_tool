@@ -13,6 +13,21 @@ from tkinter import filedialog, messagebox, ttk
 from . import io, model
 
 
+def _get_index_or_default(
+    values: list[str] | tuple[str, ...],
+    value: str,
+    default_value: int,
+    empty_value: str = "",
+) -> int:
+    if empty_value is not None and value == empty_value:
+        return default_value
+
+    try:
+        return values.index(value)
+    except ValueError:
+        return default_value
+
+
 class _ChannelModel:
     def __init__(self) -> None:
         self.number = 0
@@ -58,9 +73,9 @@ class _ChannelModel:
             return
 
         self.name.set(chan.name)
-        self.freq.set(chan.freq)
+        self.freq.set(chan.freq // 1000)
         self.mode.set(model.MODES[chan.mode])
-        self.ts.set(str(model.STEPS[chan.tuning_step]))
+        self.ts.set(model.STEPS[chan.tuning_step])
         self.af.set(1 if chan.af_filter else 0)
         self.attn.set(1 if chan.attenuator else 0)
         self.vsc.set(1 if chan.vsc else 0)
@@ -69,7 +84,7 @@ class _ChannelModel:
             self.duplex.set(model.DUPLEX_DIRS[chan.duplex])
         except IndexError:
             self.duplex.set("")
-        self.offset.set(chan.offset)
+        self.offset.set(chan.offset // 1000)
         try:
             self.tmode.set(model.TONE_MODES[chan.tmode])
         except IndexError:
@@ -92,6 +107,48 @@ class _ChannelModel:
         except IndexError:
             self.bank.set("")
             self.bank_pos.set(0)
+
+    def update_channel(self, chan: model.Channel) -> None:
+        if freq := self.freq.get():
+            chan.freq = freq * 1000
+        else:
+            raise ValueError
+
+        chan.name = self.name.get()[:6]
+        if mode := self.mode.get():
+            chan.mode = model.MODES.index(mode)
+        elif chan.freq > 110:  # TODO: check
+            chan.mode = 0
+        elif chan.freq > 68:
+            chan.mode = 1
+        elif chan.freq > 30:
+            chan.mode = 0
+        else:
+            chan.mode = 2
+
+        chan.tuning_step = model.STEPS.index(self.ts.get())
+        chan.af_filter = self.af.get() == 1
+        chan.attenuator = self.attn.get() == 1
+        chan.vsc = self.vsc.get() == 1
+        chan.skip = model.SKIPS.index(self.skip.get())
+        chan.duplex = model.DUPLEX_DIRS.index(self.duplex.get())
+        chan.offset = self.offset.get() * 1000
+        chan.tmode = model.TONE_MODES.index(self.tmode.get())
+        chan.ctone = _get_index_or_default(
+            model.CTCSS_TONES, self.ctone.get(), 63
+        )
+        chan.dtsc = _get_index_or_default(
+            model.DTCS_CODES, self.dtsc.get(), 127
+        )
+        chan.polarity = _get_index_or_default(
+            model.POLARITY, self.polarity.get(), 0
+        )
+        if (bank := self.bank.get()) == "":
+            chan.bank = 31
+            chan.bank_pos = 0
+        else:
+            chan.bank = model.BANK_NAMES.index(bank)
+            chan.bank_pos = self.bank_pos.get()
 
 
 class App(tk.Frame):
@@ -276,6 +333,10 @@ class App(tk.Frame):
         )
         create_entry(3, 4, "Bank pos: ", self._channel_model.bank_pos)
 
+        ttk.Button(
+            fields_frame, text="Update", command=self.__on_channel_update
+        ).grid(row=3, column=7, sticky=tk.E)
+
         fields_frame.grid(row=1, column=0, sticky=tk.N + tk.S + tk.E + tk.W)
 
         pw.add(frame, weight=1)
@@ -365,7 +426,7 @@ class App(tk.Frame):
         self.__fill_scan_edges()
         self.__fill_scan_links()
 
-    def __fill_channels(self, _event: tk.Event) -> None:
+    def __fill_channels(self, event: tk.Event | None) -> None:
         selected_range = 0
         if sel := self._channel_ranges.curselection():
             selected_range = sel[0]
@@ -408,9 +469,9 @@ class App(tk.Frame):
                     bank,
                 ),
             )
-
-        self._channels_content.yview(0)
-        self._channels_content.xview(0)
+        if event is not None:
+            self._channels_content.yview(0)
+            self._channels_content.xview(0)
 
     def __fill_banks(self) -> None:
         banks = self._banks
@@ -535,6 +596,20 @@ class App(tk.Frame):
         chan_num = int(sel[0])
         chan = self._radio_memory.get_channel(chan_num)
         self._channel_model.fill(chan)
+
+    def __on_channel_update(self) -> None:
+        sel = self._channels_content.selection()
+        if not sel:
+            return
+
+        chan_num = int(sel[0])
+        chan = self._radio_memory.get_channel(chan_num)
+        self._channel_model.update_channel(chan)
+        if chan.freq:
+            chan.hide_channel = False
+        ic(chan)
+        self.__fill_channels(None)
+        self._channels_content.selection_set(sel)
 
 
 def _build_list(
