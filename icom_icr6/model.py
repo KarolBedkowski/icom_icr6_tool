@@ -216,15 +216,21 @@ class Channel:
     attenuator: bool
     tuning_step: int
     duplex: int
+    # duplex offset
+    offset: int
     # tone
     tmode: int
-    offset: int
+    # tsql freq
     ctone: int
+    # dtsc code
     dtsc: int
-    canceller_freq: int
-    vsc: bool
-    canceller: int
+    # dtsc polarity
     polarity: int
+    vsc: bool
+
+    canceller: int
+    canceller_freq: int
+
     unknowns: list[str]
 
     # control flags
@@ -380,7 +386,6 @@ class RadioMemory:
             data[4] & 0b11000000,
             data[4] & 0b00001000,
             data[7] & 0b11111110,
-            data[8],
             data[10] & 0b01111000,
         ]
 
