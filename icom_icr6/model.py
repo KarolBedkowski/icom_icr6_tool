@@ -530,3 +530,92 @@ def decode_freq(freq: int, flags: int) -> int:
 
     LOG.error("unknown flag %r for freq %r", flags, freq)
     return 0
+
+
+class EncodedFreq(ty.NamedTuple):
+    flags: int
+    freq0: int
+    freq1: int
+    freq2: int
+    offset_l: int
+    offset_h: int
+
+
+def encode_freq(freq: int, offset: int) -> EncodedFreq:
+    flags = 0
+    if freq % 5000 == freq % 9000 == 0:
+        flags = 60 if offset // 9000 else 0  # 9k step
+    elif freq % 5000 == 0:
+        flags = 0
+    elif freq % 9000 == 0:
+        flags = 60
+    elif freq % 6250 == 0:
+        flags = 20
+    elif (freq * 3) % 25000 == 0:
+        flags = 40
+    else:
+        raise ValueError("can't determine flags")
+
+    match flags:
+        case 60:  # 9k
+            return EncodedFreq(
+                flags=60,
+                freq0=int(freq / 9000) & 0x00FF,
+                freq1=(int(freq / 9000) & 0xFF00) >> 8,
+                freq2=(int(freq / 9000) & 0x30000) >> 16,
+                offset_l=(int(offset / 9000) & 0x00FF),
+                offset_h=(int(offset / 9000) & 0xFF00) >> 8,
+            )
+        case 40:
+            return EncodedFreq(
+                flags=40,
+                freq0=int(freq / 8330) & 0x00FF,
+                freq1=(int(freq / 8330) & 0xFF00) >> 8,
+                freq2=(int(freq / 8330) & 0x30000) >> 16,
+                offset_l=(int(offset / 8330) & 0x00FF),
+                offset_h=(int(offset / 8330) & 0xFF00) >> 8,
+            )
+        case 20:
+            return EncodedFreq(
+                flags=20,
+                freq0=int(freq / 6250) & 0x00FF,
+                freq1=(int(freq / 6250) & 0xFF00) >> 8,
+                freq2=(int(freq / 6250) & 0x30000) >> 16,
+                offset_l=(int(offset / 6250) & 0x00FF),
+                offset_h=(int(offset / 6250) & 0xFF00) >> 8,
+            )
+        case 0:  # 5k
+            return EncodedFreq(
+                flags=0,
+                freq0=int(freq / 9000) & 0x00FF,
+                freq1=(int(freq / 9000) & 0xFF00) >> 8,
+                freq2=(int(freq / 9000) & 0x30000) >> 16,
+                offset_l=(int(offset / 9000) & 0x00FF),
+                offset_h=(int(offset / 9000) & 0xFF00) >> 8,
+            )
+
+    raise ValueError
+
+
+def validate_frequency(inp: str | int) -> bool:
+    ic(inp)
+    if isinstance(inp, str):
+        try:
+            freq = int(inp)
+        except ValueError:
+            return False
+    else:
+        freq = inp
+
+    ic(freq)
+    if 1299000000 < freq < 0:
+        ic("range")
+        return False
+
+    try:
+        ic(encode_freq(freq, 0))
+    except ValueError as err:
+        ic(err)
+        return False
+
+    return True

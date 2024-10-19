@@ -28,6 +28,70 @@ def _get_index_or_default(
         return default_value
 
 
+def _new_entry(
+    parent: tk.Widget,
+    row: int,
+    col: int,
+    label: str,
+    var: tk.Variable,
+    validator: str | None = None,
+) -> ttk.Entry:
+    tk.Label(parent, text=label).grid(
+        row=row, column=col, sticky=tk.N + tk.W, padx=6, pady=6
+    )
+    entry = ttk.Entry(parent, textvariable=var)
+    entry.grid(
+        row=row,
+        column=col + 1,
+        sticky=tk.N + tk.W + tk.E,
+        padx=6,
+        pady=6,
+    )
+    if validator:
+        entry.configure(validate="all")
+        entry.configure(validatecommand=(validator, "%P"))
+
+    return entry
+
+
+def _new_combo(
+    parent: tk.Widget,
+    row: int,
+    col: int,
+    label: str,
+    var: tk.Variable,
+    values: list[str],
+) -> ttk.Combobox:
+    tk.Label(parent, text=label).grid(
+        row=row, column=col, sticky=tk.N + tk.W, padx=6, pady=6
+    )
+    combo = ttk.Combobox(
+        parent,
+        values=values,
+        exportselection=False,
+        state="readonly",
+        textvariable=var,
+    )
+    combo.grid(
+        row=row, column=col + 1, sticky=tk.N + tk.W + tk.E, padx=6, pady=6
+    )
+    return combo
+
+
+def _new_checkbox(
+    parent: tk.Widget, row: int, col: int, label: str, var: tk.Variable
+) -> tk.Checkbutton:
+    cbox = tk.Checkbutton(
+        parent,
+        text=label,
+        variable=var,
+        onvalue=1,
+        offvalue=0,
+    )
+    cbox.grid(row=row, column=col, sticky=tk.N + tk.W + tk.S)
+    return cbox
+
+
 class _ChannelModel:
     def __init__(self) -> None:
         self.number = 0
@@ -115,6 +179,7 @@ class _ChannelModel:
             raise ValueError
 
         chan.name = self.name.get()[:6]
+        # TODO: better default settings for freq?
         if mode := self.mode.get():
             chan.mode = model.MODES.index(mode)
         elif chan.freq > 110:  # TODO: check
@@ -126,7 +191,11 @@ class _ChannelModel:
         else:
             chan.mode = 2
 
-        chan.tuning_step = model.STEPS.index(self.ts.get())
+        if ts := self.ts.get():
+            chan.tuning_step = model.STEPS.index(ts)
+        else:
+            chan.tuning_step = 0
+
         chan.af_filter = self.af.get() == 1
         chan.attenuator = self.attn.get() == 1
         chan.vsc = self.vsc.get() == 1
@@ -149,6 +218,13 @@ class _ChannelModel:
         else:
             chan.bank = model.BANK_NAMES.index(bank)
             chan.bank_pos = self.bank_pos.get()
+
+    def validate(self) -> list[str]:
+        errors = []
+        if not model.validate_frequency(self.freq.get() * 1000):
+            errors.append("Invalid frequency")
+
+        return errors
 
 
 class App(tk.Frame):
@@ -237,107 +313,90 @@ class App(tk.Frame):
             "<<TreeviewSelect>>", self.__on_channel_select
         )
 
-        fields_frame = tk.Frame(frame)
-        fields_frame.columnconfigure(0, weight=0)
-        fields_frame.columnconfigure(1, weight=1)
-        fields_frame.columnconfigure(2, weight=0)
-        fields_frame.columnconfigure(3, weight=1)
-        fields_frame.columnconfigure(4, weight=0)
-        fields_frame.columnconfigure(5, weight=1)
-        fields_frame.columnconfigure(6, weight=0)
-        fields_frame.columnconfigure(7, weight=1)
+        fields = tk.Frame(frame)
+        fields.columnconfigure(0, weight=0)
+        fields.columnconfigure(1, weight=1)
+        fields.columnconfigure(2, weight=0)
+        fields.columnconfigure(3, weight=1)
+        fields.columnconfigure(4, weight=0)
+        fields.columnconfigure(5, weight=1)
+        fields.columnconfigure(6, weight=0)
+        fields.columnconfigure(7, weight=1)
 
-        def create_entry(
-            row: int, col: int, label: str, var: tk.Variable
-        ) -> None:
-            tk.Label(fields_frame, text=label).grid(
-                row=row, column=col, sticky=tk.N + tk.W, padx=6, pady=6
-            )
-            ttk.Entry(fields_frame, textvariable=var).grid(
-                row=row,
-                column=col + 1,
-                sticky=tk.N + tk.W + tk.E,
-                padx=6,
-                pady=6,
-            )
-
-        def create_combo(
-            row: int, col: int, label: str, var: tk.Variable, values: list[str]
-        ) -> None:
-            tk.Label(fields_frame, text=label).grid(
-                row=row, column=col, sticky=tk.N + tk.W, padx=6, pady=6
-            )
-            ttk.Combobox(
-                fields_frame,
-                values=values,
-                exportselection=False,
-                state="readonly",
-                textvariable=var,
-            ).grid(
-                row=row,
-                column=col + 1,
-                sticky=tk.N + tk.W + tk.E,
-                padx=6,
-                pady=6,
-            )
-
-        def create_check(
-            row: int, col: int, label: str, var: tk.Variable
-        ) -> None:
-            tk.Checkbutton(
-                fields_frame,
-                text=label,
-                variable=var,
-                onvalue=1,
-                offvalue=0,
-            ).grid(row=row, column=col, sticky=tk.N + tk.W + tk.S)
-
-        create_entry(0, 0, "Frequency: ", self._channel_model.freq)
-        create_entry(0, 2, "Name: ", self._channel_model.name)
-        create_combo(
-            0, 4, "Mode: ", self._channel_model.mode, [" ", *model.MODES]
+        _new_entry(fields, 0, 0, "Frequency: ", self._channel_model.freq)
+        _new_entry(fields, 0, 2, "Name: ", self._channel_model.name)
+        _new_combo(
+            fields,
+            0,
+            4,
+            "Mode: ",
+            self._channel_model.mode,
+            [" ", *model.MODES],
         )
-        create_combo(
-            0, 6, "TS: ", self._channel_model.ts, list(map(str, model.STEPS))
+        _new_combo(
+            fields,
+            0,
+            6,
+            "TS: ",
+            self._channel_model.ts,
+            list(map(str, model.STEPS)),
         )
 
-        create_combo(
-            1, 0, "Duplex: ", self._channel_model.duplex, model.DUPLEX_DIRS
+        _new_combo(
+            fields,
+            1,
+            0,
+            "Duplex: ",
+            self._channel_model.duplex,
+            model.DUPLEX_DIRS,
         )
-        create_entry(1, 2, "Offset: ", self._channel_model.offset)
+        _new_entry(fields, 1, 2, "Offset: ", self._channel_model.offset)
 
-        create_combo(1, 4, "Skip: ", self._channel_model.skip, model.SKIPS)
-        create_check(1, 6, " AF Filter", self._channel_model.af)
-        create_check(1, 7, " Attenuator", self._channel_model.attn)
-
-        create_combo(
-            2, 0, "Tone: ", self._channel_model.tmode, model.TONE_MODES
+        _new_combo(
+            fields, 1, 4, "Skip: ", self._channel_model.skip, model.SKIPS
         )
-        create_combo(
+        _new_checkbox(fields, 1, 6, " AF Filter", self._channel_model.af)
+        _new_checkbox(fields, 1, 7, " Attenuator", self._channel_model.attn)
+
+        _new_combo(
+            fields, 2, 0, "Tone: ", self._channel_model.tmode, model.TONE_MODES
+        )
+        _new_combo(
+            fields,
             2,
             2,
             "TSQL: ",
             self._channel_model.ctone,
             list(model.CTCSS_TONES),
         )
-        create_combo(
-            2, 4, "DTSC: ", self._channel_model.dtsc, model.DTCS_CODES
+        _new_combo(
+            fields, 2, 4, "DTSC: ", self._channel_model.dtsc, model.DTCS_CODES
         )
-        create_combo(
-            2, 6, "Polarity: ", self._channel_model.polarity, model.POLARITY
+        _new_combo(
+            fields,
+            2,
+            6,
+            "Polarity: ",
+            self._channel_model.polarity,
+            model.POLARITY,
         )
 
-        create_check(3, 0, " VSV", self._channel_model.vsc)
-        create_combo(
-            3, 2, "Bank: ", self._channel_model.bank, [" ", *model.BANK_NAMES]
+        _new_checkbox(fields, 3, 0, " VSV", self._channel_model.vsc)
+        _new_combo(
+            fields,
+            3,
+            2,
+            "Bank: ",
+            self._channel_model.bank,
+            [" ", *model.BANK_NAMES],
         )
-        create_entry(3, 4, "Bank pos: ", self._channel_model.bank_pos)
+        _new_entry(fields, 3, 4, "Bank pos: ", self._channel_model.bank_pos)
 
         ttk.Button(
-            fields_frame, text="Update", command=self.__on_channel_update
+            fields, text="Update", command=self.__on_channel_update
         ).grid(row=3, column=7, sticky=tk.E)
 
-        fields_frame.grid(row=1, column=0, sticky=tk.N + tk.S + tk.E + tk.W)
+        fields.grid(row=1, column=0, sticky=tk.N + tk.S + tk.E + tk.W)
 
         pw.add(frame, weight=1)
 
@@ -605,8 +664,14 @@ class App(tk.Frame):
         chan_num = int(sel[0])
         chan = self._radio_memory.get_channel(chan_num)
         self._channel_model.update_channel(chan)
+
+        if errors := self._channel_model.validate():
+            messagebox.showerror("Invalid configuration", "\n".join(errors))
+            return
+
         if chan.freq:
             chan.hide_channel = False
+
         ic(chan)
         self.__fill_channels(None)
         self._channels_content.selection_set(sel)
