@@ -8,6 +8,7 @@
 """ """
 
 import logging
+import sys
 from pathlib import Path
 
 import icecream
@@ -51,11 +52,27 @@ def main2() -> None:
 
 
 def main() -> None:
-    mem = io.load_icf_file(Path("mem.txt"))
+    fname = "mem.txt"
+    if len(sys.argv) > 1:
+        fname = sys.argv[1]
+
+    mem = io.load_icf_file(Path(fname))
 
     print("channels")
-    for channel in range(1300):
-        print(channel, mem.get_channel(channel))
+    ch_start, ch_end = 0, 1300
+    if len(sys.argv) > 2:
+        ch_start = int(sys.argv[2]) * 100
+        ch_end = ch_start + 100
+
+    hidden = sys.argv[3] == "t" if len(sys.argv) > 3 else False
+
+    for channel in range(ch_start, ch_end):
+        ch = mem.get_channel(channel)
+        if not ch.hide_channel or not ch.freq or hidden:
+            print(channel, ch)
+
+    if (ch_start, ch_end) != (0, 1300):
+        return
 
     print("banks")
     for idx in range(22):
