@@ -8,223 +8,11 @@ import sys
 import tkinter as tk
 import typing as ty
 from pathlib import Path
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, ttk
 
-from . import io, model
-
-
-def _get_index_or_default(
-    values: list[str] | tuple[str, ...],
-    value: str,
-    default_value: int,
-    empty_value: str = "",
-) -> int:
-    if empty_value is not None and value == empty_value:
-        return default_value
-
-    try:
-        return values.index(value)
-    except ValueError:
-        return default_value
-
-
-def _new_entry(
-    parent: tk.Widget,
-    row: int,
-    col: int,
-    label: str,
-    var: tk.Variable,
-    validator: str | None = None,
-) -> ttk.Entry:
-    tk.Label(parent, text=label).grid(
-        row=row, column=col, sticky=tk.N + tk.W, padx=6, pady=6
-    )
-    entry = ttk.Entry(parent, textvariable=var)
-    entry.grid(
-        row=row,
-        column=col + 1,
-        sticky=tk.N + tk.W + tk.E,
-        padx=6,
-        pady=6,
-    )
-    if validator:
-        entry.configure(validate="all")
-        entry.configure(validatecommand=(validator, "%P"))
-
-    return entry
-
-
-def _new_combo(
-    parent: tk.Widget,
-    row: int,
-    col: int,
-    label: str,
-    var: tk.Variable,
-    values: list[str],
-) -> ttk.Combobox:
-    tk.Label(parent, text=label).grid(
-        row=row, column=col, sticky=tk.N + tk.W, padx=6, pady=6
-    )
-    combo = ttk.Combobox(
-        parent,
-        values=values,
-        exportselection=False,
-        state="readonly",
-        textvariable=var,
-    )
-    combo.grid(
-        row=row, column=col + 1, sticky=tk.N + tk.W + tk.E, padx=6, pady=6
-    )
-    return combo
-
-
-def _new_checkbox(
-    parent: tk.Widget, row: int, col: int, label: str, var: tk.Variable
-) -> tk.Checkbutton:
-    cbox = tk.Checkbutton(
-        parent,
-        text=label,
-        variable=var,
-        onvalue=1,
-        offvalue=0,
-    )
-    cbox.grid(row=row, column=col, sticky=tk.N + tk.W + tk.S)
-    return cbox
-
-
-class _ChannelModel:
-    def __init__(self) -> None:
-        self.number = 0
-        self.freq = tk.IntVar()
-        self.name = tk.StringVar()
-        self.mode = tk.StringVar()
-        self.ts = tk.StringVar()
-        self.af = tk.IntVar()
-        self.attn = tk.IntVar()
-        self.vsc = tk.IntVar()
-        self.skip = tk.StringVar()
-
-        self.duplex = tk.StringVar()
-        self.offset = tk.IntVar()
-        self.tmode = tk.StringVar()
-        self.ctone = tk.StringVar()
-        self.dtsc = tk.StringVar()
-        self.polarity = tk.StringVar()
-
-        self.bank = tk.StringVar()
-        self.bank_pos = tk.IntVar()
-
-    def fill(self, chan: model.Channel) -> None:
-        ic(chan)
-        self.number = chan.number
-        if chan.hide_channel:
-            self.name.set("")
-            self.freq.set(0)
-            self.mode.set("")
-            self.ts.set("")
-            self.af.set(0)
-            self.attn.set(0)
-            self.vsc.set(0)
-            self.skip.set("")
-            self.duplex.set("")
-            self.offset.set(0)
-            self.tmode.set("")
-            self.ctone.set("")
-            self.dtsc.set("")
-            self.polarity.set("")
-            self.bank.set("")
-            self.bank_pos.set(0)
-            return
-
-        self.name.set(chan.name)
-        self.freq.set(chan.freq // 1000)
-        self.mode.set(model.MODES[chan.mode])
-        self.ts.set(model.STEPS[chan.tuning_step])
-        self.af.set(1 if chan.af_filter else 0)
-        self.attn.set(1 if chan.attenuator else 0)
-        self.vsc.set(1 if chan.vsc else 0)
-        self.skip.set(model.SKIPS[chan.skip])
-        try:
-            self.duplex.set(model.DUPLEX_DIRS[chan.duplex])
-        except IndexError:
-            self.duplex.set("")
-        self.offset.set(chan.offset // 1000)
-        try:
-            self.tmode.set(model.TONE_MODES[chan.tmode])
-        except IndexError:
-            self.tmode.set("")
-        try:
-            self.ctone.set(model.CTCSS_TONES[chan.ctone])
-        except IndexError:
-            self.ctone.set("")
-        try:
-            self.dtsc.set(model.DTCS_CODES[chan.dtsc])
-        except IndexError:
-            self.dtsc.set("")
-        try:
-            self.polarity.set(model.POLARITY[chan.polarity])
-        except IndexError:
-            self.polarity.set("")
-        try:
-            self.bank.set(model.BANK_NAMES[chan.bank])
-            self.bank_pos.set(chan.bank_pos)
-        except IndexError:
-            self.bank.set("")
-            self.bank_pos.set(0)
-
-    def update_channel(self, chan: model.Channel) -> None:
-        if freq := self.freq.get():
-            chan.freq = freq * 1000
-        else:
-            raise ValueError
-
-        chan.name = self.name.get()[:6]
-        # TODO: better default settings for freq?
-        if mode := self.mode.get():
-            chan.mode = model.MODES.index(mode)
-        elif chan.freq > 110:  # TODO: check
-            chan.mode = 0
-        elif chan.freq > 68:
-            chan.mode = 1
-        elif chan.freq > 30:
-            chan.mode = 0
-        else:
-            chan.mode = 2
-
-        if ts := self.ts.get():
-            chan.tuning_step = model.STEPS.index(ts)
-        else:
-            chan.tuning_step = 0
-
-        chan.af_filter = self.af.get() == 1
-        chan.attenuator = self.attn.get() == 1
-        chan.vsc = self.vsc.get() == 1
-        chan.skip = model.SKIPS.index(self.skip.get())
-        chan.duplex = model.DUPLEX_DIRS.index(self.duplex.get())
-        chan.offset = self.offset.get() * 1000
-        chan.tmode = model.TONE_MODES.index(self.tmode.get())
-        chan.ctone = _get_index_or_default(
-            model.CTCSS_TONES, self.ctone.get(), 63
-        )
-        chan.dtsc = _get_index_or_default(
-            model.DTCS_CODES, self.dtsc.get(), 127
-        )
-        chan.polarity = _get_index_or_default(
-            model.POLARITY, self.polarity.get(), 0
-        )
-        if (bank := self.bank.get()) == "":
-            chan.bank = 31
-            chan.bank_pos = 0
-        else:
-            chan.bank = model.BANK_NAMES.index(bank)
-            chan.bank_pos = self.bank_pos.get()
-
-    def validate(self) -> list[str]:
-        errors = []
-        if not model.validate_frequency(self.freq.get() * 1000):
-            errors.append("Invalid frequency")
-
-        return errors
+from . import gui_model, gui_nb_channels, io, model
+from .gui_model import yes_no
+from .gui_widgets import build_list
 
 
 class App(tk.Frame):
@@ -233,7 +21,7 @@ class App(tk.Frame):
 
         self._last_dir = Path()
         self._radio_memory = model.RadioMemory()
-        self._channel_model = _ChannelModel()
+        self._channel_model = gui_model.ChannelModel()
 
         self.pack(fill="both", expand=1)
 
@@ -266,141 +54,11 @@ class App(tk.Frame):
         help_menu.add_command(label="About", command=self.__about_handler)
         menu_bar.add_cascade(label="Help", menu=help_menu)
 
-    def __create_nb_channels(self) -> ttk.PanedWindow:
-        pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
-        self._channel_ranges = tk.Listbox(pw, selectmode=tk.SINGLE)
-        self._channel_ranges.insert(
-            tk.END,
-            "0-99",
-            "100-199",
-            "200-299",
-            "300-399",
-            "400-499",
-            "500-599",
-            "600-699",
-            "700-799",
-            "800-899",
-            "900-999",
-            "1000-1099",
-            "1100-1199",
-            "1200-1299",
+    def __create_nb_channels(self) -> tk.Widget:
+        self._nb_channels = gui_nb_channels.ChannelsPage(
+            self, self._radio_memory
         )
-        pw.add(self._channel_ranges, weight=0)
-        self._channel_ranges.bind("<<ListboxSelect>>", self.__fill_channels)
-
-        frame = tk.Frame(pw)
-        frame.rowconfigure(0, weight=1)
-        frame.rowconfigure(1, weight=0)
-        frame.columnconfigure(0, weight=1)
-
-        columns = (
-            ("num", "Num", tk.E, 30),
-            ("freq", "Freq", tk.E, 80),
-            ("name", "Name", tk.W, 50),
-            ("af", "AF", tk.CENTER, 25),
-            ("att", "ATT", tk.CENTER, 25),
-            ("mode", "Mode", tk.CENTER, 25),
-            ("ts", "TS", tk.CENTER, 25),
-            ("vsc", "VSC", tk.CENTER, 25),
-            ("skip", "Skip", tk.CENTER, 25),
-            ("bank", "Bank", tk.W, 25),
-        )
-        ccframe, self._channels_content = _build_list(frame, columns)
-        ccframe.grid(
-            row=0, column=0, sticky=tk.N + tk.S + tk.E + tk.W, padx=6, pady=6
-        )
-        self._channels_content.bind(
-            "<<TreeviewSelect>>", self.__on_channel_select
-        )
-
-        fields = tk.Frame(frame)
-        fields.columnconfigure(0, weight=0)
-        fields.columnconfigure(1, weight=1)
-        fields.columnconfigure(2, weight=0)
-        fields.columnconfigure(3, weight=1)
-        fields.columnconfigure(4, weight=0)
-        fields.columnconfigure(5, weight=1)
-        fields.columnconfigure(6, weight=0)
-        fields.columnconfigure(7, weight=1)
-
-        _new_entry(fields, 0, 0, "Frequency: ", self._channel_model.freq)
-        _new_entry(fields, 0, 2, "Name: ", self._channel_model.name)
-        _new_combo(
-            fields,
-            0,
-            4,
-            "Mode: ",
-            self._channel_model.mode,
-            [" ", *model.MODES],
-        )
-        _new_combo(
-            fields,
-            0,
-            6,
-            "TS: ",
-            self._channel_model.ts,
-            list(map(str, model.STEPS)),
-        )
-
-        _new_combo(
-            fields,
-            1,
-            0,
-            "Duplex: ",
-            self._channel_model.duplex,
-            model.DUPLEX_DIRS,
-        )
-        _new_entry(fields, 1, 2, "Offset: ", self._channel_model.offset)
-
-        _new_combo(
-            fields, 1, 4, "Skip: ", self._channel_model.skip, model.SKIPS
-        )
-        _new_checkbox(fields, 1, 6, " AF Filter", self._channel_model.af)
-        _new_checkbox(fields, 1, 7, " Attenuator", self._channel_model.attn)
-
-        _new_combo(
-            fields, 2, 0, "Tone: ", self._channel_model.tmode, model.TONE_MODES
-        )
-        _new_combo(
-            fields,
-            2,
-            2,
-            "TSQL: ",
-            self._channel_model.ctone,
-            list(model.CTCSS_TONES),
-        )
-        _new_combo(
-            fields, 2, 4, "DTSC: ", self._channel_model.dtsc, model.DTCS_CODES
-        )
-        _new_combo(
-            fields,
-            2,
-            6,
-            "Polarity: ",
-            self._channel_model.polarity,
-            model.POLARITY,
-        )
-
-        _new_checkbox(fields, 3, 0, " VSV", self._channel_model.vsc)
-        _new_combo(
-            fields,
-            3,
-            2,
-            "Bank: ",
-            self._channel_model.bank,
-            [" ", *model.BANK_NAMES],
-        )
-        _new_entry(fields, 3, 4, "Bank pos: ", self._channel_model.bank_pos)
-
-        ttk.Button(
-            fields, text="Update", command=self.__on_channel_update
-        ).grid(row=3, column=7, sticky=tk.E)
-
-        fields.grid(row=1, column=0, sticky=tk.N + tk.S + tk.E + tk.W)
-
-        pw.add(frame, weight=1)
-
-        return pw
+        return self._nb_channels
 
     def __create_nb_banks(self) -> ttk.PanedWindow:
         pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
@@ -422,7 +80,7 @@ class App(tk.Frame):
             ("vsc", "vsc", tk.CENTER, 30),
             ("skip", "skip", tk.CENTER, 30),
         ]
-        frame, self._bank_content = _build_list(pw, columns)
+        frame, self._bank_content = build_list(pw, columns)
         pw.add(frame, weight=1)
 
         return pw
@@ -437,7 +95,7 @@ class App(tk.Frame):
             ("mode", "Mode", tk.CENTER, 30),
             ("att", "ATT", tk.CENTER, 30),
         ]
-        frame, self._scan_edges = _build_list(self, columns)
+        frame, self._scan_edges = build_list(self, columns)
         return frame
 
     def __create_nb_scan_links(self) -> ttk.PanedWindow:
@@ -477,60 +135,12 @@ class App(tk.Frame):
         pass
 
     def __fill_widgets(self) -> None:
-        self._channel_ranges.selection_set(0)
-        self._channel_ranges.activate(0)
+        self._nb_channels.set(self._radio_memory)
         self.__fill_banks()
         self._banks.selection_set(0)
         self._banks.activate(0)
         self.__fill_scan_edges()
         self.__fill_scan_links()
-
-    def __fill_channels(self, event: tk.Event | None) -> None:
-        selected_range = 0
-        if sel := self._channel_ranges.curselection():
-            selected_range = sel[0]
-
-        self._channels_content.delete(*self._channels_content.get_children())
-
-        range_start = selected_range * 100
-        for idx in range(range_start, range_start + 100):
-            channel = self._radio_memory.get_channel(idx)
-            if channel.hide_channel or not channel.freq:
-                self._channels_content.insert(
-                    parent="",
-                    index=tk.END,
-                    iid=idx,
-                    text="",
-                    values=(str(idx), "", "", "", "", "", "", "", "", ""),
-                )
-                continue
-
-            try:
-                bank = f"{model.BANK_NAMES[channel.bank]} {channel.bank_pos}"
-            except IndexError:
-                bank = ""
-
-            self._channels_content.insert(
-                parent="",
-                index=tk.END,
-                iid=idx,
-                text="",
-                values=(
-                    str(idx),
-                    str(channel.freq // 1000),
-                    channel.name,
-                    _yes_no(channel.af_filter),
-                    _yes_no(channel.attenuator),
-                    model.MODES[channel.mode],
-                    model.STEPS[channel.tuning_step],
-                    _yes_no(channel.vsc),
-                    model.SKIPS[channel.skip],
-                    bank,
-                ),
-            )
-        if event is not None:
-            self._channels_content.yview(0)
-            self._channels_content.xview(0)
 
     def __fill_banks(self) -> None:
         banks = self._banks
@@ -573,9 +183,9 @@ class App(tk.Frame):
                     channel.name,
                     model.STEPS[channel.tuning_step],
                     model.MODES[channel.mode],
-                    _yes_no(channel.af_filter),
-                    _yes_no(channel.attenuator),
-                    _yes_no(channel.vsc),
+                    yes_no(channel.af_filter),
+                    yes_no(channel.attenuator),
+                    yes_no(channel.vsc),
                     model.SKIPS[channel.skip],
                 ),
             )
@@ -646,71 +256,6 @@ class App(tk.Frame):
         sl = self._radio_memory.get_scan_link(sel_sl[0])
         for edge in sl.edges:
             slse.selection_set(edge)
-
-    def __on_channel_select(self, event: tk.Event) -> None:
-        sel = self._channels_content.selection()
-        if not sel:
-            return
-
-        chan_num = int(sel[0])
-        chan = self._radio_memory.get_channel(chan_num)
-        self._channel_model.fill(chan)
-
-    def __on_channel_update(self) -> None:
-        sel = self._channels_content.selection()
-        if not sel:
-            return
-
-        chan_num = int(sel[0])
-        chan = self._radio_memory.get_channel(chan_num)
-        self._channel_model.update_channel(chan)
-
-        if errors := self._channel_model.validate():
-            messagebox.showerror("Invalid configuration", "\n".join(errors))
-            return
-
-        if chan.freq:
-            chan.hide_channel = False
-
-        ic(chan)
-        self.__fill_channels(None)
-        self._channels_content.selection_set(sel)
-
-
-def _build_list(
-    parent: tk.Widget, columns: ty.Iterable[tuple[str, str, str, int]]
-) -> tuple[tk.Frame, ttk.Treeview]:
-    frame = tk.Frame(parent)
-    vert_scrollbar = ttk.Scrollbar(frame, orient="vertical")
-    vert_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-    hor_scrollbar = ttk.Scrollbar(frame, orient="horizontal")
-    hor_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
-
-    col_ids = [c[0] for c in columns]
-    tree = ttk.Treeview(frame, columns=col_ids)
-    tree.column("#0", width=0, stretch=tk.NO)
-    for col_id, title, anchor, width in columns:
-        tree.column(col_id, anchor=anchor, width=width)
-        tree.heading(col_id, text=title, anchor=tk.CENTER)
-
-    tree.pack(fill=tk.BOTH, expand=True)
-    vert_scrollbar.config(command=tree.yview)
-    hor_scrollbar.config(command=tree.xview)
-    tree.configure(
-        yscrollcommand=vert_scrollbar.set, xscrollcommand=hor_scrollbar.set
-    )
-
-    return frame, tree
-
-
-def _yes_no(value: bool | None) -> str:
-    match value:
-        case None:
-            return ""
-        case True:
-            return "yes"
-        case False:
-            return "no"
 
 
 def start_gui() -> None:
