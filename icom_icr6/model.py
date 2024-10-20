@@ -241,7 +241,7 @@ class Channel:
     canceller: int
     canceller_freq: int
 
-    unknowns: list[str]
+    unknowns: list[int]
 
     # control flags
     hide_channel: bool
@@ -281,7 +281,7 @@ class Channel:
             f"polarity={POLARITY[self.polarity]}, "
             f"bank={bank}, "
             f"unknowns={self.unknowns}, "
-            f"raws={binascii.hexlify(self.raw)}"
+            f"raws={binascii.hexlify(self.raw)!r}"
         )
 
 
@@ -315,8 +315,8 @@ class ScanEdge:
                 return "On"
             case 2:
                 return "-"
-            case _:
-                return str(self.attn)
+
+        return str(self.attn)
 
 
 @dataclass
@@ -410,7 +410,7 @@ class RadioMemory:
             duplex=(data[4] & 0b00110000) >> 4,
             tmode=data[4] & 0b00000111,
             offset=decode_freq((data[6] << 8) | data[5], freq_flags),
-            ctone=int(data[7]) & 0b00111111,
+            ctone=data[7] & 0b00111111,
             polarity=(data[8] & 0b10000000) >> 7,
             dtsc=(data[8] & 0b01111111),
             canceller_freq=(data[9] << 1) | ((data[10] & 0b10000000) >> 7),
