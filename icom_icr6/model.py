@@ -528,7 +528,7 @@ def decode_freq(freq: int, flags: int) -> int:
         case 20:
             return 6250 * freq  # unused
         case 40:
-            return int(8333.3333 * freq)  # unused?
+            return (25000 * freq) // 3  # unused?
         case 60:
             return 9000 * freq
 
@@ -538,65 +538,48 @@ def decode_freq(freq: int, flags: int) -> int:
 
 class EncodedFreq(ty.NamedTuple):
     flags: int
-    freq0: int
-    freq1: int
-    freq2: int
-    offset_l: int
-    offset_h: int
+    freq: int
+    offset: int
+
+    def freq_bytes(self) -> tuple[int, int, int]:
+        # freq0, freq1, freq2
+        return (
+            self.freq & 0x00FF,
+            (self.freq & 0xFF00) >> 8,
+            (self.freq & 0x30000) >> 16,
+        )
+
+    def offset_bytes(self) -> tuple[int, int]:
+        # offset_l, offset_h
+        return self.offset & 0x00FF, (self.offset & 0xFF00) >> 8
 
 
 def encode_freq(freq: int, offset: int) -> EncodedFreq:
+    # freq min 0.1MHz
+    # offset max 159.995 MHz
     flags = 0
     if freq % 5000 == freq % 9000 == 0:
-        flags = 60 if offset // 9000 else 0  # 9k step
-    elif freq % 5000 == 0:
-        flags = 0
+        flags = 0 if offset else 60  # 9k step or 50 step
     elif freq % 9000 == 0:
         flags = 60
+    elif freq % 5000 == 0:
+        flags = 0
     elif freq % 6250 == 0:
         flags = 20
-    elif (freq * 3) % 25000 == 0:
+    elif (freq * 3) % 25000 == 0:  # not used?
         flags = 40
     else:
         raise ValueError("can't determine flags")
 
     match flags:
         case 60:  # 9k
-            return EncodedFreq(
-                flags=60,
-                freq0=int(freq / 9000) & 0x00FF,
-                freq1=(int(freq / 9000) & 0xFF00) >> 8,
-                freq2=(int(freq / 9000) & 0x30000) >> 16,
-                offset_l=(int(offset / 9000) & 0x00FF),
-                offset_h=(int(offset / 9000) & 0xFF00) >> 8,
-            )
+            return EncodedFreq(60, freq // 9000, offset // 9000)
         case 40:
-            return EncodedFreq(
-                flags=40,
-                freq0=int(freq / 8330) & 0x00FF,
-                freq1=(int(freq / 8330) & 0xFF00) >> 8,
-                freq2=(int(freq / 8330) & 0x30000) >> 16,
-                offset_l=(int(offset / 8330) & 0x00FF),
-                offset_h=(int(offset / 8330) & 0xFF00) >> 8,
-            )
+            return EncodedFreq(40, freq // 8330, offset // 8330)
         case 20:
-            return EncodedFreq(
-                flags=20,
-                freq0=int(freq / 6250) & 0x00FF,
-                freq1=(int(freq / 6250) & 0xFF00) >> 8,
-                freq2=(int(freq / 6250) & 0x30000) >> 16,
-                offset_l=(int(offset / 6250) & 0x00FF),
-                offset_h=(int(offset / 6250) & 0xFF00) >> 8,
-            )
+            return EncodedFreq(20, freq // 6250, offset // 6250)
         case 0:  # 5k
-            return EncodedFreq(
-                flags=0,
-                freq0=int(freq / 9000) & 0x00FF,
-                freq1=(int(freq / 9000) & 0xFF00) >> 8,
-                freq2=(int(freq / 9000) & 0x30000) >> 16,
-                offset_l=(int(offset / 9000) & 0x00FF),
-                offset_h=(int(offset / 9000) & 0xFF00) >> 8,
-            )
+            return EncodedFreq(0, freq // 5000, offset // 5000)
 
     raise ValueError
 
