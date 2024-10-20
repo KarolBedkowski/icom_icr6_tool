@@ -1,0 +1,169 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+authors = [{ name = "Karol Będkowski", email = "karol.bedkowski@gmail.com" }]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+  "Programming Language :: Python :: 3 :: Only",
+  "Environment :: Console",
+  "Natural Language :: English",
+  "Operating System :: OS Independent",
+  "Topic :: Utilities",
+]
+description = ""
+name = "icom_icr6"
+license = { text = "GPL-3.0-or-later" }
+readme = "README.rst"
+requires-python = ">=3.11"
+#dependencies = ["python-dateutil"]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+dev = [
+  "freezegun",
+  "icecream>=2.1.0",
+  "pip-tools>=6.10.0",
+  "pytest-cov>=4.0.0",
+  "pytest>=7.2.0",
+  "typeguard>=2.13.3",
+]
+
+[project.scripts]
+icom_icr6 = "icom_icr6:main"
+
+
+[tool.hatch.version]
+path = "icom_icr6/__init__.py"
+
+
+[tool.black]
+line-length = 79
+
+
+[tool.bandit]
+skips = ["B101", "B410", "B303", "B110", "B404", "B311", "B405", "B201"]
+
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+exclude = ['_test\.py$', "tmp"]
+ignore_missing_imports = true
+
+
+[tool.pylint.main]
+ignore = ["build", "dist", "contrib"]
+ignore-patterns = [".+_test.py", "tmp/.+"]
+jobs = 4
+py-version = [3, 11]
+disable = [
+  "missing-docstring",
+  "format",
+  "unused-argument",
+  "wrong-import-order",
+]
+
+
+[tool.pylint.basic]
+good-names = [
+  "i",
+  "j",
+  "k",
+  "ex",
+  "Run",
+  "_",
+  "db",
+  "err",
+  "ok",
+  "x",
+  "y",
+  "ts",
+]
+
+[tool.pylint.variables]
+additional-builtins = ["_", "ngettext", "ic", "ic_stack"]
+
+
+[tool.ruff]
+builtins = ["_", "ic", "ic_stack", "ngettext"]
+exclude = ["tmp"]
+#extend-exclude = ["*_test.py"]
+output-format = "full"
+line-length = 79
+lint.select = ["E", "F", "I", "W", "C"]
+lint.ignore = [
+  "ANN101",
+  'COM812',
+  'I001',
+]
+lint.extend-select = [
+  "N",
+  "ANN",
+  "FBT",
+  "B",
+  "A",
+  "COM",
+  "C4",
+  "EM",
+  "ISC",
+  "ICN",
+  "LOG",
+  "G",
+  "PIE",
+  "PYI",
+  "PT",
+  "Q",
+  "RSE",
+  "RET",
+  "SLF",
+  "SLOT",
+  "SIM",
+  "TID",
+  "TCH",
+  "ARG",
+  "PTH",
+  "FIX",
+  "PL",
+  "R",
+  "TRY",
+  "PERF",
+  "RUF",
+]
+[tool.ruff.lint.isort]
+combine-as-imports = true
+
+[tool.ruff.lint.per-file-ignores]
+"**/*_test.py" = ["ANN", "PTH", "SLF001", "ANN201", "ANN001"]
+
+
+[tool.pytest.ini_options]
+addopts = "-l --ff"
+
+
+[tool.vulture]
+exclude = ["*_test.py", "tmp"]
+paths = ["icom_icr6"]
+sort_by_size = true
+
+
+[tool.deptry]
+pep621_dev_dependency_groups = ["dev"]
+exclude = [".git", "htmlcov", ".*_test.py", "run_.*\\.py", "tmp"]
+
+[tool.deptry.per_rule_ignores]
+DEP003 = ["icom_icr6"]
+
+[tool.deptry.package_module_name_map]
+python-dateutil = "dateutil"
+pip-tools = "pip_tools"
+pytest = "pytest"
+pytest-cov = "pytest_cov"
+typeguard = "typeguard"
+stackprinter = "stackprinter"
+icecream = "icecream"
+freezegun = "freezegun"
+textual = "textual"
+rich = "rich"

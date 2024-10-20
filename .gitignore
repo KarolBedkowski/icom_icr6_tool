@@ -1,0 +1,12 @@
+__pycache__
+.*
+
+todo*.txt
+done*.txt
+*.bak
+/tmp
+/notes
+*.txt
+*.log
+*.icf
+*.raw
