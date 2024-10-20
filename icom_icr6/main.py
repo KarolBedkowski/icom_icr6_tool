@@ -13,7 +13,7 @@ from pathlib import Path
 
 import icecream
 
-from . import gui, io, model
+from . import gui, io
 
 icecream.install()
 
@@ -24,69 +24,117 @@ LOG = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
 
 
-def main1() -> None:
-    # f = Frame(0, b'014020E89502CF30FF7CFFFF72000FFFFFFFFFE89502CF30FF7CFFFF72000FFFFFFFFFB7')
-    # d = f.decode_payload()
-    # assert d == b'\x01@ \xe8\x95\x02\xcf0\xff|\xff\xffr\x00\x0f\xff\xff\xff\xff\xe8\x95\x02\xcf0\xff|\xff\xffr\x00\x0f\xff\xff\xff\xff\xb7'
+def main_clone_from_radio() -> None:
+    if len(sys.argv) < 3:
+        print("file name required")
+        return
 
     radio = io.Radio()
-    print(repr(radio.get_model()))
-    with Path("data.txt").open("wt") as out:
-        mem = radio.clone_from(out)
-    with Path("mem.txt").open("wt") as out:
-        for line in mem.dump():
-            out.write(line)
-            out.write("\n")
+    mem = radio.clone_from()
+    io.save_icf_file(Path(sys.argv[2]), mem)
 
 
-def main2() -> None:
-    mem = model.RadioMemory()
-    with Path("mem.txt").open("rt") as inp:
-        for line in inp:
-            mem.read(line.strip())
-
-    with Path("mem2.txt").open("wt") as out:
-        for line in mem.dump():
-            out.write(line)
-            out.write("\n")
+def main_radio_info() -> None:
+    radio = io.Radio()
+    print(f"Model: {radio.get_model()!r}")
 
 
-def main() -> None:
-    fname = "mem.txt"
-    if len(sys.argv) > 1:
-        fname = sys.argv[1]
+def main_print_channels() -> None:
+    if len(sys.argv) < 3:
+        print("file name required")
+        return
 
-    mem = io.load_icf_file(Path(fname))
+    mem = io.load_icf_file(Path(sys.argv[2]))
 
-    print("channels")
+    hidden = False
+    if "hidden" in sys.argv:
+        sys.argv.remove("hidden")
+        hidden = True
+
+    print("Channels")
     ch_start, ch_end = 0, 1300
-    if len(sys.argv) > 2:
-        ch_start = int(sys.argv[2]) * 100
+    if len(sys.argv) >= 4:
+        ch_start = int(sys.argv[3]) * 100
         ch_end = ch_start + 100
-
-    hidden = sys.argv[3] == "t" if len(sys.argv) > 3 else False
 
     for channel in range(ch_start, ch_end):
         ch = mem.get_channel(channel)
         if not ch.hide_channel or not ch.freq or hidden:
             print(channel, ch)
 
-    if (ch_start, ch_end) != (0, 1300):
+
+def main_print_banks() -> None:
+    if len(sys.argv) < 3:
+        print("file name required")
         return
 
-    print("banks")
+    mem = io.load_icf_file(Path(sys.argv[2]))
+
+    print("Nanks")
     for idx in range(22):
         print(idx, mem.get_bank(idx))
 
-    print("scan links")
+
+def main_print_scan_programms() -> None:
+    if len(sys.argv) < 3:
+        print("file name required")
+        return
+
+    mem = io.load_icf_file(Path(sys.argv[2]))
+
+    print("Scan links")
     for idx in range(10):
         print(idx, mem.get_scan_link(idx))
 
-    print("scan edges")
+    print("Scan edges")
     for idx in range(25):
         print(idx, mem.get_scan_edge(idx))
 
-    # io.save_raw_memory(Path("mem.raw"), mem)
+
+def main_write_mem_raw() -> None:
+    if len(sys.argv) < 3:
+        print("file name required")
+        return
+
+    file = Path(sys.argv[2])
+    mem = io.load_icf_file(file)
+
+    dst = Path(sys.argv[3]) if len(sys.argv) > 3 else file.with_suffix(".raw")
+    io.save_raw_memory(dst, mem)
+
+
+def main_help() -> None:
+    print(f"""{sys.argv[0]} <command>
+Command:
+   channels <icf file> [<start channel num>] [hidden]
+   banks <icf file>
+   scan <icf file>
+   write_mem <icf file> [<raw file>]
+   clone_from_radio <icf file>
+   radio_info
+""")
+
+
+def main() -> None:
+    if len(sys.argv) == 1:
+        main_help()
+        return
+
+    match sys.argv[1]:
+        case "channels":
+            main_print_channels()
+        case "banks":
+            main_print_banks()
+        case "scan":
+            main_print_scan_programms()
+        case "write_mem":
+            main_write_mem_raw()
+        case "clone_from_radio":
+            main_clone_from_radio()
+        case "radio_info":
+            main_radio_info()
+        case _:
+            main_help()
 
 
 def main_gui() -> None:

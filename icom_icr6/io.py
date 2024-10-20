@@ -103,7 +103,7 @@ class Radio:
 
         return None
 
-    def clone_from(self, out: ty.TextIO) -> model.RadioMemory:
+    def clone_from(self) -> model.RadioMemory:
         self._write(Frame(0xE2, b"\x32\x50\x00\x01").pack())
         mem = model.RadioMemory()
         while True:
@@ -120,7 +120,7 @@ class Radio:
                         (length,) = struct.unpack("B", data[2:3])
                         # TODO: checksum?
                         mem.update(daddr, length, data[3 : 3 + length])
-                        out.write(f"{frame.payload[:-2].decode()}\n")
+                        # out.write(f"{frame.payload[:-2].decode()}\n")
 
                     case _:
                         raise ValueError
