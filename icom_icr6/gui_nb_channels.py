@@ -153,7 +153,7 @@ class ChannelsPage(tk.Frame):
 
         fields.grid(row=1, column=0, sticky=tk.N + tk.S + tk.E + tk.W)
 
-    def __on_channel_select(self, event: tk.Event) -> None:
+    def __on_channel_select(self, _event: tk.Event) -> None:  # type: ignore
         sel = self._channels_content.selection()
         if not sel:
             return
@@ -178,13 +178,12 @@ class ChannelsPage(tk.Frame):
         if chan.freq:
             chan.hide_channel = False
 
-        ic(chan)
         self.__fill_channels(None)
         self._channels_content.selection_set(sel)
 
-    def __fill_channels(self, event: tk.Event | None) -> None:
+    def __fill_channels(self, event: tk.Event | None) -> None:  # type: ignore
         selected_range = 0
-        if sel := self._channel_ranges.curselection():
+        if sel := self._channel_ranges.curselection():  # type: ignore
             selected_range = sel[0]
 
         self._channels_content.delete(*self._channels_content.get_children())

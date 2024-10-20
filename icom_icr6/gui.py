@@ -10,9 +10,10 @@ import typing as ty
 from pathlib import Path
 from tkinter import filedialog, ttk
 
-from . import gui_model, gui_nb_channels, io, model
-from .gui_model import yes_no
+from . import gui_model, gui_nb_banks, gui_nb_channels, io, model
 from .gui_widgets import build_list
+
+_ty = ty
 
 
 class App(tk.Frame):
@@ -60,30 +61,9 @@ class App(tk.Frame):
         )
         return self._nb_channels
 
-    def __create_nb_banks(self) -> ttk.PanedWindow:
-        pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
-        banks = self._banks = tk.Listbox(pw, selectmode=tk.SINGLE)
-        self.__fill_banks()
-
-        banks.bind("<<ListboxSelect>>", self.__fill_bank)
-        pw.add(banks, weight=0)
-
-        columns = [
-            ("num", "Num", tk.E, 30),
-            ("chn", "Chn", tk.E, 30),
-            ("freq", "freq", tk.E, 30),
-            ("name", "name", tk.W, 30),
-            ("ts", "ts", tk.CENTER, 30),
-            ("mode", "mode", tk.CENTER, 30),
-            ("af", "af", tk.CENTER, 30),
-            ("att", "att", tk.CENTER, 30),
-            ("vsc", "vsc", tk.CENTER, 30),
-            ("skip", "skip", tk.CENTER, 30),
-        ]
-        frame, self._bank_content = build_list(pw, columns)
-        pw.add(frame, weight=1)
-
-        return pw
+    def __create_nb_banks(self) -> tk.Widget:
+        self._nb_banks = gui_nb_banks.BanksPage(self, self._radio_memory)
+        return self._nb_banks
 
     def __create_nb_scan_edge(self) -> tk.Frame:
         columns = [
@@ -136,62 +116,9 @@ class App(tk.Frame):
 
     def __fill_widgets(self) -> None:
         self._nb_channels.set(self._radio_memory)
-        self.__fill_banks()
-        self._banks.selection_set(0)
-        self._banks.activate(0)
+        self._nb_banks.set(self._radio_memory)
         self.__fill_scan_edges()
         self.__fill_scan_links()
-
-    def __fill_banks(self) -> None:
-        banks = self._banks
-        banks.delete(0, banks.size())
-        for idx, bname in enumerate(model.BANK_NAMES):
-            bank = self._radio_memory.get_bank(idx)
-            name = f"{bname}: {bank.name}" if bank.name else bname
-            banks.insert(tk.END, name)
-
-    def __fill_bank(self, _event: tk.Event) -> None:
-        selected_bank = 0
-        if sel := self._banks.curselection():  # type: ignore
-            selected_bank = sel[0]
-
-        bcont = self._bank_content
-        bcont.delete(*bcont.get_children())
-
-        bank = self._radio_memory.get_bank(selected_bank)
-
-        for idx, channel in enumerate(bank.channels):
-            if not channel or channel.hide_channel or not channel.freq:
-                bcont.insert(
-                    parent="",
-                    index=tk.END,
-                    iid=idx,
-                    text="",
-                    values=(str(idx), "", "", "", "", "", "", "", "", ""),
-                )
-                continue
-
-            bcont.insert(
-                parent="",
-                index=tk.END,
-                iid=idx,
-                text="",
-                values=(
-                    str(idx),
-                    str(channel.number),
-                    str(channel.freq // 1000),
-                    channel.name,
-                    model.STEPS[channel.tuning_step],
-                    model.MODES[channel.mode],
-                    yes_no(channel.af_filter),
-                    yes_no(channel.attenuator),
-                    yes_no(channel.vsc),
-                    model.SKIPS[channel.skip],
-                ),
-            )
-
-        bcont.yview(0)
-        bcont.xview(0)
 
     def __fill_scan_edges(self) -> None:
         tree = self._scan_edges
@@ -236,8 +163,8 @@ class App(tk.Frame):
             name = f"{idx}: {sl.name}" if sl.name else str(idx)
             sls.insert(tk.END, name)
 
-    def __fill_scan_link(self, event: tk.Event) -> None:
-        sel_sl = self._scan_links.curselection()
+    def __fill_scan_link(self, _event: tk.Event) -> None:  # type: ignore
+        sel_sl = self._scan_links.curselection()  # type: ignore
         if not sel_sl:
             return
 

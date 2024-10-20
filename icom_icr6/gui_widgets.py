@@ -86,7 +86,7 @@ def build_list(
     tree = ttk.Treeview(frame, columns=col_ids)
     tree.column("#0", width=0, stretch=tk.NO)
     for col_id, title, anchor, width in columns:
-        tree.column(column=col_id, anchor=anchor, width=width)
+        tree.column(column=col_id, anchor=anchor, width=width)  # type: ignore
         tree.heading(col_id, text=title, anchor=tk.CENTER)
 
     tree.pack(fill=tk.BOTH, expand=True)
