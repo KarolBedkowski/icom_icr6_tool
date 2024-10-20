@@ -149,7 +149,10 @@ class ChannelsPage(tk.Frame):
 
         ttk.Button(
             fields, text="Update", command=self.__on_channel_update
-        ).grid(row=3, column=7, sticky=tk.E)
+        ).grid(row=4, column=7, sticky=tk.E)
+        ttk.Button(
+            fields, text="Delete", command=self.__on_channel_delete
+        ).grid(row=4, column=6, sticky=tk.E)
 
         fields.grid(row=1, column=0, sticky=tk.N + tk.S + tk.E + tk.W)
 
@@ -178,6 +181,24 @@ class ChannelsPage(tk.Frame):
         if chan.freq:
             chan.hide_channel = False
 
+        self.__fill_channels(None)
+        self._channels_content.selection_set(sel)
+
+    def __on_channel_delete(self) -> None:
+        sel = self._channels_content.selection()
+        if not sel:
+            return
+
+        if not messagebox.askyesno(
+            "Delete channel",
+            "Delete channel configuration?",
+            icon=messagebox.WARNING,
+        ):
+            return
+
+        chan_num = int(sel[0])
+        chan = self._radio_memory.get_channel(chan_num)
+        chan.delete()
         self.__fill_channels(None)
         self._channels_content.selection_set(sel)
 

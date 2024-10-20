@@ -252,6 +252,10 @@ class Channel:
 
     raw: bytes
 
+    def delete(self) -> None:
+        self.freq = 0
+        self.hide_channel = True
+
     def __str__(self) -> str:
         ic(self)
         try:
