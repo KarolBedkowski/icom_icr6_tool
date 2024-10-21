@@ -61,7 +61,7 @@ class ChannelsPage(tk.Frame):
         )
         ccframe, self._channels_content = build_list(frame, columns)
         ccframe.grid(
-            row=0, column=0, sticky=tk.N + tk.S + tk.E + tk.W, padx=6, pady=6
+            row=0, column=0, sticky=tk.N + tk.S + tk.E + tk.W,
         )
         self._channels_content.bind(
             "<<TreeviewSelect>>", self.__on_channel_select
