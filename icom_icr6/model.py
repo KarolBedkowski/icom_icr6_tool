@@ -18,6 +18,11 @@ class RadioModel:
     comment: bytes
 
 
+NUM_CHANNELS: ty.Final[int] = 1300
+NUM_BANKS: ty.Final[int] = 22
+NUM_SCAN_EDGES: ty.Final[int] = 25
+NUM_SCAN_LINKS: ty.Final[int] = 10
+
 TONE_MODES = ["", "TSQL", "TSQL-R", "DTCS", "DTCS-R", "", "", ""]
 DUPLEX_DIRS = ["", "-", "+", ""]
 MODES = ["FM", "WFM", "AM", "Auto", "-"]
@@ -289,6 +294,46 @@ class Channel:
         )
 
 
+def channel_from_data(
+    idx: int, data: bytes | list[int], cflags: bytes | list[int]
+) -> Channel:
+    # ic(data)
+    freq = ((data[2] & 0b00000011) << 16) | (data[1] << 8) | data[0]
+    freq_flags = (data[2] & 0b11111100) >> 2
+    unknowns = [
+        data[4] & 0b11000000,
+        data[4] & 0b00001000,
+        data[7] & 0b11111110,
+        data[10] & 0b01111000,
+    ]
+
+    return Channel(
+        number=idx,
+        freq=decode_freq(freq, freq_flags),
+        freq_flags=freq_flags,
+        af_filter=bool(data[3] & 0b10000000),
+        attenuator=bool(data[3] & 0b01000000),
+        mode=(data[3] & 0b00110000) >> 4,
+        tuning_step=data[3] & 0b00001111,
+        duplex=(data[4] & 0b00110000) >> 4,
+        tmode=data[4] & 0b00000111,
+        offset=decode_freq((data[6] << 8) | data[5], freq_flags),
+        ctone=data[7] & 0b00111111,
+        polarity=(data[8] & 0b10000000) >> 7,
+        dtsc=(data[8] & 0b01111111),
+        canceller_freq=(data[9] << 1) | ((data[10] & 0b10000000) >> 7),
+        vsc=bool(data[10] & 0b00000100),
+        canceller=bool(data[10] & 0b00000011),
+        name=decode_name(data[11:16]),
+        hide_channel=bool(cflags[0] & 0b10000000),
+        skip=(cflags[0] & 0b01100000) >> 5,
+        bank=(cflags[0] & 0b00011111),  # TODO: verify
+        bank_pos=cflags[1],  # TODO: verify
+        unknowns=unknowns,
+        raw=bytes(data),
+    )
+
+
 @dataclass
 class Bank:
     name: str
@@ -381,7 +426,7 @@ class RadioMemory:
         self.mem[addr : addr + size] = data
 
     def get_channel(self, idx: int) -> Channel:
-        if idx < 0 or idx > 1299:
+        if idx < 0 or idx > NUM_CHANNELS - 1:
             raise IndexError
 
         if chan := self._cache_channels.get(idx):
@@ -389,51 +434,16 @@ class RadioMemory:
 
         start = idx * 16
         data = self.mem[start : start + 16]
-        # ic(data)
-        freq = ((data[2] & 0b00000011) << 16) | (data[1] << 8) | data[0]
-        freq_flags = (data[2] & 0b11111100) >> 2
 
         cflags_start = idx * 2 + 0x5F80
         cflags = self.mem[cflags_start : cflags_start + 2]
 
-        unknowns = [
-            data[4] & 0b11000000,
-            data[4] & 0b00001000,
-            data[7] & 0b11111110,
-            data[10] & 0b01111000,
-        ]
-
-        chan = Channel(
-            number=idx,
-            freq=decode_freq(freq, freq_flags),
-            freq_flags=freq_flags,
-            af_filter=bool(data[3] & 0b10000000),
-            attenuator=bool(data[3] & 0b01000000),
-            mode=(data[3] & 0b00110000) >> 4,
-            tuning_step=data[3] & 0b00001111,
-            duplex=(data[4] & 0b00110000) >> 4,
-            tmode=data[4] & 0b00000111,
-            offset=decode_freq((data[6] << 8) | data[5], freq_flags),
-            ctone=data[7] & 0b00111111,
-            polarity=(data[8] & 0b10000000) >> 7,
-            dtsc=(data[8] & 0b01111111),
-            canceller_freq=(data[9] << 1) | ((data[10] & 0b10000000) >> 7),
-            vsc=bool(data[10] & 0b00000100),
-            canceller=bool(data[10] & 0b00000011),
-            name=decode_name(data[11:16]),
-            hide_channel=bool(cflags[0] & 0b10000000),
-            skip=(cflags[0] & 0b01100000) >> 5,
-            bank=(cflags[0] & 0b00011111),  # TODO: verify
-            bank_pos=cflags[1],  # TODO: verify
-            unknowns=unknowns,
-            raw=bytes(data),
-        )
-
+        chan = channel_from_data(idx, data, cflags)
         self._cache_channels[idx] = chan
         return chan
 
     def get_scan_edge(self, idx: int) -> ScanEdge:
-        if idx < 0 or idx > 24:
+        if idx < 0 or idx > NUM_SCAN_EDGES - 1:
             raise IndexError
 
         start = 0x5DC0 + idx * 16
@@ -454,7 +464,7 @@ class RadioMemory:
         )
 
     def get_bank(self, idx: int) -> Bank:
-        if idx < 0 or idx > 22:
+        if idx < 0 or idx > NUM_BANKS - 1:
             raise IndexError
 
         if bank := self._cache_banks.get(idx):
@@ -481,7 +491,7 @@ class RadioMemory:
         return bank
 
     def get_scan_link(self, idx: int) -> ScanLink:
-        if idx < 0 or idx > 9:
+        if idx < 0 or idx > NUM_SCAN_LINKS - 1:
             raise IndexError
 
         start = 0x6DC0 + idx * 8
@@ -493,7 +503,7 @@ class RadioMemory:
         # 4 bytes, with 7bite padding
         mask = (mdata[3] << 24) | (mdata[2] << 16) | (mdata[1] << 8) | mdata[0]
         edges = []
-        for i in range(24):
+        for i in range(NUM_SCAN_EDGES):
             if mask & 1:
                 edges.append(i)
 
@@ -508,7 +518,7 @@ class RadioMemory:
 CODED_CHRS = " ^^^^^^^()*+^-./0123456789:^^=^^^ABCDEFGHIJKLMNOPQRSTUVWXYZ^^^^^"
 
 
-def decode_name(inp: list[int]) -> str:
+def decode_name(inp: list[int] | bytes) -> str:
     chars = (
         (inp[0] & 0b00001111) << 2 | (inp[1] & 0b11000000) >> 6,
         (inp[1] & 0b00111111),
