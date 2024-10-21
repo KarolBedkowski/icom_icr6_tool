@@ -155,13 +155,13 @@ def load_icf_file(file: Path) -> model.RadioMemory:
 
 def save_icf_file(file: Path, mem: model.RadioMemory) -> None:
     """Write RadioMemory to icf file."""
-    with file.open("wt") as out:
+    with file.open("wt", new_line="\r\n") as out:
         # header
-        out.write("32500001\n#Comment=\n#MapRev=1\n#EtcData=001A\n")
+        out.write("32500001\r\n#Comment=\r\n#MapRev=1\n#EtcData=001A\r\n")
         # data
         for line in mem.dump():
             out.write(line)
-            out.write("\n")
+            out.write("\r\n")
 
 
 def save_raw_memory(file: Path, mem: model.RadioMemory) -> None:
