@@ -8,7 +8,7 @@ import tkinter as tk
 from tkinter import ttk
 
 from . import gui_model, model
-from .gui_widgets import build_list
+from .gui_widgets import build_list, new_checkbox, new_combo, new_entry
 
 
 class BanksPage(tk.Frame):
@@ -19,6 +19,8 @@ class BanksPage(tk.Frame):
         self.rowconfigure(0, weight=1)
         self.columnconfigure(0, weight=1)
 
+        self._bchan_model = gui_model.ChannelModel()
+        self._bchan_number = tk.IntVar()
         self._radio_memory = radio_memory
 
         pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
@@ -28,6 +30,27 @@ class BanksPage(tk.Frame):
         banks.bind("<<ListboxSelect>>", self.__fill_bank)
         pw.add(banks, weight=0)
 
+        frame = tk.Frame(pw)
+        frame.rowconfigure(0, weight=1)
+        frame.rowconfigure(1, weight=0)
+        frame.columnconfigure(0, weight=1)
+
+        self._create_bank_channels_list(frame)
+        self._create_fields(frame)
+
+        pw.add(frame, weight=1)
+
+        pw.grid(
+            row=0, column=0, sticky=tk.N + tk.S + tk.E + tk.W, padx=6, pady=6
+        )
+
+    def set(self, radio_memory: model.RadioMemory) -> None:
+        self._radio_memory = radio_memory
+        self._banks.selection_set(0)
+        self._banks.activate(0)
+        self.__fill_banks()
+
+    def _create_bank_channels_list(self, frame: tk.Frame) -> None:
         columns = [
             ("num", "Num", tk.E, 30),
             ("chn", "Chn", tk.E, 30),
@@ -40,18 +63,90 @@ class BanksPage(tk.Frame):
             ("vsc", "vsc", tk.CENTER, 30),
             ("skip", "skip", tk.CENTER, 30),
         ]
-        frame, self._bank_content = build_list(pw, columns)
-        pw.add(frame, weight=1)
-
-        pw.grid(
-            row=0, column=0, sticky=tk.N + tk.S + tk.E + tk.W, padx=6, pady=6
+        ccframe, self._bank_content = build_list(frame, columns)
+        ccframe.grid(
+            row=0, column=0, sticky=tk.N + tk.S + tk.E + tk.W,
         )
 
-    def set(self, radio_memory: model.RadioMemory) -> None:
-        self._radio_memory = radio_memory
-        self._banks.selection_set(0)
-        self._banks.activate(0)
-        self.__fill_banks()
+    def _create_fields(self, frame: tk.Frame) -> None:
+        fields = tk.Frame(frame)
+        fields.columnconfigure(0, weight=0)
+        fields.columnconfigure(1, weight=1)
+        fields.columnconfigure(2, weight=0)
+        fields.columnconfigure(3, weight=1)
+        fields.columnconfigure(4, weight=0)
+        fields.columnconfigure(5, weight=1)
+        fields.columnconfigure(6, weight=0)
+        fields.columnconfigure(7, weight=1)
+
+        new_entry(fields, 0, 0, "Channel: ", self._bchan_number)
+        new_entry(fields, 1, 0, "Frequency: ", self._bchan_model.freq)
+        new_entry(fields, 1, 2, "Name: ", self._bchan_model.name)
+        new_combo(
+            fields,
+            1,
+            4,
+            "Mode: ",
+            self._bchan_model.mode,
+            [" ", *model.MODES],
+        )
+        new_combo(
+            fields,
+            1,
+            6,
+            "TS: ",
+            self._bchan_model.ts,
+            list(map(str, model.STEPS)),
+        )
+        new_combo(
+            fields,
+            2,
+            0,
+            "Duplex: ",
+            self._bchan_model.duplex,
+            model.DUPLEX_DIRS,
+        )
+        new_entry(fields, 2, 2, "Offset: ", self._bchan_model.offset)
+        new_combo(
+            fields, 2, 4, "Skip: ", self._bchan_model.skip, model.SKIPS
+        )
+        new_checkbox(fields, 2, 6, " AF Filter", self._bchan_model.af)
+        new_checkbox(fields, 2, 7, " Attenuator", self._bchan_model.attn)
+
+        new_combo(
+            fields, 3, 0, "Tone: ", self._bchan_model.tmode, model.TONE_MODES
+        )
+        new_combo(
+            fields,
+            3,
+            2,
+            "TSQL: ",
+            self._bchan_model.ctone,
+            list(model.CTCSS_TONES),
+        )
+        new_combo(
+            fields, 3, 4, "DTSC: ", self._bchan_model.dtsc, model.DTCS_CODES
+        )
+        new_combo(
+            fields,
+            3,
+            6,
+            "Polarity: ",
+            self._bchan_model.polarity,
+            model.POLARITY,
+        )
+
+        new_checkbox(fields, 4, 0, " VSV", self._bchan_model.vsc)
+
+        ttk.Button(
+            fields, text="Update", command=self.__on_channel_update
+        ).grid(row=4, column=7, sticky=tk.E)
+        ttk.Button(
+            fields, text="Delete", command=self.__on_channel_delete
+        ).grid(row=4, column=6, sticky=tk.E)
+
+        fields.grid(row=1, column=0, sticky=tk.N + tk.S + tk.E + tk.W)
+
 
     def __fill_banks(self) -> None:
         banks = self._banks
@@ -103,3 +198,9 @@ class BanksPage(tk.Frame):
 
         bcont.yview(0)
         bcont.xview(0)
+
+    def __on_channel_update(self) -> None:
+        pass
+
+    def __on_channel_delete(self) -> None:
+        pass
