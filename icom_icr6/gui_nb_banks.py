@@ -21,6 +21,7 @@ class BanksPage(tk.Frame):
 
         self._bchan_model = gui_model.ChannelModel()
         self._bchan_number = tk.IntVar()
+        self._bank_name = tk.StringVar()
         self._radio_memory = radio_memory
 
         pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
@@ -35,6 +36,7 @@ class BanksPage(tk.Frame):
         frame.rowconfigure(1, weight=0)
         frame.columnconfigure(0, weight=1)
 
+        self._create_bank_fields(frame)
         self._create_bank_channels_list(frame)
         self._create_fields(frame)
 
@@ -49,6 +51,18 @@ class BanksPage(tk.Frame):
         self._banks.selection_set(0)
         self._banks.activate(0)
         self.__fill_banks()
+
+    def _create_bank_fields(self, frame: tk.Frame) -> None:
+        fields = tk.Frame(frame)
+        fields.columnconfigure(0, weight=0)
+        fields.columnconfigure(1, weight=1)
+        fields.columnconfigure(2, weight=0)
+        new_entry(fields, 0, 0, "Bank name: ", self._bank_name)
+        ttk.Button(fields, text="Update", command=self.__on_bank_update).grid(
+            row=4, column=7, sticky=tk.E
+        )
+
+        fields.grid(row=0, column=0, sticky=tk.N + tk.S + tk.E + tk.W)
 
     def _create_bank_channels_list(self, frame: tk.Frame) -> None:
         columns = [
@@ -150,11 +164,15 @@ class BanksPage(tk.Frame):
 
     def __fill_banks(self) -> None:
         banks = self._banks
+        sel = banks.curselection()  # type: ignore
         banks.delete(0, banks.size())
         for idx, bname in enumerate(model.BANK_NAMES):
             bank = self._radio_memory.get_bank(idx)
             name = f"{bname}: {bank.name}" if bank.name else bname
             banks.insert(tk.END, name)
+
+        if sel:
+            banks.selection_set(sel[0])
 
     def __fill_bank(self, _event: tk.Event | None) -> None:  # type: ignore
         selected_bank = 0
@@ -165,6 +183,7 @@ class BanksPage(tk.Frame):
         bcont.delete(*bcont.get_children())
 
         bank = self._radio_memory.get_bank(selected_bank)
+        self._bank_name.set(bank.name)
 
         for idx, channel in enumerate(bank.channels):
             if not channel or channel.hide_channel or not channel.freq:
@@ -198,6 +217,10 @@ class BanksPage(tk.Frame):
 
         bcont.yview(0)
         bcont.xview(0)
+
+    def __on_bank_update(self, _event: tk.Event) -> None:
+        if sel := self._banks.curselection():  # type: ignore
+            selected_bank = sel[0]
 
     def __on_channel_select(self, _event: tk.Event) -> None:  # type: ignore
         sel = self._bank_content.selection()

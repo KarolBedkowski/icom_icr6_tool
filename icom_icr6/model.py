@@ -22,6 +22,9 @@ NUM_CHANNELS: ty.Final[int] = 1300
 NUM_BANKS: ty.Final[int] = 22
 NUM_SCAN_EDGES: ty.Final[int] = 25
 NUM_SCAN_LINKS: ty.Final[int] = 10
+NAME_LEN: ty.Final[int] = 6
+
+MAX_FREQUENCY: ty.Final[int] = 1309995000
 
 TONE_MODES = ["", "TSQL", "TSQL-R", "DTCS", "DTCS-R", "", "", ""]
 DUPLEX_DIRS = ["", "-", "+", ""]
@@ -397,18 +400,50 @@ def channel_to_data(chan: Channel, data: list[int], cflags: list[int]) -> None:
 
 @dataclass
 class Bank:
+    idx: int
     name: str
     channels: list[Channel | None]
 
 
+def bank_from_data(idx: int, data: bytes | list[int]) -> Bank:
+    return Bank(
+        idx,
+        name=bytes(data[0:6]).decode() if data[0] else "",
+        channels=[None] * 100,
+    )
+
+
 @dataclass
 class ScanLink:
+    idx: int
     name: str
     edges: list[int]
 
 
+def scan_link_from_data(idx: int, data: list[int]) -> ScanLink:
+    return ScanLink(
+        idx=idx,
+        name=bytes(data[0:6]).decode() if data[0] else "",
+        edges=[],
+    )
+
+
+def scan_link_edges_from_data(data: list[int]) -> list[int]:
+    # 4 bytes, with 7bite padding
+    mask = (data[3] << 24) | (data[2] << 16) | (data[1] << 8) | data[0]
+    edges = []
+    for i in range(NUM_SCAN_EDGES):
+        if mask & 1:
+            edges.append(i)
+
+        mask >>= 1
+
+    return edges
+
+
 @dataclass
 class ScanEdge:
+    idx: int
     start: int
     end: int
     disabled: int
@@ -427,6 +462,24 @@ class ScanEdge:
                 return "-"
 
         return str(self.attn)
+
+
+def scan_edge_from_data(idx: int, data: list[int]) -> ScanEdge:
+    start = (data[3] << 24) | (data[2] << 16) | (data[1] << 8) | data[0]
+    start *= 3
+    end = (data[7] << 24) | (data[6] << 16) | (data[5] << 8) | data[4]
+    end *= 3
+
+    return ScanEdge(
+        idx=idx,
+        start=start,
+        end=end,
+        disabled=bool(data[8] & 0b10000000),
+        mode=(data[8] & 0b01110000) >> 4,
+        ts=(data[8] & 0b00001111),
+        attn=(data[9] & 0b00110000) >> 4,
+        name=bytes(data[10:16]).decode() if data[10] else "",
+    )
 
 
 @dataclass
@@ -509,20 +562,14 @@ class RadioMemory:
 
         start = 0x5DC0 + idx * 16
         data = self.mem[start : start + 16]
-        start = (data[3] << 24) | (data[2] << 16) | (data[1] << 8) | data[0]
-        start *= 3
-        end = (data[7] << 24) | (data[6] << 16) | (data[5] << 8) | data[4]
-        end *= 3
 
-        return ScanEdge(
-            start=start,
-            end=end,
-            disabled=bool(data[8] & 0b10000000),
-            mode=(data[8] & 0b01110000) >> 4,
-            ts=(data[8] & 0b00001111),
-            attn=(data[9] & 0b00110000) >> 4,
-            name=bytes(data[10:16]).decode() if data[10] else "",
-        )
+        return scan_edge_from_data(idx, data)
+
+    def _get_active_channels(self) -> ty.Iterable[Channel]:
+        for cidx in range(NUM_CHANNELS):
+            chan = self.get_channel(cidx)
+            if not chan.hide_channel and chan.freq:
+                yield chan
 
     def get_bank(self, idx: int) -> Bank:
         if idx < 0 or idx > NUM_BANKS - 1:
@@ -534,19 +581,13 @@ class RadioMemory:
         start = 0x6D10 + idx * 8
         data = self.mem[start : start + 8]
 
+        bank = bank_from_data(idx, data)
+
         # TODO: confilicts / doubles
-        channels: list[Channel | None] = [None] * 100
-        for cidx in range(1300):
-            chan = self.get_channel(cidx)
-            if chan.hide_channel or chan.freq == 0 or chan.bank != idx:
-                continue
+        for chan in self._get_active_channels():
+            if chan.bank == idx:
+                bank.channels[chan.bank_pos] = chan
 
-            channels[chan.bank_pos] = chan
-
-        bank = Bank(
-            name=bytes(data[0:6]).decode() if data[0] else "",
-            channels=channels,
-        )
         self._cache_banks[idx] = bank
 
         return bank
@@ -557,29 +598,36 @@ class RadioMemory:
 
         start = 0x6DC0 + idx * 8
         data = self.mem[start : start + 8]
+        sl = scan_link_from_data(idx, data)
 
         # mapping
-        start = 0x6C20 + 12 + 4 * idx
+        start = 0x6C2C + 4 * idx
         mdata = self.mem[start : start + 4]
-        # 4 bytes, with 7bite padding
-        mask = (mdata[3] << 24) | (mdata[2] << 16) | (mdata[1] << 8) | mdata[0]
-        edges = []
-        for i in range(NUM_SCAN_EDGES):
-            if mask & 1:
-                edges.append(i)
+        sl.edges = scan_link_edges_from_data(mdata)
 
-            mask >>= 1
-
-        return ScanLink(
-            name=bytes(data[0:6]).decode() if data[0] else "",
-            edges=edges,
-        )
+        return sl
 
 
-CODED_CHRS = " ^^^^^^^()*+^-./0123456789:^^=^^^ABCDEFGHIJKLMNOPQRSTUVWXYZ^^^^^"
+CODED_CHRS: ty.Final[str] = (
+    " ^^^^^^^()*+^-./0123456789:^^=^^^ABCDEFGHIJKLMNOPQRSTUVWXYZ^^^^^"
+)
+ENCODED_NAME_LEN: ty.Final[int] = 5
 
 
 def decode_name(inp: list[int] | bytes) -> str:
+    """Decode name from 5-bytes that contains 6 - 6bits coded characters with
+    4-bit padding on beginning..
+
+          76543210
+       0  xxxx0000
+       1  00111111
+       2  22222233
+       3  33334444
+       4  44555555
+    """
+    if len(inp) != ENCODED_NAME_LEN:
+        raise ValueError
+
     chars = (
         (inp[0] & 0b00001111) << 2 | (inp[1] & 0b11000000) >> 6,
         (inp[1] & 0b00111111),
@@ -593,6 +641,9 @@ def decode_name(inp: list[int] | bytes) -> str:
 
 
 def encode_name(inp: str) -> list[int]:
+    if len(inp) != NAME_LEN:
+        raise ValueError
+
     iic = [CODED_CHRS.index(x) for x in inp]
     res = [0] * 5
     res[0] = (iic[0] & 0b00111100) >> 2  # padding
@@ -636,6 +687,10 @@ class EncodedFreq(ty.NamedTuple):
         return self.offset & 0x00FF, (self.offset & 0xFF00) >> 8
 
 
+class InvalidFlagError(ValueError):
+    pass
+
+
 def encode_freq(freq: int, offset: int) -> EncodedFreq:
     # freq min 0.1MHz
     # offset max 159.995 MHz
@@ -651,7 +706,7 @@ def encode_freq(freq: int, offset: int) -> EncodedFreq:
     elif (freq * 3) % 25000 == 0:  # not used?
         flags = 40
     else:
-        raise ValueError("can't determine flags")
+        raise InvalidFlagError
 
     match flags:
         case 60:  # 9k
@@ -667,7 +722,6 @@ def encode_freq(freq: int, offset: int) -> EncodedFreq:
 
 
 def validate_frequency(inp: str | int) -> bool:
-    ic(inp)
     if isinstance(inp, str):
         try:
             freq = int(inp)
@@ -676,15 +730,12 @@ def validate_frequency(inp: str | int) -> bool:
     else:
         freq = inp
 
-    ic(freq)
-    if 1299000000 < freq < 0:
-        ic("range")
+    if MAX_FREQUENCY < freq < 0:
         return False
 
     try:
-        ic(encode_freq(freq, 0))
-    except ValueError as err:
-        ic(err)
+        encode_freq(freq, 0)
+    except ValueError:
         return False
 
     return True

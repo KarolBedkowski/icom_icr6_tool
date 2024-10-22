@@ -1,0 +1,125 @@
+type ICF_channel =
+struct
+{
+    //0
+    uint<10> freq; // l-h
+    uint<6> flags;
+
+    //3
+    uint<1> af_filter;
+    uint<1> attenuator;
+    uint<2> mode;
+    uint<4> tuning_step;
+
+    //4
+    uint<2> unknown1;
+    uint<2> duplex;
+    uint<1> unknown3;
+    uint<3> tmode;
+
+    //5
+    uint<16> offset; // l-h	
+
+    //7
+    uint<2> unknown2;
+    uint<6> ctone;
+
+    //8
+    uint<1> polarity;
+    uint<7> dsc;
+
+    //9
+    uint<9> canceller_freq; // h-l
+    uint<4> unknown4;
+    uint<1> vcs;
+    uint<2> canceller;
+
+    //11
+    uint<4> name_pad;
+    uint<6>[6] name;
+
+    // total: 16bytes
+};
+
+
+type ICF_channel_flag =
+struct
+{
+    // 0
+    uint<1> hide_channel;
+    uint<2> skip;
+    uint<4> bank;
+
+    // 1
+    uint<8> bank_pos;
+};
+
+
+type ICF_scan_edge =
+struct
+{
+    uint<32> start; // l-h
+    uint<32> end; // l-h
+
+    uint<1> disabled;
+    uint<3> mode;
+    uint<4> ts;
+
+    uint<8> unknown1;
+    uint<2> attenuator;
+    uint<4> unknown2;
+
+    char[6] name;
+
+    method _print_name = void:
+    {
+      printf "'%s'", catos(name);
+    }
+};
+
+type ICF_bank_name =
+struct
+{
+    char[5] name;
+    byte[2] padding;
+
+    method _print_name = void:
+    {
+      printf "'%s'", catos(name);
+    }
+};
+
+type ICF_scan_link_name =
+struct
+{
+    char[5] name;
+    byte[2] padding;
+
+    method _print_name = void:
+    {
+      printf "'%s'", catos(name);
+    }
+};
+
+type ICF_scan_link =
+struct
+{
+    uint<32> map;
+};
+
+
+type ICF =
+struct
+{
+    ICF_channel[1300] channels; // @ 0;
+
+    ICF_scan_edge[25] scan_edges @ 0x5DC0#B;
+
+    ICF_channel_flag[1300] channels_flag @ 0x5f80#B;
+
+    ICF_bank_name[22] @ 0x6D10#B;
+
+    ICF_scan_link_name[10] @ 0x6DC0#B;
+
+    ICF_scan_link[10] @ 0x6C2C#B;
+};
