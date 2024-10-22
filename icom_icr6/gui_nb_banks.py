@@ -5,7 +5,7 @@
 """ """
 
 import tkinter as tk
-from tkinter import ttk
+from tkinter import messagebox, ttk
 
 from . import gui_model, model
 from .gui_widgets import build_list, new_checkbox, new_combo, new_entry
@@ -65,8 +65,11 @@ class BanksPage(tk.Frame):
         ]
         ccframe, self._bank_content = build_list(frame, columns)
         ccframe.grid(
-            row=0, column=0, sticky=tk.N + tk.S + tk.E + tk.W,
+            row=0,
+            column=0,
+            sticky=tk.N + tk.S + tk.E + tk.W,
         )
+        self._bank_content.bind("<<TreeviewSelect>>", self.__on_channel_select)
 
     def _create_fields(self, frame: tk.Frame) -> None:
         fields = tk.Frame(frame)
@@ -107,9 +110,7 @@ class BanksPage(tk.Frame):
             model.DUPLEX_DIRS,
         )
         new_entry(fields, 2, 2, "Offset: ", self._bchan_model.offset)
-        new_combo(
-            fields, 2, 4, "Skip: ", self._bchan_model.skip, model.SKIPS
-        )
+        new_combo(fields, 2, 4, "Skip: ", self._bchan_model.skip, model.SKIPS)
         new_checkbox(fields, 2, 6, " AF Filter", self._bchan_model.af)
         new_checkbox(fields, 2, 7, " Attenuator", self._bchan_model.attn)
 
@@ -147,7 +148,6 @@ class BanksPage(tk.Frame):
 
         fields.grid(row=1, column=0, sticky=tk.N + tk.S + tk.E + tk.W)
 
-
     def __fill_banks(self) -> None:
         banks = self._banks
         banks.delete(0, banks.size())
@@ -156,7 +156,7 @@ class BanksPage(tk.Frame):
             name = f"{bname}: {bank.name}" if bank.name else bname
             banks.insert(tk.END, name)
 
-    def __fill_bank(self, _event: tk.Event) -> None:  # type: ignore
+    def __fill_bank(self, _event: tk.Event | None) -> None:  # type: ignore
         selected_bank = 0
         if sel := self._banks.curselection():  # type: ignore
             selected_bank = sel[0]
@@ -199,8 +199,47 @@ class BanksPage(tk.Frame):
         bcont.yview(0)
         bcont.xview(0)
 
+    def __on_channel_select(self, _event: tk.Event) -> None:  # type: ignore
+        sel = self._bank_content.selection()
+        if not sel:
+            return
+
+        selected_bank: int = int(self._banks.curselection()[0])  # type: ignore
+
+        bank_chan_num = int(sel[0])
+        bank = self._radio_memory.get_bank(selected_bank)
+        if chan := bank.channels[bank_chan_num]:
+            self._bchan_model.fill(chan)
+            self._bchan_number.set(chan.number)
+        else:
+            self._bchan_model.reset()
+            self._bchan_number.set("")  # type: ignore
+
     def __on_channel_update(self) -> None:
         pass
 
     def __on_channel_delete(self) -> None:
-        pass
+        sel = self._bank_content.selection()
+        if not sel:
+            return
+
+        if not messagebox.askyesno(
+            "Delete channel",
+            "Delete channel configuration from bank?",
+            icon=messagebox.WARNING,
+        ):
+            return
+
+        selected_bank: int = int(self._banks.curselection()[0])  # type: ignore
+
+        bank_chan_num = int(sel[0])
+        bank = self._radio_memory.get_bank(selected_bank)
+        if chan := bank.channels[bank_chan_num]:
+            bank.channels[bank_chan_num] = None
+            chan.clear_bank()
+
+        self._bchan_model.reset()
+        self._bchan_number.set("")  # type: ignore
+
+        self.__fill_bank(None)
+        self._bank_content.selection_set(sel)

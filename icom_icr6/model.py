@@ -47,6 +47,7 @@ STEPS = [
 SKIPS = ["", "S", "", "P"]
 # 31 = not set
 BANK_NAMES = "ABCDEFGHIJKLMNOPQRTUWY"
+BANK_NOT_SET = 31
 POLARITY = ["Reverse", "Normal"]
 
 # https://pl.wikipedia.org/wiki/CTCSS
@@ -260,6 +261,10 @@ class Channel:
     def delete(self) -> None:
         self.freq = 0
         self.hide_channel = True
+
+    def clear_bank(self) -> None:
+        self.bank = BANK_NOT_SET
+        self.bank_pos = 0
 
     def __str__(self) -> str:
         ic(self)
