@@ -339,6 +339,62 @@ def channel_from_data(
     )
 
 
+def bool2bit(val: bool | int, mask: int):
+    return mask if val else 0
+
+
+def set_bits(value: int, newval: int, mask: int) -> int:
+    return (value & (~mask)) | (newval & mask)
+
+
+def channel_to_data(chan: Channel, data: list[int], cflags: list[int]) -> None:
+    enc_freq = encode_freq(chan.freq, chan.offset)
+    freq0, freq1, freq2 = enc_freq.freq_bytes()
+    offset_l, offset_h = enc_freq.offset_bytes()
+
+    # freq
+    data[0] = freq0
+    data[1] = freq1
+    # flags & freq2
+    data[2] = (enc_freq.flags << 2) | freq2
+    # af_filter, attenuator, mode, tuning_step
+    data[3] = (
+        bool2bit(chan.af_filter, 0b10000000)
+        | bool2bit(chan.attenuator, 0b01000000)
+        | (chan.mode & 0b11) << 4
+        | (chan.tuning_step & 0b1111)
+    )
+    # duplex
+    data[4] = set_bits(data[4], chan.duplex << 4, 0b00110000)
+    # tmode
+    data[4] = set_bits(data[4], chan.tmode, 0b00000111)
+    # offset
+    data[5] = offset_l
+    data[6] = offset_h
+    # ctone
+    data[7] = set_bits(data[7], chan.ctone, 0b00111111)
+    # polarity, dtsc
+    data[8] = bool2bit(chan.polarity, 0b10000000) | (chan.dtsc & 0b01111111)
+    # canceller freq
+    data[9] = (chan.canceller_freq & 0b111111110) >> 1
+    data[10] = set_bits(data[10], (chan.canceller_freq & 1) << 7, 0b10000000)
+    # vsc
+    data[10] = set_bits(data[10], chan.vsc << 3, 0b00000100)
+    # canceller
+    data[10] = set_bits(data[10], chan.canceller, 0b11)
+    # name
+    data[11:16] = encode_name(chan.name)
+
+    # hide_channel, bank
+    cflags[0] = (
+        bool2bit(chan.hide_channel, 0b10000000)
+        | ((chan.skip & 0b11) << 5)
+        | (chan.bank & 0b00011111)
+    )
+    # bank_pos
+    cflags[1] = chan.bank_pos
+
+
 @dataclass
 class Bank:
     name: str
