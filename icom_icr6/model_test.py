@@ -67,8 +67,8 @@ def test_encode_decode_channel(inp):
 
     chan = model.channel_from_data(0, data, cflags)
 
-    new_data = data.copy()
-    new_cflags = cflags.copy()
+    new_data = list(binascii.unhexlify(b"c706f020000000080072000a73ca196c"))
+    new_cflags = [1, 1]
 
     model.channel_to_data(chan, new_data, new_cflags)
 
