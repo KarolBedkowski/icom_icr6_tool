@@ -556,6 +556,21 @@ class RadioMemory:
         self._cache_channels[idx] = chan
         return chan
 
+    def set_channel(self, chan: Channel) -> None:
+        idx = chan.number
+
+        self._cache_channels[idx] = chan
+
+        start = idx * 16
+        data = self.mem[start : start + 16]
+
+        cflags_start = idx * 2 + 0x5F80
+        cflags = self.mem[cflags_start : cflags_start + 2]
+
+        channel_to_data(chan, data, cflags)
+        self.mem[start : start + 16] = data
+        self.mem[cflags_start : cflags_start + 2] = cflags
+
     def get_scan_edge(self, idx: int) -> ScanEdge:
         if idx < 0 or idx > NUM_SCAN_EDGES - 1:
             raise IndexError

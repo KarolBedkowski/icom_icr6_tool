@@ -183,6 +183,8 @@ class ChannelsPage(tk.Frame):
         if chan.freq:
             chan.hide_channel = False
 
+        self._radio_memory.set_channel(chan)
+
         self.__fill_channels(None)
         self._channels_content.selection_set(sel)
 
@@ -201,6 +203,7 @@ class ChannelsPage(tk.Frame):
         chan_num = int(sel[0])
         chan = self._radio_memory.get_channel(chan_num)
         chan.delete()
+        self._radio_memory.set_channel(chan)
         self.__fill_channels(None)
         self._channels_content.selection_set(sel)
 
