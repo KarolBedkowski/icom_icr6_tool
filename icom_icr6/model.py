@@ -656,17 +656,16 @@ def decode_name(inp: list[int] | bytes) -> str:
 
 
 def encode_name(inp: str) -> list[int]:
-    if len(inp) != NAME_LEN:
-        raise ValueError
+    inp = inp[:NAME_LEN].upper().ljust(NAME_LEN)
 
     iic = [CODED_CHRS.index(x) for x in inp]
-    res = [0] * 5
-    res[0] = (iic[0] & 0b00111100) >> 2  # padding
-    res[1] = ((iic[0] & 0b00000011) << 6) | (iic[1] & 0b00111111)
-    res[2] = ((iic[2] & 0b00111111) << 2) | ((iic[3] & 0b00110000) >> 4)
-    res[3] = ((iic[3] & 0b00001111) << 4) | ((iic[4] & 0b00111100) >> 2)
-    res[4] = ((iic[4] & 0b00000011) << 6) | (iic[5] & 0b00111111)
-    return res
+    return [
+        (iic[0] & 0b00111100) >> 2,  # padding
+        ((iic[0] & 0b00000011) << 6) | (iic[1] & 0b00111111),
+        ((iic[2] & 0b00111111) << 2) | ((iic[3] & 0b00110000) >> 4),
+        ((iic[3] & 0b00001111) << 4) | ((iic[4] & 0b00111100) >> 2),
+        ((iic[4] & 0b00000011) << 6) | (iic[5] & 0b00111111),
+    ]
 
 
 def decode_freq(freq: int, flags: int) -> int:
