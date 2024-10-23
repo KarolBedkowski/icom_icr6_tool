@@ -20,7 +20,7 @@ class App(tk.Frame):
     def __init__(self, master: tk.Tk) -> None:
         super().__init__(master)
 
-        self._last_dir = Path()
+        self._last_file: Path | None = None
         self._radio_memory = model.RadioMemory()
         self._channel_model = gui_model.ChannelModel()
 
@@ -98,7 +98,8 @@ class App(tk.Frame):
         fname = filedialog.askopenfilename(
             parent=self,
             filetypes=[("Supported files", ".icf"), ("All files", "*.*")],
-            initialdir=str(self._last_dir),
+            initialdir=str(self._last_file.parent) if self._last_file else ".",
+            defaultextension=".icf",
         )
 
         if fname:
@@ -108,11 +109,23 @@ class App(tk.Frame):
 
     def load_icf(self, file: Path) -> None:
         self._radio_memory = io.load_icf_file(file)
-        self._last_dir = file.parent
+        self._last_file = file
         self.__fill_widgets()
 
     def __file_save_handler(self) -> None:
-        pass
+        fname = filedialog.asksaveasfilename(
+            parent=self,
+            filetypes=[("Supported files", ".icf"), ("All files", "*.*")],
+            initialdir=str(self._last_file.parent) if self._last_file else ".",
+            initialfile=self._last_file.name if self._last_file else "",
+            defaultextension=".icf",
+        )
+
+        if fname:
+            self._last_file = Path(fname)
+            io.save_icf_file(self._last_file, self._radio_memory)
+
+        self.focus_set()
 
     def __fill_widgets(self) -> None:
         self._nb_channels.set(self._radio_memory)
