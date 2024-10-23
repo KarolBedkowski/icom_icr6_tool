@@ -413,6 +413,10 @@ def bank_from_data(idx: int, data: bytes | list[int]) -> Bank:
     )
 
 
+def bank_to_data(bank: Bank, data: list[int]) -> None:
+    data[0:6] = bank.name[:6].ljust(6).encode()
+
+
 @dataclass
 class ScanLink:
     idx: int
@@ -428,6 +432,10 @@ def scan_link_from_data(idx: int, data: list[int]) -> ScanLink:
     )
 
 
+def scan_link_to_data(sl: ScanLink, data: list[int]) -> None:
+    data[0:6] = sl.name[:6].lujust(6).encode()
+
+
 def scan_link_edges_from_data(data: list[int]) -> list[int]:
     # 4 bytes, with 7bite padding
     mask = (data[3] << 24) | (data[2] << 16) | (data[1] << 8) | data[0]
@@ -439,6 +447,20 @@ def scan_link_edges_from_data(data: list[int]) -> list[int]:
         mask >>= 1
 
     return edges
+
+
+def scan_link_edges_to_data(edges: list[int], data: list[int]) -> None:
+    mask = 0
+    for e in edges:
+        if e:
+            mask |= 1
+
+        mask <<= 1
+
+    data[0] = mask & 0xFF
+    data[1] = (mask >> 8) & 0xFF
+    data[2] = (mask >> 16) & 0xFF
+    data[3] = (mask >> 24) & 0xFF
 
 
 @dataclass
@@ -480,6 +502,33 @@ def scan_edge_from_data(idx: int, data: list[int]) -> ScanEdge:
         attn=(data[9] & 0b00110000) >> 4,
         name=bytes(data[10:16]).decode() if data[10] else "",
     )
+
+
+def scan_edges_to_data(se: ScanEdge, data: list[int]) -> None:
+    start = se.start // 3
+    data[0] = start & 0xFF
+    data[1] = (start >> 8) & 0xFF
+    data[2] = (start >> 16) & 0xFF
+    data[3] = (start >> 24) & 0xFF
+
+    end = se.end // 3
+    data[4] = end & 0xFF
+    data[5] = (end >> 8) & 0xFF
+    data[6] = (end >> 16) & 0xFF
+    data[7] = (end >> 24) & 0xFF
+
+    data[8] = (
+        bool2bit(se.disabled, 0b10000000)
+        | (se.mode & 0b111) << 4
+        | (se.ts & 0b1111)
+    )
+
+    data[9] = set_bits(data[9], se.attn << 4, 0b00110000)
+
+    if se.name:
+        data[10:16] = se.name[:6].ljust(6).encode()
+    else:
+        data[10:16] = [0, 0, 0, 0, 0, 0]
 
 
 @dataclass
