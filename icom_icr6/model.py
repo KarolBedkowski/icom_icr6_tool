@@ -9,7 +9,7 @@ import logging
 import typing as ty
 from dataclasses import dataclass
 
-LOG = logging.getLogger(__name__)
+_LOG = logging.getLogger(__name__)
 
 
 @dataclass
@@ -606,9 +606,11 @@ class RadioMemory:
         return chan
 
     def set_channel(self, chan: Channel) -> None:
+        _LOG.debug("set_channel: %r", chan)
         idx = chan.number
 
         self._cache_channels[idx] = chan
+        self._cache_banks.clear()
 
         start = idx * 16
         data = self.mem[start : start + 16]
@@ -736,7 +738,7 @@ def decode_freq(freq: int, flags: int) -> int:
         case 60:
             return 9000 * freq
 
-    LOG.error("unknown flag %r for freq %r", flags, freq)
+    _LOG.error("unknown flag %r for freq %r", flags, freq)
     return 0
 
 
@@ -810,3 +812,11 @@ def validate_frequency(inp: str | int) -> bool:
         return False
 
     return True
+
+
+def valudate_name(name: str) -> None:
+    if len(name) > 6:
+        raise ValueError
+
+    if any(i not in CODED_CHRS for i in name.upper()):
+        raise ValueError

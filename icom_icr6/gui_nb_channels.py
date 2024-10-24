@@ -4,11 +4,14 @@
 
 """ """
 
+import logging
 import tkinter as tk
 from tkinter import messagebox, ttk
 
 from . import gui_model, model
 from .gui_widgets import build_list, new_checkbox, new_combo, new_entry
+
+_LOG = logging.getLogger(__name__)
 
 
 class ChannelsPage(tk.Frame):
@@ -165,6 +168,7 @@ class ChannelsPage(tk.Frame):
 
         chan_num = int(sel[0])
         chan = self._radio_memory.get_channel(chan_num)
+        _LOG.debug("chan: %r", chan)
         self._channel_model.fill(chan)
 
     def __on_channel_update(self) -> None:
@@ -182,6 +186,8 @@ class ChannelsPage(tk.Frame):
 
         if chan.freq:
             chan.hide_channel = False
+
+        _LOG.debug("chan: %r", chan)
 
         self._radio_memory.set_channel(chan)
 

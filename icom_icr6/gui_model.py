@@ -81,13 +81,12 @@ class ChannelModel:
         self.bank_pos.set(0)
 
     def fill(self, chan: model.Channel) -> None:
-        ic(chan)
         self.number = chan.number
         if chan.hide_channel:
             self.reset()
             return
 
-        self.name.set(chan.name)
+        self.name.set(chan.name.rstrip())
         self.freq.set(chan.freq // 1000)
         self.mode.set(model.MODES[chan.mode])
         self.ts.set(model.STEPS[chan.tuning_step])
@@ -129,7 +128,7 @@ class ChannelModel:
         else:
             raise ValueError
 
-        chan.name = self.name.get()[:6]
+        chan.name = self.name.get().rstrip()[:6]
         # TODO: better default settings for freq?
         if mode := self.mode.get():
             chan.mode = model.MODES.index(mode)

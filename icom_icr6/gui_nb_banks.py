@@ -35,8 +35,9 @@ class BanksPage(tk.Frame):
         pw.add(banks, weight=0)
 
         frame = tk.Frame(pw)
-        frame.rowconfigure(0, weight=1)
-        frame.rowconfigure(1, weight=0)
+        frame.rowconfigure(0, weight=0)
+        frame.rowconfigure(1, weight=1)
+        frame.rowconfigure(2, weight=0)
         frame.columnconfigure(0, weight=1)
 
         self._create_bank_fields(frame)
@@ -62,10 +63,10 @@ class BanksPage(tk.Frame):
         fields.columnconfigure(2, weight=0)
         new_entry(fields, 0, 0, "Bank name: ", self._bank_name)
         ttk.Button(fields, text="Update", command=self.__on_bank_update).grid(
-            row=4, column=7, sticky=tk.E
+            row=0, column=7, sticky=tk.E
         )
 
-        fields.grid(row=0, column=0, sticky=tk.N + tk.S + tk.E + tk.W)
+        fields.grid(row=0, column=0, sticky=tk.N + tk.E + tk.W + tk.S, ipady=6)
 
     def _create_bank_channels_list(self, frame: tk.Frame) -> None:
         columns = [
@@ -82,9 +83,7 @@ class BanksPage(tk.Frame):
         ]
         ccframe, self._bank_content = build_list(frame, columns)
         ccframe.grid(
-            row=0,
-            column=0,
-            sticky=tk.N + tk.S + tk.E + tk.W,
+            row=1, column=0, sticky=tk.N + tk.S + tk.E + tk.W, ipady=6
         )
         self._bank_content.bind("<<TreeviewSelect>>", self.__on_channel_select)
 
@@ -100,6 +99,10 @@ class BanksPage(tk.Frame):
         fields.columnconfigure(7, weight=1)
 
         new_entry(fields, 0, 0, "Channel: ", self._bchan_number)
+        ttk.Button(fields, text="Load", command=self.__on_channel_load).grid(
+            row=0, column=3, sticky=tk.E
+        )
+
         new_entry(fields, 1, 0, "Frequency: ", self._bchan_model.freq)
         new_entry(fields, 1, 2, "Name: ", self._bchan_model.name)
         new_combo(
@@ -163,7 +166,7 @@ class BanksPage(tk.Frame):
             fields, text="Delete", command=self.__on_channel_delete
         ).grid(row=4, column=6, sticky=tk.E)
 
-        fields.grid(row=1, column=0, sticky=tk.N + tk.S + tk.E + tk.W)
+        fields.grid(row=2, column=0, sticky=tk.N + tk.S + tk.E + tk.W, ipady=6)
 
     def __fill_banks(self) -> None:
         banks = self._banks
@@ -177,10 +180,13 @@ class BanksPage(tk.Frame):
         if sel:
             banks.selection_set(sel[0])
 
-    def __fill_bank(self, _event: tk.Event | None) -> None:  # type: ignore
-        selected_bank = 0
+    def __fill_bank(self, event: tk.Event | None) -> None:  # type: ignore
         if sel := self._banks.curselection():  # type: ignore
             selected_bank = sel[0]
+        else:
+            return
+
+        ic(selected_bank)
 
         bcont = self._bank_content
         bcont.delete(*bcont.get_children())
@@ -218,8 +224,9 @@ class BanksPage(tk.Frame):
                 ),
             )
 
-        bcont.yview(0)
-        bcont.xview(0)
+        if event:
+            bcont.yview(0)
+            bcont.xview(0)
 
     def __on_bank_update(self) -> None:
         if sel := self._banks.curselection():  # type: ignore
@@ -246,8 +253,46 @@ class BanksPage(tk.Frame):
             self._bchan_model.reset()
             self._bchan_number.set("")  # type: ignore
 
+    def __on_channel_load(self) -> None:
+        sel = self._bank_content.selection()
+        if not sel:
+            return
+
+        chan_num = self._bchan_number.get()
+        if chan_num == "":  # type: ignore
+            return
+
+        if chan_num < 0 or chan_num > 1300:
+            return
+
+        chan = self._radio_memory.get_channel(chan_num)
+        self._bchan_model.fill(chan)
+
     def __on_channel_update(self) -> None:
-        pass
+        sel = self._bank_content.selection()
+        if not sel:
+            return
+
+        selected_bank: int = int(self._banks.curselection()[0])  # type: ignore
+
+        bank_chan_num = int(sel[0])
+
+        chan_num = self._bchan_number.get()
+        if chan_num == "":  # type: ignore
+            return
+
+        if chan_num < 0 or chan_num > 1300:
+            return
+
+        chan = self._radio_memory.get_channel(chan_num)
+        self._bchan_model.update_channel(chan)
+        chan.bank = selected_bank
+        chan.bank_pos = bank_chan_num
+
+        self._radio_memory.set_channel(chan)
+
+        self.__fill_bank(None)
+        self._bank_content.selection_set(bank_chan_num)
 
     def __on_channel_delete(self) -> None:
         sel = self._bank_content.selection()
@@ -273,4 +318,4 @@ class BanksPage(tk.Frame):
         self._bchan_number.set("")  # type: ignore
 
         self.__fill_bank(None)
-        self._bank_content.selection_set(sel)
+        self._bank_content.selection_set(bank_chan_num)
