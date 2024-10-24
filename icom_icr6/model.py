@@ -656,6 +656,14 @@ class RadioMemory:
 
         return bank
 
+    def set_bank(self, bank: Bank) -> None:
+        idx = bank.idx
+        self._cache_banks[idx] = bank
+
+        start = 0x6D10 + idx * 8
+        data = self.mem[start : start + 8]
+        bank_to_data(bank, data)
+
     def get_scan_link(self, idx: int) -> ScanLink:
         if idx < 0 or idx > NUM_SCAN_LINKS - 1:
             raise IndexError

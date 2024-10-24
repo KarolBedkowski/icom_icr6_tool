@@ -4,11 +4,14 @@
 
 """ """
 
+import logging
 import tkinter as tk
 from tkinter import messagebox, ttk
 
 from . import gui_model, model
 from .gui_widgets import build_list, new_checkbox, new_combo, new_entry
+
+_LOG = logging.getLogger(__name__)
 
 
 class BanksPage(tk.Frame):
@@ -183,7 +186,7 @@ class BanksPage(tk.Frame):
         bcont.delete(*bcont.get_children())
 
         bank = self._radio_memory.get_bank(selected_bank)
-        self._bank_name.set(bank.name)
+        self._bank_name.set(bank.name.rstrip())
 
         for idx, channel in enumerate(bank.channels):
             if not channel or channel.hide_channel or not channel.freq:
@@ -218,9 +221,14 @@ class BanksPage(tk.Frame):
         bcont.yview(0)
         bcont.xview(0)
 
-    def __on_bank_update(self, _event: tk.Event) -> None:
+    def __on_bank_update(self) -> None:
         if sel := self._banks.curselection():  # type: ignore
             selected_bank = sel[0]
+
+        bank = self._radio_memory.get_bank(selected_bank)
+        bank.name = self._bank_name.get().strip()[:6]
+        self._radio_memory.set_bank(bank)
+        self.__fill_banks()
 
     def __on_channel_select(self, _event: tk.Event) -> None:  # type: ignore
         sel = self._bank_content.selection()
