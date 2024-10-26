@@ -9,7 +9,19 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 
 from . import gui_model, model
-from .gui_widgets import build_list, new_checkbox, new_combo, new_entry
+from .gui_widgets import (
+    CheckboxPopup,
+    ComboboxPopup,
+    EntryPopup,
+    TableView2,
+    TableViewColumn,
+    TableViewModel,
+    TableViewModelRow,
+    build_list_model,
+    new_checkbox,
+    new_combo,
+    new_entry,
+)
 
 _LOG = logging.getLogger(__name__)
 
@@ -28,8 +40,8 @@ class ChannelsPage(tk.Frame):
         pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
         self._channel_ranges = tk.Listbox(pw, selectmode=tk.SINGLE)
         self._channel_ranges.insert(tk.END, *gui_model.CHANNEL_RANGES)
-        pw.add(self._channel_ranges, weight=0)
         self._channel_ranges.bind("<<ListboxSelect>>", self.__fill_channels)
+        pw.add(self._channel_ranges, weight=0)
 
         frame = tk.Frame(pw)
         frame.rowconfigure(0, weight=1)
@@ -46,30 +58,21 @@ class ChannelsPage(tk.Frame):
 
     def set(self, radio_memory: model.RadioMemory) -> None:
         self._radio_memory = radio_memory
-        self._channel_ranges.selection_set(0)
         self._channel_ranges.activate(0)
+        self._channel_ranges.selection_set(0)
 
     def _create_channel_list(self, frame: tk.Frame) -> None:
-        columns = (
-            ("num", "Num", tk.E, 30),
-            ("freq", "Freq", tk.E, 80),
-            ("name", "Name", tk.W, 50),
-            ("af", "AF", tk.CENTER, 25),
-            ("att", "ATT", tk.CENTER, 25),
-            ("mode", "Mode", tk.CENTER, 25),
-            ("ts", "TS", tk.CENTER, 25),
-            ("vsc", "VSC", tk.CENTER, 25),
-            ("skip", "Skip", tk.CENTER, 25),
-            ("bank", "Bank", tk.W, 25),
+        self._tb_model = ChannelsListModel(self._radio_memory)
+        ccframe, self._channels_content = build_list_model(
+            frame, self._tb_model
         )
-        ccframe, self._channels_content = build_list(frame, columns)
         ccframe.grid(
             row=0,
             column=0,
             sticky=tk.N + tk.S + tk.E + tk.W,
         )
         self._channels_content.bind(
-            "<<TreeviewSelect>>", self.__on_channel_select
+            "<<TreeviewSelect>>", self.__on_channel_select, add="+"
         )
 
     def _create_fields(self, frame: tk.Frame) -> None:
@@ -214,48 +217,155 @@ class ChannelsPage(tk.Frame):
         self._channels_content.selection_set(sel)
 
     def __fill_channels(self, event: tk.Event | None) -> None:  # type: ignore
-        selected_range = 0
         if sel := self._channel_ranges.curselection():  # type: ignore
             selected_range = sel[0]
+        else:
+            return
 
         self._channels_content.delete(*self._channels_content.get_children())
 
         range_start = selected_range * 100
-        for idx in range(range_start, range_start + 100):
-            channel = self._radio_memory.get_channel(idx)
-            if channel.hide_channel or not channel.freq:
-                self._channels_content.insert(
-                    parent="",
-                    index=tk.END,
-                    iid=idx,
-                    text="",
-                    values=(str(idx), "", "", "", "", "", "", "", "", ""),
-                )
-                continue
+        self._tb_model.data = [
+            self._radio_memory.get_channel(idx)
+            for idx in range(range_start, range_start + 100)
+        ]
+        self._channels_content.update_all()
 
-            try:
-                bank = f"{model.BANK_NAMES[channel.bank]} {channel.bank_pos}"
-            except IndexError:
-                bank = ""
-
-            self._channels_content.insert(
-                parent="",
-                index=tk.END,
-                iid=idx,
-                text="",
-                values=(
-                    str(idx),
-                    str(channel.freq // 1000),
-                    channel.name,
-                    gui_model.yes_no(channel.af_filter),
-                    gui_model.yes_no(channel.attenuator),
-                    model.MODES[channel.mode],
-                    model.STEPS[channel.tuning_step],
-                    gui_model.yes_no(channel.vsc),
-                    model.SKIPS[channel.skip],
-                    bank,
-                ),
-            )
         if event is not None:
             self._channels_content.yview(0)
             self._channels_content.xview(0)
+
+
+class ChannelsListModel(TableViewModel[model.Channel]):
+    def __init__(self, radio_memory: model.RadioMemory) -> None:
+        TVC = TableViewColumn
+        super().__init__(
+            (
+                TVC("num", "Num", tk.E, 30),
+                TVC("freq", "Freq", tk.E, 80),
+                TVC("name", "Name", tk.W, 50),
+                TVC("af", "AF", tk.CENTER, 25),
+                TVC("att", "ATT", tk.CENTER, 25),
+                TVC("mode", "Mode", tk.CENTER, 25),
+                TVC("ts", "TS", tk.CENTER, 25),
+                TVC("vsc", "VSC", tk.CENTER, 25),
+                TVC("skip", "Skip", tk.CENTER, 25),
+                TVC("bank", "Bank", tk.W, 25),
+            )
+        )
+        self._radio_memory = radio_memory
+
+    def get_editor(
+        self,
+        row: int,
+        column: int,
+        value: str,
+        parent: TableView2,
+    ) -> tk.Widget | None:
+        coldef = self.columns[column]
+        iid = str(self.data[row].number)
+        match coldef.colid:
+            case "num":  # num
+                return None
+
+            case "af" | "att" | "vsc":
+                return CheckboxPopup(parent, iid, column, value)
+
+            case "mode":
+                return ComboboxPopup(parent, iid, column, value, model.MODES)
+
+            case "ts":
+                return ComboboxPopup(parent, iid, column, value, model.STEPS)
+
+        return EntryPopup(parent, iid, column, value)
+
+    def update_cell(
+        self,
+        row: int,  # row
+        column: int,
+        value: str | None,  # new value
+    ) -> model.Channel | None:
+        chan = self.data[row]
+        _LOG.debug("update chan: %r", chan)
+
+        coldef = self.columns[column]
+        match coldef.colid:
+            case "num":  # num
+                return None
+
+            case "name":
+                chan.name = value.rstrip()[:6].upper() if value else ""
+
+            case "freq":
+                chan.freq = int(value) * 1000 if value else 0
+                if chan.freq and chan.hide_channel:
+                    chan.hide_channel = False
+                    if chan.freq > 110:  # TODO: check
+                        chan.mode = 0
+                    if chan.freq > 68:
+                        chan.mode = 1
+                    if chan.freq > 30:
+                        chan.mode = 0
+                    else:
+                        chan.mode = 2
+
+            case "af":
+                chan.af_filter = value == "yes"
+
+            case "att":
+                chan.attenuator = value == "yes"
+
+            case "vsc":
+                chan.vsc = value == "yes"
+
+            case "mode":
+                chan.mode = model.MODES.index(value) if value else 0
+
+            case "ts":
+                chan.tuning_step = model.STEPS.index(value) if value else 0
+
+            case "skip":
+                chan.skip = model.SKIPS.index(value) if value else 0
+
+            # case "duplex":
+            #     chan.duplex = model.DUPLEX_DIRS.index(value) if value else 0
+
+            # case "offset":
+            #     chan.offset = int(value or 0) * 1000
+
+            # case "tmchan.tmode = model.TONE_MODES.index(self.tmode.get())
+        # chan.ctone = _get_index_or_default(
+        # model.CTCSS_TONES, self.ctone.get(), 63
+        # )
+        # chan.dtsc = _get_index_or_default(
+        # model.DTCS_CODES, self.dtsc.get(), 127
+        # )
+        # chan.polarity = _get_index_or_default(
+        # model.POLARITY, self.polarity.get(), 0
+        # )
+
+        _LOG.debug("new chan: %r", chan)
+        self._radio_memory.set_channel(chan)
+        return chan
+
+    def data2row(self, channel: model.Channel) -> TableViewModelRow:
+        if channel.hide_channel or not channel.freq:
+            return (str(channel.number), "", "", "", "", "", "", "", "", "")
+
+        try:
+            bank = f"{model.BANK_NAMES[channel.bank]} {channel.bank_pos}"
+        except IndexError:
+            bank = ""
+
+        return (
+            str(channel.number),
+            str(channel.freq // 1000),
+            channel.name,
+            gui_model.yes_no(channel.af_filter),
+            gui_model.yes_no(channel.attenuator),
+            model.MODES[channel.mode],
+            model.STEPS[channel.tuning_step],
+            gui_model.yes_no(channel.vsc),
+            model.SKIPS[channel.skip],
+            bank,
+        )

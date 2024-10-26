@@ -180,13 +180,27 @@ class BanksPage(tk.Frame):
         if sel:
             banks.selection_set(sel[0])
 
+    def _channel2row(
+        self, idx: int, channel: model.Channel
+    ) -> tuple[str, ...]:
+        return (
+            str(idx),
+            str(channel.number),
+            str(channel.freq // 1000),
+            channel.name,
+            model.STEPS[channel.tuning_step],
+            model.MODES[channel.mode],
+            gui_model.yes_no(channel.af_filter),
+            gui_model.yes_no(channel.attenuator),
+            gui_model.yes_no(channel.vsc),
+            model.SKIPS[channel.skip],
+        )
+
     def __fill_bank(self, event: tk.Event | None) -> None:  # type: ignore
         if sel := self._banks.curselection():  # type: ignore
             selected_bank = sel[0]
         else:
             return
-
-        ic(selected_bank)
 
         bcont = self._bank_content
         bcont.delete(*bcont.get_children())
@@ -210,18 +224,7 @@ class BanksPage(tk.Frame):
                 index=tk.END,
                 iid=idx,
                 text="",
-                values=(
-                    str(idx),
-                    str(channel.number),
-                    str(channel.freq // 1000),
-                    channel.name,
-                    model.STEPS[channel.tuning_step],
-                    model.MODES[channel.mode],
-                    gui_model.yes_no(channel.af_filter),
-                    gui_model.yes_no(channel.attenuator),
-                    gui_model.yes_no(channel.vsc),
-                    model.SKIPS[channel.skip],
-                ),
+                values=self._channel2row(idx, channel),
             )
 
         if event:

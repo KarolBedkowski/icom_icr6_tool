@@ -14,11 +14,13 @@ try:
 
     stackprinter.set_excepthook(style="color",
                                 suppressed_paths=[r"lib/python.*/site-packages/"])
+    print('stackprinter enabled')
 except ImportError:
     try:
         from rich.traceback import install
 
         install()
+        print('rich.traceback enabled')
     except ImportError:
         pass
 try:

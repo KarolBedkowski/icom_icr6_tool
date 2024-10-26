@@ -17,7 +17,7 @@ _ty = ty
 
 
 class App(tk.Frame):
-    def __init__(self, master: tk.Tk) -> None:
+    def __init__(self, master: tk.Tk, file: Path | None) -> None:
         super().__init__(master)
 
         self._last_file: Path | None = None
@@ -35,6 +35,9 @@ class App(tk.Frame):
         self._ntb.add(self.__create_nb_scan_links(), text="Scan Link")
 
         self._ntb.pack(fill="both", expand=1)
+
+        if file:
+            self.load_icf(file)
 
     def __create_menu(self, master: tk.Tk) -> None:
         menu_bar = tk.Menu(master)
@@ -199,14 +202,14 @@ class App(tk.Frame):
 
 
 def start_gui() -> None:
+    file = Path(sys.argv[1]) if len(sys.argv) > 1 else None
+
     root = tk.Tk()
     style = ttk.Style()
     style.theme_use("clam")
-    myapp = App(root)
+    style.configure("pad.TEntry", padding="1 1 1 1")
+    myapp = App(root, file)
     root.geometry("1024x768")
     root.lift()
-
-    if len(sys.argv) > 1:
-        myapp.load_icf(Path(sys.argv[1]))
 
     myapp.mainloop()

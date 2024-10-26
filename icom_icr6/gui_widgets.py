@@ -4,9 +4,16 @@
 
 """ """
 
+from __future__ import annotations
+
+import abc
+import logging
 import tkinter as tk
 import typing as ty
+from contextlib import suppress
 from tkinter import ttk
+
+_LOG = logging.getLogger(__name__)
 
 
 def new_entry(
@@ -18,7 +25,7 @@ def new_entry(
     validator: str | None = None,
 ) -> ttk.Entry:
     tk.Label(parent, text=label).grid(
-        row=row, column=col, sticky=tk.N + tk.W, padx=6, pady=6
+        row=row, column=col, sticky=tk.N + tk.W + tk.S, padx=6, pady=6
     )
     entry = ttk.Entry(parent, textvariable=var)
     entry.grid(
@@ -74,7 +81,10 @@ def new_checkbox(
 
 
 def build_list(
-    parent: tk.Widget, columns: ty.Iterable[tuple[str, str, str, int]]
+    parent: tk.Widget,
+    columns: ty.Iterable[tuple[str, str, str, int]],
+    popup_callback: PopupEditCallback | None = None,
+    popup_result_cb: PopupEditResultCallback | None = None,
 ) -> tuple[tk.Frame, ttk.Treeview]:
     frame = tk.Frame(parent)
     vert_scrollbar = ttk.Scrollbar(frame, orient="vertical")
@@ -82,13 +92,7 @@ def build_list(
     hor_scrollbar = ttk.Scrollbar(frame, orient="horizontal")
     hor_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
 
-    col_ids = [c[0] for c in columns]
-    tree = ttk.Treeview(frame, columns=col_ids)
-    tree.column("#0", width=0, stretch=tk.NO)
-    for col_id, title, anchor, width in columns:
-        tree.column(column=col_id, anchor=anchor, width=width)  # type: ignore
-        tree.heading(col_id, text=title, anchor=tk.CENTER)
-
+    tree = TableView(frame, columns, popup_callback, popup_result_cb)
     tree.pack(fill=tk.BOTH, expand=True)
     vert_scrollbar.config(command=tree.yview)
     hor_scrollbar.config(command=tree.xview)
@@ -97,3 +101,344 @@ def build_list(
     )
 
     return frame, tree
+
+
+def build_list_model(
+    parent: tk.Widget,
+    model: TableViewModel[T],
+) -> tuple[tk.Frame, TableView2[T]]:
+    frame = tk.Frame(parent)
+    vert_scrollbar = ttk.Scrollbar(frame, orient="vertical")
+    vert_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+    hor_scrollbar = ttk.Scrollbar(frame, orient="horizontal")
+    hor_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
+
+    tree = TableView2(frame, model=model)
+    tree.pack(fill=tk.BOTH, expand=True)
+    vert_scrollbar.config(command=tree.yview)
+    hor_scrollbar.config(command=tree.xview)
+    tree.configure(
+        yscrollcommand=vert_scrollbar.set, xscrollcommand=hor_scrollbar.set
+    )
+
+    return frame, tree
+
+
+class TableViewColumn(ty.NamedTuple):
+    colid: str
+    title: str
+    anchor: str
+    width: int
+
+
+@ty.runtime_checkable
+class PopupEditResultCallback(ty.Protocol):
+    def __call__(
+        self,
+        iid: str,  # row id
+        row: int,
+        column: int,
+        coldef: TableViewColumn,
+        value: str | None,  # new value
+    ) -> str | list[str] | tuple[str, ...] | None: ...
+
+
+@ty.runtime_checkable
+class PopupEditCallback(ty.Protocol):
+    def __call__(
+        self,
+        iid: str,  # row id
+        row: int,
+        column: int,
+        coldef: TableViewColumn,
+        value: str,
+        parent: TableView,
+    ) -> tk.Widget | None: ...
+
+
+T = ty.TypeVar("T")
+TableViewModelRow = list[str] | tuple[str, ...]
+
+
+class TableViewModel(abc.ABC, ty.Generic[T]):
+    def __init__(
+        self, cols: ty.Iterable[TableViewColumn] | None = None
+    ) -> None:
+        self.columns: list[TableViewColumn] = list(cols) if cols else []
+        self.data: list[T] = []
+
+    @abc.abstractmethod
+    def get_editor(
+        self,
+        row: int,
+        column: int,
+        value: str,
+        parent: TableView2[T],
+    ) -> tk.Widget | None: ...
+
+    @abc.abstractmethod
+    def update_cell(
+        self,
+        row: int,
+        column: int,
+        value: str | None,  # new value
+    ) -> T | None: ...
+
+    @abc.abstractmethod
+    def data2row(self, row: T) -> TableViewModelRow: ...
+
+    def get_cols_id(self) -> list[str]:
+        return [c.colid for c in self.columns]
+
+    def get_rows(self) -> ty.Iterable[TableViewModelRow]:
+        for row in self.data:
+            yield self.data2row(row)
+
+
+class TableView(ttk.Treeview):
+    def __init__(
+        self,
+        parent: tk.Widget,
+        coldef: ty.Iterable[TableViewColumn],
+        popup_callback: PopupEditCallback | None,
+        popup_result_cb: PopupEditResultCallback | None,
+    ) -> None:
+        self.coldef = list(coldef)
+        colids = [c[0] for c in self.coldef]
+        super().__init__(parent, columns=colids)
+
+        self._popup_callback = popup_callback
+        self._popup_result_callback = popup_result_cb
+
+        self.column("#0", width=0, stretch=tk.NO)
+        for col_id, title, anchor, width in self.coldef:
+            self.column(column=col_id, anchor=anchor, width=width)  # type: ignore
+            self.heading(col_id, text=title, anchor=tk.CENTER)
+
+        self._entry_popup: tk.Widget | None = None
+        self.bind("<Double-1>", self._on_double_click)
+        self.bind("<<TreeviewSelect>>", self._on_channel_select)
+
+    def _on_double_click(self, event: tk.Event) -> None:  # type: ignore
+        if not self._popup_callback:
+            return
+
+        with suppress(Exception):
+            if self._entry_popup:
+                self._entry_popup.destroy()
+
+        # what row and column was clicked on
+        row = self.identify_row(event.y)
+        if not row:
+            return
+
+        # column as '#<num>'
+        column = int(self.identify_column(event.x)[1:]) - 1
+        x, y, width, height = self.bbox(row, column)  # type: ignore
+        pady = height // 2
+
+        text = self.item(row, "values")[column]
+        self._entry_popup = self._popup_callback(
+            row, column, self.coldef[column], text, self
+        )
+        if not self._entry_popup:
+            return
+
+        self._entry_popup.place(
+            x=x, y=y + pady, width=width, height=height, anchor="w"
+        )
+
+    def _on_channel_select(self, _event: tk.Event) -> None:  # type: ignore
+        if self._entry_popup:
+            self._entry_popup.destroy()
+            self._entry_popup = None
+
+    def update_cell(self, iid: str, column: int, value: str | None) -> None:
+        _LOG.debug("update_cell: %r,%r = %r", iid, column, value)
+        row = self.focus()
+        old_value = self.item(row, "values")[column]
+        if old_value == value:
+            return
+
+        if self._popup_result_callback:
+            nvalue = self._popup_result_callback(
+                iid, column, self.coldef[column], value
+            )
+            if isinstance(nvalue, str):
+                value = nvalue
+            elif isinstance(nvalue, (list, tuple)):
+                ic(nvalue)
+                self.item(row, values=nvalue)
+                return
+            else:
+                raise ValueError
+
+        if value is not None:
+            vals = list(self.item(row, "values"))
+            vals[column] = value
+            self.item(row, values=vals)
+
+
+class TableView2(ttk.Treeview, ty.Generic[T]):
+    def __init__(
+        self,
+        parent: tk.Widget,
+        model: TableViewModel[T],
+    ) -> None:
+        self.model = model
+        super().__init__(parent, columns=model.get_cols_id())
+
+        self.column("#0", width=0, stretch=tk.NO)
+        for col_id, title, anchor, width in self.model.columns:
+            self.column(column=col_id, anchor=anchor, width=width)  # type: ignore
+            self.heading(col_id, text=title, anchor=tk.CENTER)
+
+        self._entry_popup: tk.Widget | None = None
+        self.bind("<Double-1>", self._on_double_click)
+        self.bind("<<TreeviewSelect>>", self._on_channel_select)
+
+    def _on_double_click(self, event: tk.Event) -> None:  # type: ignore
+        with suppress(Exception):
+            if self._entry_popup:
+                self._entry_popup.destroy()
+
+        # what row and column was clicked on
+        iid = self.identify_row(event.y)
+        if not iid:
+            return
+
+        # column as '#<num>'
+        column = int(self.identify_column(event.x)[1:]) - 1
+        x, y, width, height = self.bbox(iid, column)  # type: ignore
+        pady = height // 2
+        text = self.item(iid, "values")[column]
+
+        self._entry_popup = self.model.get_editor(
+            self.index(iid), column, text, self
+        )
+        if not self._entry_popup:
+            return
+
+        self._entry_popup.place(
+            x=x, y=y + pady, width=width, height=height, anchor="w"
+        )
+
+    def _on_channel_select(self, _event: tk.Event) -> None:  # type: ignore
+        if self._entry_popup:
+            self._entry_popup.destroy()
+            self._entry_popup = None
+
+    def update_cell(self, iid: str, column: int, value: str | None) -> None:
+        _LOG.debug("update_cell: %r,%r = %r", iid, column, value)
+        iid = self.focus()
+        old_value = self.item(iid, "values")[column]
+        if old_value == value:
+            return
+
+        newval = self.model.update_cell(self.index(iid), column, value)
+        if newval is not None:
+            self.item(self.index(iid), values=ic(self.model.data2row(newval)))
+
+    def update_all(self) -> None:
+        self.delete(*self.get_children())
+        for row in self.model.get_rows():
+            self.insert(
+                parent="", index=tk.END, iid=row[0], text="", values=row
+            )
+
+
+class ComboboxPopup(ttk.Combobox):
+    master: TableView2
+
+    def __init__(
+        self,
+        parent: TableView2,
+        iid: str,
+        column: int,
+        text: str,
+        items: list[str],
+        **kw: object,
+    ) -> None:
+        super().__init__(
+            parent,
+            values=items,
+            exportselection=False,
+            state="readonly",
+            **kw,  # type: ignore
+        )
+        self.iid = iid
+        self.column = column
+        self.set(text)
+        self.focus_force()
+        self.bind("<Return>", self._on_return)
+        self.bind("<Escape>", lambda *_ignore: self.destroy())
+
+    def _on_return(self, _event: tk.Event) -> None:  # type: ignore
+        self.master.update_cell(self.iid, self.column, self.get())
+        self.destroy()
+
+
+class EntryPopup(ttk.Entry):
+    master: TableView2
+
+    def __init__(
+        self,
+        parent: TableView2,
+        iid: str,
+        column: int,
+        text: str,
+        **kw: object,
+    ) -> None:
+        super().__init__(
+            parent,
+            style="pad.TEntry",
+            exportselection=False,
+            **kw,  # type: ignore
+        )
+        self.iid = iid
+        self.column = column
+        self.insert(0, text)
+        self.focus_force()
+        self.selection_range(0, "end")
+        self.bind("<Return>", self._on_return)
+        self.bind("<Control-a>", self._select_all)
+        self.bind("<Escape>", lambda *_ignore: self.destroy())
+
+    def _on_return(self, _event: tk.Event) -> None:  # type: ignore
+        self.master.update_cell(self.iid, self.column, self.get())
+        self.destroy()
+
+    def _select_all(self, _event: tk.Event) -> str:  # type: ignore
+        self.selection_range(0, "end")
+        return "break"
+
+
+class CheckboxPopup(ttk.Checkbutton):
+    master: TableView2
+
+    def __init__(
+        self,
+        parent: TableView2,
+        iid: str,
+        column: int,
+        text: str,
+        **kw: object,
+    ) -> None:
+        self._var = tk.StringVar()
+        super().__init__(
+            parent,
+            onvalue="yes",
+            offvalue="no",
+            variable=self._var,
+            **kw,  # type:ignore
+        )
+        self.iid = iid
+        self.column = column
+        self.focus_force()
+        self._var.set(text)
+        self.bind("<Return>", self._on_return)
+        self.bind("<Escape>", lambda *_ignore: self.destroy())
+
+    def _on_return(self, _event: tk.Event) -> None:  # type: ignore
+        self.master.update_cell(self.iid, self.column, self._var.get())
+        self.destroy()

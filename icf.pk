@@ -1,9 +1,15 @@
+// WARN: incomplete; errors
+
 type ICF_channel =
 struct
 {
     //0
-    uint<10> freq; // l-h
+    uint<8> freq0; // l-h
+    uint<8> freq1;
     uint<6> flags;
+    uint<2> freq2;
+
+    computed uint<24> freq;
 
     //3
     uint<1> af_filter;
@@ -18,7 +24,7 @@ struct
     uint<3> tmode;
 
     //5
-    uint<16> offset; // l-h	
+    big uint<16> offset; // l-h	
 
     //7
     uint<2> unknown2;
@@ -39,6 +45,26 @@ struct
     uint<6>[6] name;
 
     // total: 16bytes
+
+    method get_freq = uint<24>:
+    {
+	return freq2:::freq1:::freq0;
+    }
+
+    method _print_freq = void:
+    {
+	var freq = get_freq;
+	var real_freq = freq;
+	if (flags == 0) 
+	    real_freq = real_freq * 5000;
+	else if (flags == 20)
+	    real_freq = real_freq * 6250;
+	else if (flags == 40)
+	    real_freq = (real_freq * 25000) / 3;
+	else if (flags == 60) 
+	    real_freq = real_freq * 9000;
+	printf "%u10d = %u32d", freq, real_freq;
+    }
 };
 
 
@@ -73,7 +99,7 @@ struct
 
     method _print_name = void:
     {
-      printf "'%s'", catos(name);
+	printf "'%s'", catos(name);
     }
 };
 
@@ -85,7 +111,7 @@ struct
 
     method _print_name = void:
     {
-      printf "'%s'", catos(name);
+	printf "'%s'", catos(name);
     }
 };
 
@@ -97,7 +123,7 @@ struct
 
     method _print_name = void:
     {
-      printf "'%s'", catos(name);
+	printf "'%s'", catos(name);
     }
 };
 
