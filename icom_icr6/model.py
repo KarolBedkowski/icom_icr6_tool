@@ -7,6 +7,7 @@
 import binascii
 import logging
 import typing as ty
+import unicodedata
 from dataclasses import dataclass
 
 _LOG = logging.getLogger(__name__)
@@ -820,3 +821,42 @@ def valudate_name(name: str) -> None:
 
     if any(i not in CODED_CHRS for i in name.upper()):
         raise ValueError
+
+
+def fix_frequency(freq: int) -> int:
+    freq = max(freq, 100_000)
+    freq = min(freq, 1309_995_000)
+
+    div = (5000, 9000, 6250, 8333.333)
+    nfreqs = (int((freq // f) * f) for f in div)
+    err_freq = ((freq - nf, nf) for nf in nfreqs)
+    _, nfreq = min(err_freq)
+    return nfreq
+
+
+def default_mode_for_freq(freq: int) -> int:
+    if freq > 144:
+        return 0  # FM
+
+    if freq > 108:  # air-band
+        return 0  # AM
+
+    if freq > 68:  # fm radio
+        return 1  # WFM
+
+    if freq > 30:
+        return 0  # FM
+
+    return 2  # AM
+
+
+def fix_name(name: str) -> str:
+    name = name.rstrip().upper()
+    if not name:
+        return ""
+
+    name = (
+        unicodedata.normalize("NFKD", name).encode("ascii", "replace").decode()
+    )
+    name = "".join(c for c in name if c in CODED_CHRS)
+    return name[:6]

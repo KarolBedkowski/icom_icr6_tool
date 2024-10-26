@@ -219,22 +219,18 @@ class ChannelsListModel(TableViewModel[model.Channel]):
                 return None
 
             case "freq":
-                chan.freq = int(value) * 1000 if value else 0
+                chan.freq = (
+                    model.fix_frequency(int(value) * 1000) if value else 0
+                )
                 if chan.freq and chan.hide_channel:
                     chan.hide_channel = False
-                    if chan.freq > 110:  # TODO: check
-                        chan.mode = 0
-                    if chan.freq > 68:
-                        chan.mode = 1
-                    if chan.freq > 30:
-                        chan.mode = 0
-                    else:
-                        chan.mode = 2
+                    chan.mode = model.default_mode_for_freq(chan.freq)
+
             case "mode":
                 chan.mode = model.MODES.index(value) if value else 0
 
             case "name":
-                chan.name = value.rstrip()[:6].upper() if value else ""
+                chan.name = model.fix_name(value or "")
 
             case "af":
                 chan.af_filter = value == "yes"
