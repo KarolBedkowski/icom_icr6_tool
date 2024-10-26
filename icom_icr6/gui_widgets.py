@@ -300,7 +300,9 @@ class TableView2(ttk.Treeview, ty.Generic[T]):
     def _on_double_click(self, event: tk.Event) -> None:  # type: ignore
         with suppress(Exception):
             if self._entry_popup:
-                self._entry_popup.destroy()
+                # TODO: save current
+                self._entry_popup.on_return(None)
+                self._entry_popup = None
 
         # what row and column was clicked on
         iid = self.identify_row(event.y)
@@ -325,12 +327,12 @@ class TableView2(ttk.Treeview, ty.Generic[T]):
 
     def _on_channel_select(self, _event: tk.Event) -> None:  # type: ignore
         if self._entry_popup:
-            self._entry_popup.destroy()
+            # TODO: save
+            self._entry_popup.on_return(None)
             self._entry_popup = None
 
     def update_cell(self, iid: str, column: int, value: str | None) -> None:
         _LOG.debug("update_cell: %r,%r = %r", iid, column, value)
-        iid = self.focus()
         old_value = self.item(iid, "values")[column]
         if old_value == value:
             return
@@ -356,7 +358,7 @@ class ComboboxPopup(ttk.Combobox):
         iid: str,
         column: int,
         text: str,
-        items: list[str],
+        items: list[str] | tuple[str, ...],
         **kw: object,
     ) -> None:
         super().__init__(
@@ -370,10 +372,11 @@ class ComboboxPopup(ttk.Combobox):
         self.column = column
         self.set(text)
         self.focus_force()
-        self.bind("<Return>", self._on_return)
+        self.bind("<Return>", self.on_return)
         self.bind("<Escape>", lambda *_ignore: self.destroy())
 
-    def _on_return(self, _event: tk.Event) -> None:  # type: ignore
+    def on_return(self, _event: tk.Event | None) -> None:  # type: ignore
+        ic()
         self.master.update_cell(self.iid, self.column, self.get())
         self.destroy()
 
@@ -400,11 +403,11 @@ class EntryPopup(ttk.Entry):
         self.insert(0, text)
         self.focus_force()
         self.selection_range(0, "end")
-        self.bind("<Return>", self._on_return)
+        self.bind("<Return>", self.on_return)
         self.bind("<Control-a>", self._select_all)
         self.bind("<Escape>", lambda *_ignore: self.destroy())
 
-    def _on_return(self, _event: tk.Event) -> None:  # type: ignore
+    def on_return(self, _event: tk.Event | None) -> None:  # type: ignore
         self.master.update_cell(self.iid, self.column, self.get())
         self.destroy()
 
@@ -436,9 +439,9 @@ class CheckboxPopup(ttk.Checkbutton):
         self.column = column
         self.focus_force()
         self._var.set(text)
-        self.bind("<Return>", self._on_return)
+        self.bind("<Return>", self.on_return)
         self.bind("<Escape>", lambda *_ignore: self.destroy())
 
-    def _on_return(self, _event: tk.Event) -> None:  # type: ignore
+    def on_return(self, _event: tk.Event | None) -> None:  # type: ignore
         self.master.update_cell(self.iid, self.column, self._var.get())
         self.destroy()

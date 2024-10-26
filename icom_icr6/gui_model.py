@@ -25,19 +25,30 @@ CHANNEL_RANGES = [
 ]
 
 
-def _get_index_or_default(
+def get_index_or_default(
     values: list[str] | tuple[str, ...],
-    value: str,
+    value: str | None,
     default_value: int,
     empty_value: str = "",
 ) -> int:
-    if empty_value is not None and value == empty_value:
+    if empty_value is None or value == empty_value:
         return default_value
 
     try:
         return values.index(value)
     except ValueError:
         return default_value
+
+
+def get_or_default(
+    values: list[str] | tuple[str, ...],
+    index: int,
+    empty_value: str = "",
+) -> str:
+    try:
+        return values[index]
+    except IndexError:
+        return empty_value
 
 
 class ChannelModel:
@@ -153,13 +164,13 @@ class ChannelModel:
         chan.duplex = model.DUPLEX_DIRS.index(self.duplex.get())
         chan.offset = self.offset.get() * 1000
         chan.tmode = model.TONE_MODES.index(self.tmode.get())
-        chan.ctone = _get_index_or_default(
+        chan.ctone = get_index_or_default(
             model.CTCSS_TONES, self.ctone.get(), 63
         )
-        chan.dtsc = _get_index_or_default(
+        chan.dtsc = get_index_or_default(
             model.DTCS_CODES, self.dtsc.get(), 127
         )
-        chan.polarity = _get_index_or_default(
+        chan.polarity = get_index_or_default(
             model.POLARITY, self.polarity.get(), 0
         )
         if (bank := self.bank.get()) == "":

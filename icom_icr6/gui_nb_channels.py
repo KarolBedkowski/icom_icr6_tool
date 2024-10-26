@@ -34,7 +34,6 @@ class ChannelsPage(tk.Frame):
         self.rowconfigure(0, weight=1)
         self.columnconfigure(0, weight=1)
 
-        self._channel_model = gui_model.ChannelModel()
         self._radio_memory = radio_memory
 
         pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
@@ -49,7 +48,6 @@ class ChannelsPage(tk.Frame):
         frame.columnconfigure(0, weight=1)
 
         self._create_channel_list(frame)
-        self._create_fields(frame)
 
         pw.add(frame, weight=1)
         pw.grid(
@@ -75,95 +73,6 @@ class ChannelsPage(tk.Frame):
             "<<TreeviewSelect>>", self.__on_channel_select, add="+"
         )
 
-    def _create_fields(self, frame: tk.Frame) -> None:
-        fields = tk.Frame(frame)
-        fields.columnconfigure(0, weight=0)
-        fields.columnconfigure(1, weight=1)
-        fields.columnconfigure(2, weight=0)
-        fields.columnconfigure(3, weight=1)
-        fields.columnconfigure(4, weight=0)
-        fields.columnconfigure(5, weight=1)
-        fields.columnconfigure(6, weight=0)
-        fields.columnconfigure(7, weight=1)
-
-        new_entry(fields, 0, 0, "Frequency: ", self._channel_model.freq)
-        new_entry(fields, 0, 2, "Name: ", self._channel_model.name)
-        new_combo(
-            fields,
-            0,
-            4,
-            "Mode: ",
-            self._channel_model.mode,
-            [" ", *model.MODES],
-        )
-        new_combo(
-            fields,
-            0,
-            6,
-            "TS: ",
-            self._channel_model.ts,
-            list(map(str, model.STEPS)),
-        )
-        # row 2
-        new_combo(
-            fields,
-            1,
-            0,
-            "Duplex: ",
-            self._channel_model.duplex,
-            model.DUPLEX_DIRS,
-        )
-        new_entry(fields, 1, 2, "Offset: ", self._channel_model.offset)
-
-        new_combo(
-            fields, 1, 4, "Skip: ", self._channel_model.skip, model.SKIPS
-        )
-        new_checkbox(fields, 1, 6, " AF Filter", self._channel_model.af)
-        new_checkbox(fields, 1, 7, " Attenuator", self._channel_model.attn)
-
-        new_combo(
-            fields, 2, 0, "Tone: ", self._channel_model.tmode, model.TONE_MODES
-        )
-        new_combo(
-            fields,
-            2,
-            2,
-            "TSQL: ",
-            self._channel_model.ctone,
-            list(model.CTCSS_TONES),
-        )
-        new_combo(
-            fields, 2, 4, "DTSC: ", self._channel_model.dtsc, model.DTCS_CODES
-        )
-        new_combo(
-            fields,
-            2,
-            6,
-            "Polarity: ",
-            self._channel_model.polarity,
-            model.POLARITY,
-        )
-
-        new_checkbox(fields, 3, 0, " VSV", self._channel_model.vsc)
-        new_combo(
-            fields,
-            3,
-            2,
-            "Bank: ",
-            self._channel_model.bank,
-            [" ", *model.BANK_NAMES],
-        )
-        new_entry(fields, 3, 4, "Bank pos: ", self._channel_model.bank_pos)
-
-        ttk.Button(
-            fields, text="Update", command=self.__on_channel_update
-        ).grid(row=4, column=7, sticky=tk.E)
-        ttk.Button(
-            fields, text="Delete", command=self.__on_channel_delete
-        ).grid(row=4, column=6, sticky=tk.E)
-
-        fields.grid(row=1, column=0, sticky=tk.N + tk.S + tk.E + tk.W)
-
     def __on_channel_select(self, _event: tk.Event) -> None:  # type: ignore
         sel = self._channels_content.selection()
         if not sel:
@@ -172,30 +81,6 @@ class ChannelsPage(tk.Frame):
         chan_num = int(sel[0])
         chan = self._radio_memory.get_channel(chan_num)
         _LOG.debug("chan: %r", chan)
-        self._channel_model.fill(chan)
-
-    def __on_channel_update(self) -> None:
-        sel = self._channels_content.selection()
-        if not sel:
-            return
-
-        chan_num = int(sel[0])
-        chan = self._radio_memory.get_channel(chan_num)
-        self._channel_model.update_channel(chan)
-
-        if errors := self._channel_model.validate():
-            messagebox.showerror("Invalid configuration", "\n".join(errors))
-            return
-
-        if chan.freq:
-            chan.hide_channel = False
-
-        _LOG.debug("chan: %r", chan)
-
-        self._radio_memory.set_channel(chan)
-
-        self.__fill_channels(None)
-        self._channels_content.selection_set(sel)
 
     def __on_channel_delete(self) -> None:
         sel = self._channels_content.selection()
@@ -238,19 +123,26 @@ class ChannelsPage(tk.Frame):
 
 class ChannelsListModel(TableViewModel[model.Channel]):
     def __init__(self, radio_memory: model.RadioMemory) -> None:
-        TVC = TableViewColumn
+        tvc = TableViewColumn
         super().__init__(
             (
-                TVC("num", "Num", tk.E, 30),
-                TVC("freq", "Freq", tk.E, 80),
-                TVC("name", "Name", tk.W, 50),
-                TVC("af", "AF", tk.CENTER, 25),
-                TVC("att", "ATT", tk.CENTER, 25),
-                TVC("mode", "Mode", tk.CENTER, 25),
-                TVC("ts", "TS", tk.CENTER, 25),
-                TVC("vsc", "VSC", tk.CENTER, 25),
-                TVC("skip", "Skip", tk.CENTER, 25),
-                TVC("bank", "Bank", tk.W, 25),
+                tvc("num", "Num", tk.E, 30),
+                tvc("freq", "Freq", tk.E, 80),
+                tvc("mode", "Mode", tk.CENTER, 25),
+                tvc("name", "Name", tk.W, 50),
+                tvc("af", "AF", tk.CENTER, 25),
+                tvc("att", "ATT", tk.CENTER, 25),
+                tvc("ts", "TS", tk.CENTER, 25),
+                tvc("duplex", "DUP", tk.CENTER, 25),
+                tvc("offset", "Offset", tk.E, 70),
+                tvc("skip", "Skip", tk.CENTER, 25),
+                tvc("vsc", "VSC", tk.CENTER, 25),
+                tvc("tone", "Tone", tk.CENTER, 25),
+                tvc("tsql", "TSQL", tk.E, 40),
+                tvc("dtsc", "DTSC", tk.E, 25),
+                tvc("polarity", "Polarity", tk.CENTER, 25),
+                tvc("bank", "Bank", tk.CENTER, 25),
+                tvc("bankpos", "Bank pos", tk.W, 25),
             )
         )
         self._radio_memory = radio_memory
@@ -260,7 +152,7 @@ class ChannelsListModel(TableViewModel[model.Channel]):
         row: int,
         column: int,
         value: str,
-        parent: TableView2,
+        parent: TableView2[model.Channel],
     ) -> tk.Widget | None:
         coldef = self.columns[column]
         iid = str(self.data[row].number)
@@ -276,6 +168,39 @@ class ChannelsListModel(TableViewModel[model.Channel]):
 
             case "ts":
                 return ComboboxPopup(parent, iid, column, value, model.STEPS)
+
+            case "duplex":
+                return ComboboxPopup(
+                    parent, iid, column, value, model.DUPLEX_DIRS
+                )
+
+            case "skip":
+                return ComboboxPopup(parent, iid, column, value, model.SKIPS)
+
+            case "tone":
+                return ComboboxPopup(
+                    parent, iid, column, value, model.TONE_MODES
+                )
+
+            case "tsql":
+                return ComboboxPopup(
+                    parent, iid, column, value, model.CTCSS_TONES
+                )
+
+            case "dtsc":
+                return ComboboxPopup(
+                    parent, iid, column, value, model.DTCS_CODES
+                )
+
+            case "polarity":
+                return ComboboxPopup(
+                    parent, iid, column, value, model.POLARITY
+                )
+
+            case "bank":
+                return ComboboxPopup(
+                    parent, iid, column, value, list(model.BANK_NAMES)
+                )
 
         return EntryPopup(parent, iid, column, value)
 
@@ -293,9 +218,6 @@ class ChannelsListModel(TableViewModel[model.Channel]):
             case "num":  # num
                 return None
 
-            case "name":
-                chan.name = value.rstrip()[:6].upper() if value else ""
-
             case "freq":
                 chan.freq = int(value) * 1000 if value else 0
                 if chan.freq and chan.hide_channel:
@@ -308,6 +230,11 @@ class ChannelsListModel(TableViewModel[model.Channel]):
                         chan.mode = 0
                     else:
                         chan.mode = 2
+            case "mode":
+                chan.mode = model.MODES.index(value) if value else 0
+
+            case "name":
+                chan.name = value.rstrip()[:6].upper() if value else ""
 
             case "af":
                 chan.af_filter = value == "yes"
@@ -315,34 +242,48 @@ class ChannelsListModel(TableViewModel[model.Channel]):
             case "att":
                 chan.attenuator = value == "yes"
 
-            case "vsc":
-                chan.vsc = value == "yes"
-
-            case "mode":
-                chan.mode = model.MODES.index(value) if value else 0
-
             case "ts":
                 chan.tuning_step = model.STEPS.index(value) if value else 0
+
+            case "duplex":
+                chan.duplex = model.DUPLEX_DIRS.index(value) if value else 0
+
+            case "offset":
+                chan.offset = int(value or 0) * 1000
 
             case "skip":
                 chan.skip = model.SKIPS.index(value) if value else 0
 
-            # case "duplex":
-            #     chan.duplex = model.DUPLEX_DIRS.index(value) if value else 0
+            case "tone":
+                chan.tmode = gui_model.get_index_or_default(
+                    model.TONE_MODES, value, 0
+                )
 
-            # case "offset":
-            #     chan.offset = int(value or 0) * 1000
+            case "tsql":
+                chan.ctone = gui_model.get_index_or_default(
+                    model.CTCSS_TONES, value, 63
+                )
 
-            # case "tmchan.tmode = model.TONE_MODES.index(self.tmode.get())
-        # chan.ctone = _get_index_or_default(
-        # model.CTCSS_TONES, self.ctone.get(), 63
-        # )
-        # chan.dtsc = _get_index_or_default(
-        # model.DTCS_CODES, self.dtsc.get(), 127
-        # )
-        # chan.polarity = _get_index_or_default(
-        # model.POLARITY, self.polarity.get(), 0
-        # )
+            case "dtsc":
+                chan.dtsc = gui_model.get_index_or_default(
+                    model.DTCS_CODES, value, 127
+                )
+
+            case "polarity":
+                chan.polarity = gui_model.get_index_or_default(
+                    model.POLARITY, value, 0
+                )
+
+            case "vsc":
+                chan.vsc = value == "yes"
+
+            case "bank":
+                chan.bank = gui_model.get_index_or_default(
+                    list(model.BANK_NAMES), value, model.BANK_NOT_SET
+                )
+
+            case "bank_pos":
+                chan.bank_pos = int(value or 0)
 
         _LOG.debug("new chan: %r", chan)
         self._radio_memory.set_channel(chan)
@@ -353,19 +294,26 @@ class ChannelsListModel(TableViewModel[model.Channel]):
             return (str(channel.number), "", "", "", "", "", "", "", "", "")
 
         try:
-            bank = f"{model.BANK_NAMES[channel.bank]} {channel.bank_pos}"
+            bank = model.BANK_NAMES[channel.bank]
+            bank_pos = str(channel.bank_pos)
         except IndexError:
-            bank = ""
+            bank = bank_pos = ""
 
         return (
             str(channel.number),
             str(channel.freq // 1000),
-            channel.name,
+            model.MODES[channel.mode],
+            channel.name.rstrip(),
             gui_model.yes_no(channel.af_filter),
             gui_model.yes_no(channel.attenuator),
-            model.MODES[channel.mode],
             model.STEPS[channel.tuning_step],
-            gui_model.yes_no(channel.vsc),
+            model.DUPLEX_DIRS[channel.duplex],
+            str(channel.offset // 1000),
             model.SKIPS[channel.skip],
+            gui_model.yes_no(channel.vsc),
+            model.TONE_MODES[channel.tmode],
+            gui_model.get_or_default(model.CTCSS_TONES, channel.dtsc),
+            model.POLARITY[channel.polarity],
             bank,
+            bank_pos,
         )
