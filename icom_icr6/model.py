@@ -25,7 +25,8 @@ NUM_SCAN_EDGES: ty.Final[int] = 25
 NUM_SCAN_LINKS: ty.Final[int] = 10
 NAME_LEN: ty.Final[int] = 6
 
-MAX_FREQUENCY: ty.Final[int] = 1309995000
+MIN_FREQUENCY: ty.Final[int] = 100_000
+MAX_FREQUENCY: ty.Final[int] = 1_309_995_000
 
 TONE_MODES = ["", "TSQL", "TSQL-R", "DTCS", "DTCS-R", "", "", ""]
 DUPLEX_DIRS = ["", "-", "+", ""]
@@ -824,8 +825,8 @@ def valudate_name(name: str) -> None:
 
 
 def fix_frequency(freq: int) -> int:
-    freq = max(freq, 100_000)
-    freq = min(freq, 1309_995_000)
+    freq = max(freq, MIN_FREQUENCY)
+    freq = min(freq, MAX_FREQUENCY)
 
     div = (5000, 9000, 6250, 8333.333)
     nfreqs = (int((freq // f) * f) for f in div)
@@ -835,16 +836,16 @@ def fix_frequency(freq: int) -> int:
 
 
 def default_mode_for_freq(freq: int) -> int:
-    if freq > 144:
+    if freq > 144_000_000:
         return 0  # FM
 
-    if freq > 108:  # air-band
+    if freq > 108_000_000:  # air-band
         return 0  # AM
 
-    if freq > 68:  # fm radio
+    if freq > 68_000_000:  # fm radio
         return 1  # WFM
 
-    if freq > 30:
+    if freq > 30_000_000:
         return 0  # FM
 
     return 2  # AM

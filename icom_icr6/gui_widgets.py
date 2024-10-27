@@ -298,11 +298,11 @@ class TableView2(ttk.Treeview, ty.Generic[T]):
         self.bind("<<TreeviewSelect>>", self._on_channel_select)
 
     def _on_double_click(self, event: tk.Event) -> None:  # type: ignore
-        with suppress(Exception):
-            if self._entry_popup:
-                # TODO: save current
+        if self._entry_popup:
+            with suppress(Exception):
                 self._entry_popup.on_return(None)
-                self._entry_popup = None
+
+            self._entry_popup = None
 
         # what row and column was clicked on
         iid = self.identify_row(event.y)
@@ -313,7 +313,10 @@ class TableView2(ttk.Treeview, ty.Generic[T]):
         column = int(self.identify_column(event.x)[1:]) - 1
         x, y, width, height = self.bbox(iid, column)  # type: ignore
         pady = height // 2
-        text = self.item(iid, "values")[column]
+        try:
+            text = self.item(iid, "values")[column]
+        except IndexError:
+            text = ""
 
         self._entry_popup = self.model.get_editor(
             self.index(iid), column, text, self
@@ -327,19 +330,21 @@ class TableView2(ttk.Treeview, ty.Generic[T]):
 
     def _on_channel_select(self, _event: tk.Event) -> None:  # type: ignore
         if self._entry_popup:
-            # TODO: save
-            self._entry_popup.on_return(None)
+            with suppress(Exception):
+                self._entry_popup.on_return(None)
+
             self._entry_popup = None
 
     def update_cell(self, iid: str, column: int, value: str | None) -> None:
         _LOG.debug("update_cell: %r,%r = %r", iid, column, value)
-        old_value = self.item(iid, "values")[column]
-        if old_value == value:
-            return
+        with suppress(IndexError):
+            old_value = self.item(iid, "values")[column]
+            if old_value == value:
+                return
 
         newval = self.model.update_cell(self.index(iid), column, value)
         if newval is not None:
-            self.item(self.index(iid), values=ic(self.model.data2row(newval)))
+            self.item(self.index(iid), values=self.model.data2row(newval))
 
     def update_all(self) -> None:
         self.delete(*self.get_children())
@@ -407,6 +412,14 @@ class EntryPopup(ttk.Entry):
         self.bind("<Control-a>", self._select_all)
         self.bind("<Escape>", lambda *_ignore: self.destroy())
 
+    def with_validator(
+        self, validator: ty.Callable[[str, str], bool]
+    ) -> ty.Self:
+        self.configure(validate="all")
+        v = self.register(validator)
+        self.configure(validatecommand=(v, "%S", "%P"))
+        return self
+
     def on_return(self, _event: tk.Event | None) -> None:  # type: ignore
         self.master.update_cell(self.iid, self.column, self.get())
         self.destroy()
@@ -445,3 +458,36 @@ class CheckboxPopup(ttk.Checkbutton):
     def on_return(self, _event: tk.Event | None) -> None:  # type: ignore
         self.master.update_cell(self.iid, self.column, self._var.get())
         self.destroy()
+
+
+class NumEntryPopup(EntryPopup):
+    master: TableView2
+
+    def __init__(
+        self,
+        parent: TableView2,
+        iid: str,
+        column: int,
+        text: str,
+        min_val: int | None = None,
+        max_val: int | None = None,
+        **kw: object,
+    ) -> None:
+        super().__init__(parent, iid, column, text, **kw)
+
+        self._min_val = min_val
+        self._max_val = max_val
+        self.with_validator(self._validator)
+
+    def _validator(self, char: str, value: str) -> bool:
+        if char not in "01234567890":
+            return False
+
+        try:
+            numval = int(value)
+        except ValueError:
+            return False
+
+        return (self._min_val is None or numval > self._min_val) and (
+            self._max_val is None or numval < self._max_val
+        )

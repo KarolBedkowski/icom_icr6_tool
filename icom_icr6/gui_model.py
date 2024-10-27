@@ -196,3 +196,15 @@ def yes_no(value: bool | None) -> str:
             return "yes"
         case False:
             return "no"
+
+
+def name_validator(char: str, value: str) -> bool:
+    if char not in model.CODED_CHRS:
+        return False
+
+    try:
+        model.valudate_name(value)
+    except ValueError:
+        return False
+
+    return True

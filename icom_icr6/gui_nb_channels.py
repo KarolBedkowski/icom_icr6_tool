@@ -13,14 +13,12 @@ from .gui_widgets import (
     CheckboxPopup,
     ComboboxPopup,
     EntryPopup,
+    NumEntryPopup,
     TableView2,
     TableViewColumn,
     TableViewModel,
     TableViewModelRow,
     build_list_model,
-    new_checkbox,
-    new_combo,
-    new_entry,
 )
 
 _LOG = logging.getLogger(__name__)
@@ -156,6 +154,16 @@ class ChannelsListModel(TableViewModel[model.Channel]):
     ) -> tk.Widget | None:
         coldef = self.columns[column]
         iid = str(self.data[row].number)
+        chan = self.data[row]
+        _LOG.debug(
+            "get_editor: row=%d[%r], col=%d[%s], value=%r, chan=%r",
+            row,
+            iid,
+            column,
+            coldef.colid,
+            value,
+            chan,
+        )
         match coldef.colid:
             case "num":  # num
                 return None
@@ -183,16 +191,25 @@ class ChannelsListModel(TableViewModel[model.Channel]):
                 )
 
             case "tsql":
+                if chan.tmode not in (1, 2):
+                    return None
+
                 return ComboboxPopup(
                     parent, iid, column, value, model.CTCSS_TONES
                 )
 
             case "dtsc":
+                if chan.tmode not in (3, 4):
+                    return None
+
                 return ComboboxPopup(
                     parent, iid, column, value, model.DTCS_CODES
                 )
 
             case "polarity":
+                if chan.tmode not in (3, 4):
+                    return None
+
                 return ComboboxPopup(
                     parent, iid, column, value, model.POLARITY
                 )
@@ -202,7 +219,29 @@ class ChannelsListModel(TableViewModel[model.Channel]):
                     parent, iid, column, value, list(model.BANK_NAMES)
                 )
 
-        return EntryPopup(parent, iid, column, value)
+            case "offset":
+                if not chan.duplex:
+                    return None
+
+                return NumEntryPopup(
+                    parent, iid, column, value, min_val=0, max_val=159995
+                )
+
+            case "name":
+                return EntryPopup(parent, iid, column, value).with_validator(
+                    gui_model.name_validator
+                )
+
+            case "freq":
+                return NumEntryPopup(
+                    parent,
+                    iid,
+                    column,
+                    value,
+                    max_val=model.MAX_FREQUENCY // 1000,
+                )
+
+        return None
 
     def update_cell(
         self,
@@ -287,7 +326,7 @@ class ChannelsListModel(TableViewModel[model.Channel]):
 
     def data2row(self, channel: model.Channel) -> TableViewModelRow:
         if channel.hide_channel or not channel.freq:
-            return (str(channel.number), "", "", "", "", "", "", "", "", "")
+            return (str(channel.number),)
 
         try:
             bank = model.BANK_NAMES[channel.bank]
@@ -304,12 +343,19 @@ class ChannelsListModel(TableViewModel[model.Channel]):
             gui_model.yes_no(channel.attenuator),
             model.STEPS[channel.tuning_step],
             model.DUPLEX_DIRS[channel.duplex],
-            str(channel.offset // 1000),
+            str(channel.offset // 1000) if channel.duplex else "",
             model.SKIPS[channel.skip],
             gui_model.yes_no(channel.vsc),
             model.TONE_MODES[channel.tmode],
-            gui_model.get_or_default(model.CTCSS_TONES, channel.dtsc),
-            model.POLARITY[channel.polarity],
+            gui_model.get_or_default(model.CTCSS_TONES, channel.ctone)
+            if channel.tmode in (1, 2)
+            else "",
+            gui_model.get_or_default(model.DTCS_CODES, channel.dtsc)
+            if channel.tmode in (3, 4)
+            else "",
+            model.POLARITY[channel.polarity]
+            if channel.tmode in (3, 4)
+            else "",
             bank,
             bank_pos,
         )
