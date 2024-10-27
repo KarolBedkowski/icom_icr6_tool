@@ -214,6 +214,9 @@ def yes_no(value: bool | None) -> str:
 
 
 def name_validator(char: str, value: str) -> bool:
+    if not value:
+        return True
+
     if char.upper() not in model.CODED_CHRS:
         return False
 
