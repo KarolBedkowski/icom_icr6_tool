@@ -14,6 +14,7 @@ from . import gui_model, model
 from .gui_widgets import (
     NumEntryPopup,
     TableView2,
+    TableViewColumn,
     TableViewModelRow,
     UpdateCellResult,
     build_list_model,
@@ -31,7 +32,6 @@ class BanksPage(tk.Frame):
         self.rowconfigure(0, weight=1)
         self.columnconfigure(0, weight=1)
 
-        self._bchan_number = tk.IntVar()
         self._bank_number = tk.IntVar()
         self._bank_name = tk.StringVar()
         self._radio_memory = radio_memory
@@ -88,6 +88,7 @@ class BanksPage(tk.Frame):
         self._bank_content.bind(
             "<<TreeviewSelect>>", self.__on_channel_select, add="+"
         )
+        self._bank_content.bind("<Delete>", self.__on_channel_delete)
 
     def __fill_banks(self) -> None:
         banks = self._banks
@@ -139,16 +140,7 @@ class BanksPage(tk.Frame):
         if not sel:
             return
 
-        selected_bank: int = int(self._banks.curselection()[0])  # type: ignore
-
-        bank_chan_num = int(sel[0])
-        bank = self._radio_memory.get_bank(selected_bank)
-        if chan := bank.channels[bank_chan_num]:
-            self._bchan_number.set(chan)
-        else:
-            self._bchan_number.set("")  # type: ignore
-
-    def __on_channel_delete(self) -> None:
+    def __on_channel_delete(self, _event: tk.Event) -> None:  # type: ignore
         sel = self._bank_content.selection()
         if not sel:
             return
@@ -164,11 +156,10 @@ class BanksPage(tk.Frame):
 
         bank_chan_num = int(sel[0])
         bank = self._radio_memory.get_bank(selected_bank)
-        if chan := bank.channels[bank_chan_num]:
-            bank.channels[bank_chan_num] = None
+        if channum := bank.channels[bank_chan_num]:
+            chan = self._radio_memory.get_channel(channum)
             chan.clear_bank()
-
-        self._bchan_number.set("")  # type: ignore
+            self._radio_memory.set_channel(chan)
 
         self.__fill_bank(None)
         self._bank_content.selection_set(bank_chan_num)
@@ -181,8 +172,8 @@ class BankChannelsListModel(gui_model.ChannelsListModel):
         super().__init__(radio_memory)
         self._bank_number = banknum
 
-    def _columns(self) -> ty.Iterable[gui_model.TableViewColumn]:
-        tvc = gui_model.TableViewColumn
+    def _columns(self) -> ty.Iterable[TableViewColumn]:
+        tvc = TableViewColumn
         return (
             tvc("num", "Num", tk.E, 30),
             tvc("chan", "Chan", tk.E, 30),
@@ -208,6 +199,13 @@ class BankChannelsListModel(gui_model.ChannelsListModel):
     def data2row(self, channel: model.Channel | None) -> TableViewModelRow:
         if channel is None:
             return ()
+
+        if not channel.freq or channel.hide_channel:
+            return (
+                str(channel.bank_pos),
+                str(channel.number),
+                "!",
+            )
 
         return (
             str(channel.bank_pos),
@@ -275,6 +273,7 @@ class BankChannelsListModel(gui_model.ChannelsListModel):
 
                 return UpdateCellResult.UPDATE_ROW, chan
 
+            _LOG.error("not found channel %d in bank %r", row, bank)
             return UpdateCellResult.NOOP, None
 
         channum = int(value)
