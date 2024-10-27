@@ -4,9 +4,21 @@
 
 """ """
 
+import logging
 import tkinter as tk
 
 from . import model
+from .gui_widgets import (
+    CheckboxPopup,
+    ComboboxPopup,
+    EntryPopup,
+    NumEntryPopup,
+    TableView2,
+    TableViewColumn,
+    TableViewModel,
+    TableViewModelRow,
+    UpdateCellResult,
+)
 
 CHANNEL_RANGES = [
     "0-99",
@@ -24,6 +36,8 @@ CHANNEL_RANGES = [
     "1200-1299",
 ]
 
+_LOG = logging.getLogger(__name__)
+
 
 def get_index_or_default(
     values: list[str] | tuple[str, ...],
@@ -31,7 +45,7 @@ def get_index_or_default(
     default_value: int,
     empty_value: str = "",
 ) -> int:
-    if empty_value is None or value == empty_value:
+    if empty_value is None or value == empty_value or value is None:
         return default_value
 
     try:
@@ -208,3 +222,273 @@ def name_validator(char: str, value: str) -> bool:
         return False
 
     return True
+
+
+class ChannelsListModel(TableViewModel[model.Channel]):
+    def __init__(self, radio_memory: model.RadioMemory) -> None:
+        tvc = TableViewColumn
+        super().__init__(
+            (
+                tvc("num", "Num", tk.E, 30),
+                tvc("freq", "Freq", tk.E, 80),
+                tvc("mode", "Mode", tk.CENTER, 25),
+                tvc("name", "Name", tk.W, 50),
+                tvc("af", "AF", tk.CENTER, 25),
+                tvc("att", "ATT", tk.CENTER, 25),
+                tvc("ts", "TS", tk.CENTER, 40),
+                tvc("duplex", "DUP", tk.CENTER, 25),
+                tvc("offset", "Offset", tk.E, 60),
+                tvc("skip", "Skip", tk.CENTER, 25),
+                tvc("vsc", "VSC", tk.CENTER, 25),
+                tvc("tone", "Tone", tk.CENTER, 30),
+                tvc("tsql", "TSQL", tk.E, 40),
+                tvc("dtsc", "DTSC", tk.E, 30),
+                tvc("polarity", "Polarity", tk.CENTER, 35),
+                tvc("bank", "Bank", tk.CENTER, 25),
+                tvc("bank_pos", "Bank pos", tk.W, 25),
+            )
+        )
+        self._radio_memory = radio_memory
+
+    def get_editor(
+        self,
+        row: int,
+        column: int,
+        value: str,
+        parent: TableView2[model.Channel],
+    ) -> tk.Widget | None:
+        coldef = self.columns[column]
+        iid = str(self.data[row].number)
+        chan = self.data[row]
+        _LOG.debug(
+            "get_editor: row=%d[%r], col=%d[%s], value=%r, chan=%r",
+            row,
+            iid,
+            column,
+            coldef.colid,
+            value,
+            chan,
+        )
+        match coldef.colid:
+            case "num":  # num
+                return None
+
+            case "af" | "att" | "vsc":
+                return CheckboxPopup(parent, iid, column, value)
+
+            case "mode":
+                return ComboboxPopup(parent, iid, column, value, model.MODES)
+
+            case "ts":
+                return ComboboxPopup(parent, iid, column, value, model.STEPS)
+
+            case "duplex":
+                return ComboboxPopup(
+                    parent, iid, column, value, model.DUPLEX_DIRS
+                )
+
+            case "skip":
+                return ComboboxPopup(parent, iid, column, value, model.SKIPS)
+
+            case "tone":
+                return ComboboxPopup(
+                    parent, iid, column, value, model.TONE_MODES
+                )
+
+            case "tsql":
+                if chan.tmode not in (1, 2):
+                    return None
+
+                return ComboboxPopup(
+                    parent, iid, column, value, model.CTCSS_TONES
+                )
+
+            case "dtsc":
+                if chan.tmode not in (3, 4):
+                    return None
+
+                return ComboboxPopup(
+                    parent, iid, column, value, model.DTCS_CODES
+                )
+
+            case "polarity":
+                if chan.tmode not in (3, 4):
+                    return None
+
+                return ComboboxPopup(
+                    parent, iid, column, value, model.POLARITY
+                )
+            case "offset":
+                if not chan.duplex:
+                    return None
+
+                return NumEntryPopup(
+                    parent, iid, column, value, min_val=0, max_val=159995
+                )
+
+            case "name":
+                return EntryPopup(parent, iid, column, value).with_validator(
+                    name_validator
+                )
+
+            case "bank":
+                return ComboboxPopup(
+                    parent, iid, column, value, list(model.BANK_NAMES)
+                )
+
+            case "bank_pos":
+                if chan.bank == model.BANK_NOT_SET:
+                    return None
+
+                return NumEntryPopup(parent, iid, column, value, max_val=99)
+
+            case "freq":
+                return NumEntryPopup(
+                    parent,
+                    iid,
+                    column,
+                    value,
+                    max_val=model.MAX_FREQUENCY // 1000,
+                )
+
+        return None
+
+    def update_cell(
+        self,
+        row: int,  # row
+        column: int,
+        value: str | None,  # new value
+    ) -> tuple[UpdateCellResult, model.Channel | None]:
+        chan = self.data[row]
+        _LOG.debug("update chan: %r", chan)
+
+        coldef = self.columns[column]
+        if (not chan.freq or chan.hide_channel) and coldef.colid != "freq":
+            return UpdateCellResult.NOOP, None
+
+        res = UpdateCellResult.UPDATE_ROW
+
+        match coldef.colid:
+            case "num":  # num
+                return UpdateCellResult.NOOP, None
+
+            case "freq":
+                chan.freq = (
+                    model.fix_frequency(int(value) * 1000) if value else 0
+                )
+                if chan.freq and chan.hide_channel:
+                    chan.hide_channel = False
+                    chan.mode = model.default_mode_for_freq(chan.freq)
+
+            case "mode":
+                chan.mode = model.MODES.index(value) if value else 0
+
+            case "name":
+                chan.name = model.fix_name(value or "")
+
+            case "af":
+                chan.af_filter = value == "yes"
+
+            case "att":
+                chan.attenuator = value == "yes"
+
+            case "ts":
+                chan.tuning_step = model.STEPS.index(value) if value else 0
+
+            case "duplex":
+                chan.duplex = model.DUPLEX_DIRS.index(value) if value else 0
+
+            case "offset":
+                chan.offset = int(value or 0) * 1000
+
+            case "skip":
+                chan.skip = model.SKIPS.index(value) if value else 0
+
+            case "tone":
+                chan.tmode = get_index_or_default(model.TONE_MODES, value, 0)
+
+            case "tsql":
+                chan.ctone = get_index_or_default(model.CTCSS_TONES, value, 63)
+
+            case "dtsc":
+                chan.dtsc = get_index_or_default(model.DTCS_CODES, value, 127)
+
+            case "polarity":
+                chan.polarity = get_index_or_default(model.POLARITY, value, 0)
+
+            case "vsc":
+                chan.vsc = value == "yes"
+
+            case "bank":
+                prev_bank = chan.bank
+                chan.bank = get_index_or_default(
+                    list(model.BANK_NAMES), value, model.BANK_NOT_SET
+                )
+                if chan.bank not in (prev_bank, model.BANK_NOT_SET):
+                    bank = self._radio_memory.get_bank(chan.bank)
+                    pos = bank.find_free_slot()
+                    chan.bank_pos = pos if pos is not None else 99
+
+            case "bank_pos":
+                bank_pos = 0
+                if chan.bank != model.BANK_NOT_SET:
+                    bank_pos = int(value or 0)
+                    bank = self._radio_memory.get_bank(chan.bank)
+                    if bank.channels[bank_pos] != chan.number:
+                        # selected slot is used by another channel
+                        if chan.number in bank.channels:
+                            # do not update
+                            bank_pos = chan.bank_pos
+                        else:
+                            # find unused next slot
+                            pos = bank.find_free_slot(bank_pos)
+                            if pos is None:
+                                # find first unused slot
+                                pos = bank.find_free_slot()
+
+                            if pos is not None:
+                                bank_pos = pos
+                            else:  # not found unused slot - replace
+                                res = UpdateCellResult.UPDATE_ALL
+
+                chan.bank_pos = bank_pos
+
+        _LOG.debug("new chan: %r", chan)
+        self._radio_memory.set_channel(chan)
+        return res, chan
+
+    def data2row(self, channel: model.Channel) -> TableViewModelRow:
+        if channel.hide_channel or not channel.freq:
+            return (str(channel.number),)
+
+        try:
+            bank = model.BANK_NAMES[channel.bank]
+            bank_pos = str(channel.bank_pos)
+        except IndexError:
+            bank = bank_pos = ""
+
+        return (
+            str(channel.number),
+            str(channel.freq // 1000),
+            model.MODES[channel.mode],
+            channel.name.rstrip(),
+            yes_no(channel.af_filter),
+            yes_no(channel.attenuator),
+            model.STEPS[channel.tuning_step],
+            model.DUPLEX_DIRS[channel.duplex],
+            str(channel.offset // 1000) if channel.duplex else "",
+            model.SKIPS[channel.skip],
+            yes_no(channel.vsc),
+            model.TONE_MODES[channel.tmode],
+            get_or_default(model.CTCSS_TONES, channel.ctone)
+            if channel.tmode in (1, 2)
+            else "",
+            get_or_default(model.DTCS_CODES, channel.dtsc)
+            if channel.tmode in (3, 4)
+            else "",
+            model.POLARITY[channel.polarity]
+            if channel.tmode in (3, 4)
+            else "",
+            bank,
+            bank_pos,
+        )

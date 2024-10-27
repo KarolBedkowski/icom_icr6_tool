@@ -11,6 +11,7 @@ import logging
 import tkinter as tk
 import typing as ty
 from contextlib import suppress
+from enum import IntEnum
 from tkinter import ttk
 
 _LOG = logging.getLogger(__name__)
@@ -160,6 +161,12 @@ T = ty.TypeVar("T")
 TableViewModelRow = list[str] | tuple[str, ...]
 
 
+class UpdateCellResult(IntEnum):
+    NOOP = 0
+    UPDATE_ROW = 1
+    UPDATE_ALL = 2
+
+
 class TableViewModel(abc.ABC, ty.Generic[T]):
     def __init__(
         self, cols: ty.Iterable[TableViewColumn] | None = None
@@ -182,7 +189,7 @@ class TableViewModel(abc.ABC, ty.Generic[T]):
         row: int,
         column: int,
         value: str | None,  # new value
-    ) -> T | None: ...
+    ) -> tuple[UpdateCellResult, T | None]: ...
 
     @abc.abstractmethod
     def data2row(self, row: T) -> TableViewModelRow: ...
@@ -342,9 +349,16 @@ class TableView2(ttk.Treeview, ty.Generic[T]):
             if old_value == value:
                 return
 
-        newval = self.model.update_cell(self.index(iid), column, value)
-        if newval is not None:
-            self.item(self.index(iid), values=self.model.data2row(newval))
+        match self.model.update_cell(self.index(iid), column, value):
+            case None, _:
+                return
+            case UpdateCellResult.UPDATE_ALL, _:
+                self.update_all()
+            case UpdateCellResult.UPDATE_ROW, None:
+                return
+            case UpdateCellResult.UPDATE_ROW, newval:
+                assert newval is not None
+                self.item(self.index(iid), values=self.model.data2row(newval))
 
     def update_all(self) -> None:
         self.delete(*self.get_children())
