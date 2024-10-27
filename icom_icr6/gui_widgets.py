@@ -378,10 +378,10 @@ class ComboboxPopup(ttk.Combobox):
         self.set(text)
         self.focus_force()
         self.bind("<Return>", self.on_return)
+        self.bind("<KP_Enter>", self.on_return)
         self.bind("<Escape>", lambda *_ignore: self.destroy())
 
     def on_return(self, _event: tk.Event | None) -> None:  # type: ignore
-        ic()
         self.master.update_cell(self.iid, self.column, self.get())
         self.destroy()
 
@@ -409,6 +409,7 @@ class EntryPopup(ttk.Entry):
         self.focus_force()
         self.selection_range(0, "end")
         self.bind("<Return>", self.on_return)
+        self.bind("<KP_Enter>", self.on_return)
         self.bind("<Control-a>", self._select_all)
         self.bind("<Escape>", lambda *_ignore: self.destroy())
 
@@ -453,6 +454,7 @@ class CheckboxPopup(ttk.Checkbutton):
         self.focus_force()
         self._var.set(text)
         self.bind("<Return>", self.on_return)
+        self.bind("<KP_Enter>", self.on_return)
         self.bind("<Escape>", lambda *_ignore: self.destroy())
 
     def on_return(self, _event: tk.Event | None) -> None:  # type: ignore
@@ -480,6 +482,9 @@ class NumEntryPopup(EntryPopup):
         self.with_validator(self._validator)
 
     def _validator(self, char: str, value: str) -> bool:
+        if value == "":
+            return True
+
         if char not in "01234567890":
             return False
 
