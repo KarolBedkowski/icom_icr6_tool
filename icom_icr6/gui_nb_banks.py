@@ -7,12 +7,15 @@
 import logging
 import tkinter as tk
 import typing as ty
+from contextlib import suppress
 from tkinter import messagebox, ttk
 
 from . import gui_model, model
 from .gui_widgets import (
+    NumEntryPopup,
+    TableView2,
     TableViewModelRow,
-    build_list,
+    UpdateCellResult,
     build_list_model,
     new_entry,
 )
@@ -29,6 +32,7 @@ class BanksPage(tk.Frame):
         self.columnconfigure(0, weight=1)
 
         self._bchan_number = tk.IntVar()
+        self._bank_number = tk.IntVar()
         self._bank_name = tk.StringVar()
         self._radio_memory = radio_memory
 
@@ -56,8 +60,6 @@ class BanksPage(tk.Frame):
 
     def set(self, radio_memory: model.RadioMemory) -> None:
         self._radio_memory = radio_memory
-        self._banks.selection_set(0)
-        self._banks.activate(0)
         self.__fill_banks()
 
     def _create_bank_fields(self, frame: tk.Frame) -> None:
@@ -65,7 +67,10 @@ class BanksPage(tk.Frame):
         fields.columnconfigure(0, weight=0)
         fields.columnconfigure(1, weight=1)
         fields.columnconfigure(2, weight=0)
-        new_entry(fields, 0, 0, "Bank name: ", self._bank_name)
+        validator = self.register(validate_bank_name)
+        new_entry(
+            fields, 0, 0, "Bank name: ", self._bank_name, validator=validator
+        )
         ttk.Button(fields, text="Update", command=self.__on_bank_update).grid(
             row=0, column=7, sticky=tk.E
         )
@@ -73,7 +78,9 @@ class BanksPage(tk.Frame):
         fields.grid(row=0, column=0, sticky=tk.N + tk.E + tk.W + tk.S, ipady=6)
 
     def _create_bank_channels_list(self, frame: tk.Frame) -> None:
-        self._tb_model = BankChannelsListModel(self._radio_memory)
+        self._tb_model = BankChannelsListModel(
+            self._radio_memory, self._bank_number
+        )
         ccframe, self._bank_content = build_list_model(frame, self._tb_model)
         ccframe.grid(
             row=1, column=0, sticky=tk.N + tk.S + tk.E + tk.W, ipady=6
@@ -104,6 +111,7 @@ class BanksPage(tk.Frame):
 
         bank = self._radio_memory.get_bank(selected_bank)
         self._bank_name.set(bank.name.rstrip())
+        self._bank_number.set(selected_bank)
 
         self._tb_model.data = [
             self._radio_memory.get_channel(channum)
@@ -167,6 +175,12 @@ class BanksPage(tk.Frame):
 
 
 class BankChannelsListModel(gui_model.ChannelsListModel):
+    def __init__(
+        self, radio_memory: model.RadioMemory, banknum: tk.IntVar
+    ) -> None:
+        super().__init__(radio_memory)
+        self._bank_number = banknum
+
     def _columns(self) -> ty.Iterable[gui_model.TableViewColumn]:
         tvc = gui_model.TableViewColumn
         return (
@@ -219,3 +233,76 @@ class BankChannelsListModel(gui_model.ChannelsListModel):
             if channel.tmode in (3, 4)
             else "",
         )
+
+    def get_editor(
+        self,
+        row: int,
+        column: int,
+        value: str,
+        parent: TableView2[model.Channel],
+    ) -> tk.Widget | None:
+        coldef = self.columns[column]
+
+        if coldef.colid != "chan":
+            return super().get_editor(row, column, value, parent)
+
+        return NumEntryPopup(
+            parent,
+            str(row),
+            column,
+            value,
+            max_val=model.NUM_CHANNELS,
+        )
+
+    def update_cell(
+        self,
+        row: int,  # row
+        column: int,
+        value: str | None,  # new value
+    ) -> tuple[UpdateCellResult, model.Channel | None]:
+        coldef = self.columns[column]
+        if coldef.colid != "chan":
+            return super().update_cell(row, column, value)
+
+        bank_num = self._bank_number.get()
+        bank = self._radio_memory.get_bank(bank_num)
+
+        if not value:
+            if channum := bank.channels[row]:
+                chan = self._radio_memory.get_channel(channum)
+                chan.clear_bank()
+                self._radio_memory.set_channel(chan)
+
+                return UpdateCellResult.UPDATE_ROW, chan
+
+            return UpdateCellResult.NOOP, None
+
+        channum = int(value)
+        assert 0 <= channum < model.NUM_CHANNELS
+        chan = self._radio_memory.get_channel(channum)
+
+        res = (
+            UpdateCellResult.UPDATE_ALL
+            if channum in bank.channels
+            else UpdateCellResult.UPDATE_ROW
+        )
+
+        chan.bank = bank_num
+        chan.bank_pos = row
+
+        self._radio_memory.set_channel(chan)
+        self.data[row] = chan
+
+        return res, chan
+
+
+def validate_bank_name(name: str | None) -> bool:
+    if not name:
+        return True
+
+    try:
+        model.validate_name(name)
+    except ValueError:
+        return False
+
+    return True
