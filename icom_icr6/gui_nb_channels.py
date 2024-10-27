@@ -130,17 +130,17 @@ class ChannelsListModel(TableViewModel[model.Channel]):
                 tvc("name", "Name", tk.W, 50),
                 tvc("af", "AF", tk.CENTER, 25),
                 tvc("att", "ATT", tk.CENTER, 25),
-                tvc("ts", "TS", tk.CENTER, 25),
+                tvc("ts", "TS", tk.CENTER, 40),
                 tvc("duplex", "DUP", tk.CENTER, 25),
-                tvc("offset", "Offset", tk.E, 70),
+                tvc("offset", "Offset", tk.E, 60),
                 tvc("skip", "Skip", tk.CENTER, 25),
                 tvc("vsc", "VSC", tk.CENTER, 25),
-                tvc("tone", "Tone", tk.CENTER, 25),
+                tvc("tone", "Tone", tk.CENTER, 30),
                 tvc("tsql", "TSQL", tk.E, 40),
-                tvc("dtsc", "DTSC", tk.E, 25),
-                tvc("polarity", "Polarity", tk.CENTER, 25),
+                tvc("dtsc", "DTSC", tk.E, 30),
+                tvc("polarity", "Polarity", tk.CENTER, 35),
                 tvc("bank", "Bank", tk.CENTER, 25),
-                tvc("bankpos", "Bank pos", tk.W, 25),
+                tvc("bank_pos", "Bank pos", tk.W, 25),
             )
         )
         self._radio_memory = radio_memory
@@ -213,12 +213,6 @@ class ChannelsListModel(TableViewModel[model.Channel]):
                 return ComboboxPopup(
                     parent, iid, column, value, model.POLARITY
                 )
-
-            case "bank":
-                return ComboboxPopup(
-                    parent, iid, column, value, list(model.BANK_NAMES)
-                )
-
             case "offset":
                 if not chan.duplex:
                     return None
@@ -231,6 +225,17 @@ class ChannelsListModel(TableViewModel[model.Channel]):
                 return EntryPopup(parent, iid, column, value).with_validator(
                     gui_model.name_validator
                 )
+
+            case "bank":
+                return ComboboxPopup(
+                    parent, iid, column, value, list(model.BANK_NAMES)
+                )
+
+            case "bank_pos":
+                if chan.bank == model.BANK_NOT_SET:
+                    return None
+
+                return NumEntryPopup(parent, iid, column, value, max_val=99)
 
             case "freq":
                 return NumEntryPopup(
@@ -316,12 +321,34 @@ class ChannelsListModel(TableViewModel[model.Channel]):
                 chan.vsc = value == "yes"
 
             case "bank":
+                prev_bank = chan.bank
                 chan.bank = gui_model.get_index_or_default(
                     list(model.BANK_NAMES), value, model.BANK_NOT_SET
                 )
+                if chan.bank not in (prev_bank, model.BANK_NOT_SET):
+                    bank = self._radio_memory.get_bank(chan.bank)
+                    pos = bank.find_free_slot()
+                    chan.bank_pos = pos if pos is not None else 99
 
             case "bank_pos":
-                chan.bank_pos = int(value or 0)
+                bank_pos = 0
+                if chan.bank != model.BANK_NOT_SET:
+                    bank_pos = int(value or 0)
+                    bank = self._radio_memory.get_bank(chan.bank)
+                    if bank.channels[bank_pos] != chan.number:
+                        # selected slot is used by another channel
+
+                        # find unused next slot
+                        pos = bank.find_free_slot(bank_pos)
+                        if pos is None:
+                            # find first unused slot
+                            pos = bank.find_free_slot()
+
+                        if pos is not None:
+                            bank_pos = pos
+                        # else: not found unused slot - replace
+
+                chan.bank_pos = bank_pos
 
         _LOG.debug("new chan: %r", chan)
         self._radio_memory.set_channel(chan)
