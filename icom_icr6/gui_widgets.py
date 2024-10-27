@@ -306,8 +306,10 @@ class TableView2(ttk.Treeview, ty.Generic[T]):
 
     def _on_double_click(self, event: tk.Event) -> None:  # type: ignore
         if self._entry_popup:
-            with suppress(Exception):
+            try:
                 self._entry_popup.on_return(None)
+            except:
+                self._entry_popup.destroy()
 
             self._entry_popup = None
 
@@ -337,8 +339,10 @@ class TableView2(ttk.Treeview, ty.Generic[T]):
 
     def _on_channel_select(self, _event: tk.Event) -> None:  # type: ignore
         if self._entry_popup:
-            with suppress(Exception):
+            try:
                 self._entry_popup.on_return(None)
+            except:
+                self._entry_popup.destroy()
 
             self._entry_popup = None
 
@@ -358,11 +362,14 @@ class TableView2(ttk.Treeview, ty.Generic[T]):
                 return
             case UpdateCellResult.UPDATE_ROW, newval:
                 assert newval is not None
-                self.item(self.index(iid), values=self.model.data2row(newval))
+                self.item(iid, values=self.model.data2row(newval))
 
     def update_all(self) -> None:
         self.delete(*self.get_children())
-        for row in self.model.get_rows():
+        for idx, row in enumerate(self.model.get_rows()):
+            if not row:
+                row = [str(idx)]
+
             self.insert(
                 parent="", index=tk.END, iid=row[0], text="", values=row
             )

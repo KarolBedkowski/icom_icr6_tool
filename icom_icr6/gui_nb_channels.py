@@ -97,8 +97,6 @@ class ChannelsPage(tk.Frame):
         else:
             return
 
-        self._channels_content.delete(*self._channels_content.get_children())
-
         range_start = selected_range * 100
         self._tb_model.data = [
             self._radio_memory.get_channel(idx)

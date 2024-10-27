@@ -6,6 +6,7 @@
 
 import logging
 import tkinter as tk
+import typing as ty
 
 from . import model
 from .gui_widgets import (
@@ -226,29 +227,33 @@ def name_validator(char: str, value: str) -> bool:
 
 class ChannelsListModel(TableViewModel[model.Channel]):
     def __init__(self, radio_memory: model.RadioMemory) -> None:
-        tvc = TableViewColumn
-        super().__init__(
-            (
-                tvc("num", "Num", tk.E, 30),
-                tvc("freq", "Freq", tk.E, 80),
-                tvc("mode", "Mode", tk.CENTER, 25),
-                tvc("name", "Name", tk.W, 50),
-                tvc("af", "AF", tk.CENTER, 25),
-                tvc("att", "ATT", tk.CENTER, 25),
-                tvc("ts", "TS", tk.CENTER, 40),
-                tvc("duplex", "DUP", tk.CENTER, 25),
-                tvc("offset", "Offset", tk.E, 60),
-                tvc("skip", "Skip", tk.CENTER, 25),
-                tvc("vsc", "VSC", tk.CENTER, 25),
-                tvc("tone", "Tone", tk.CENTER, 30),
-                tvc("tsql", "TSQL", tk.E, 40),
-                tvc("dtsc", "DTSC", tk.E, 30),
-                tvc("polarity", "Polarity", tk.CENTER, 35),
-                tvc("bank", "Bank", tk.CENTER, 25),
-                tvc("bank_pos", "Bank pos", tk.W, 25),
-            )
-        )
+        super().__init__(self._columns())
         self._radio_memory = radio_memory
+
+    def _columns(self) -> ty.Iterable[TableViewColumn]:
+        tvc = TableViewColumn
+        return (
+            tvc("num", "Num", tk.E, 30),
+            tvc("freq", "Freq", tk.E, 80),
+            tvc("mode", "Mode", tk.CENTER, 25),
+            tvc("name", "Name", tk.W, 50),
+            tvc("af", "AF", tk.CENTER, 25),
+            tvc("att", "ATT", tk.CENTER, 25),
+            tvc("ts", "TS", tk.CENTER, 40),
+            tvc("duplex", "DUP", tk.CENTER, 25),
+            tvc("offset", "Offset", tk.E, 60),
+            tvc("skip", "Skip", tk.CENTER, 25),
+            tvc("vsc", "VSC", tk.CENTER, 25),
+            tvc("tone", "Tone", tk.CENTER, 30),
+            tvc("tsql", "TSQL", tk.E, 40),
+            tvc("dtsc", "DTSC", tk.E, 30),
+            tvc("polarity", "Polarity", tk.CENTER, 35),
+            tvc("bank", "Bank", tk.CENTER, 25),
+            tvc("bank_pos", "Bank pos", tk.W, 25),
+        )
+
+    def _data2iid(self, chan: model.Channel) -> str:
+        return str(chan.number)
 
     def get_editor(
         self,
@@ -258,7 +263,11 @@ class ChannelsListModel(TableViewModel[model.Channel]):
         parent: TableView2[model.Channel],
     ) -> tk.Widget | None:
         coldef = self.columns[column]
-        iid = str(self.data[row].number)
+        data_row = self.data[row]
+        if not data_row:
+            return None
+
+        iid = self._data2iid(data_row)
         chan = self.data[row]
         _LOG.debug(
             "get_editor: row=%d[%r], col=%d[%s], value=%r, chan=%r",
@@ -452,6 +461,9 @@ class ChannelsListModel(TableViewModel[model.Channel]):
                                 res = UpdateCellResult.UPDATE_ALL
 
                 chan.bank_pos = bank_pos
+
+            case _:
+                return UpdateCellResult.NOOP, None
 
         _LOG.debug("new chan: %r", chan)
         self._radio_memory.set_channel(chan)
