@@ -60,6 +60,7 @@ class ChannelsPage(tk.Frame):
         self._channels_content.bind(
             "<<TreeviewSelect>>", self.__on_channel_select, add="+"
         )
+        self._channels_content.bind("<Delete>", self.__on_channel_delete)
 
     def __on_channel_select(self, _event: tk.Event) -> None:  # type: ignore
         sel = self._channels_content.selection()
@@ -70,7 +71,7 @@ class ChannelsPage(tk.Frame):
         chan = self._radio_memory.get_channel(chan_num)
         _LOG.debug("chan: %r", chan)
 
-    def __on_channel_delete(self) -> None:
+    def __on_channel_delete(self, _event: tk.Event) -> None:  # type: ignore
         sel = self._channels_content.selection()
         if not sel:
             return
