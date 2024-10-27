@@ -365,14 +365,18 @@ class TableView2(ttk.Treeview, ty.Generic[T]):
                 self.item(iid, values=self.model.data2row(newval))
 
     def update_all(self) -> None:
+        sel = self.selection()  # type: ignore
+
         self.delete(*self.get_children())
         for idx, row in enumerate(self.model.get_rows()):
-            if not row:
-                row = [str(idx)]
-
+            data = row if row else [str(idx)]
             self.insert(
-                parent="", index=tk.END, iid=row[0], text="", values=row
+                parent="", index=tk.END, iid=data[0], text="", values=data
             )
+
+        if sel:
+            with suppress(tk.TclError):
+                self.selection_set(sel[0])
 
 
 class ComboboxPopup(ttk.Combobox):
