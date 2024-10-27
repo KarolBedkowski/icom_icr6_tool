@@ -831,7 +831,7 @@ def validate_frequency(inp: str | int) -> bool:
     return True
 
 
-def valudate_name(name: str) -> None:
+def validate_name(name: str) -> None:
     if len(name) > 6:
         raise ValueError
 
