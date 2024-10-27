@@ -89,8 +89,17 @@ class App(tk.Frame):
         sl.bind("<<ListboxSelect>>", self.__fill_scan_link)
         pw.add(sl, weight=0)
 
-        self._scan_links_edges = tk.Listbox(pw, selectmode=tk.MULTIPLE)
-        pw.add(self._scan_links_edges, weight=1)
+        slf = tk.Frame(pw)
+        self._scan_links_edges = []
+        for idx in range(model.NUM_SCAN_EDGES):
+            var = tk.IntVar()
+            cb = tk.Checkbutton(
+                slf, text=str(idx), variable=var, onvalue=1, offvalue=0
+            )
+            cb.grid(row=idx, column=0, sticky=tk.W)
+            self._scan_links_edges.append((var, cb))
+
+        pw.add(slf, weight=1)
 
         return pw
 
@@ -137,41 +146,6 @@ class App(tk.Frame):
         self._nb_scan_edge.set(self._radio_memory)
         self.__fill_scan_links()
 
-    def __fill_scan_edges(self) -> None:
-        tree = self._scan_edges
-        tree.delete(*tree.get_children())
-
-        for idx in range(24):
-            se = self._radio_memory.get_scan_edge(idx)
-            if se.disabled or not se.start:
-                tree.insert(
-                    parent="",
-                    index=tk.END,
-                    iid=idx,
-                    text="",
-                    values=(str(idx), "", "", "", "", "", ""),
-                )
-                continue
-
-            tree.insert(
-                parent="",
-                index=tk.END,
-                iid=idx,
-                text="",
-                values=(
-                    str(idx),
-                    se.name,
-                    str(se.start // 1000),
-                    str(se.end // 1000),
-                    model.STEPS[se.ts],
-                    model.MODES[se.mode],
-                    se.human_attn(),
-                ),
-            )
-
-        tree.yview(0)
-        tree.xview(0)
-
     def __fill_scan_links(self) -> None:
         sls = self._scan_links
         sls.delete(0, sls.size())
@@ -185,9 +159,8 @@ class App(tk.Frame):
         if not sel_sl:
             return
 
-        slse = self._scan_links_edges
-        slse.delete(0, slse.size())
-        for idx in range(25):
+        sl = self._radio_memory.get_scan_link(sel_sl[0])
+        for idx, (var, cb) in enumerate(self._scan_links_edges):
             se = self._radio_memory.get_scan_edge(idx)
             if se.start:
                 sename = se.name or "-"
@@ -195,11 +168,8 @@ class App(tk.Frame):
             else:
                 name = str(idx)
 
-            slse.insert(tk.END, name)
-
-        sl = self._radio_memory.get_scan_link(sel_sl[0])
-        for edge in sl.edges:
-            slse.selection_set(edge)
+            cb["text"] = name
+            var.set(1 if idx in sl.edges else 0)
 
 
 def start_gui() -> None:
