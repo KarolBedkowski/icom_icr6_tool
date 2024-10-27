@@ -208,7 +208,12 @@ class BanksPage(tk.Frame):
         bank = self._radio_memory.get_bank(selected_bank)
         self._bank_name.set(bank.name.rstrip())
 
-        for idx, channel in enumerate(bank.channels):
+        for idx, channum in enumerate(bank.channels):
+            channel = (
+                self._radio_memory.get_channel(channum)
+                if channum is not None
+                else None
+            )
             if not channel or channel.hide_channel or not channel.freq:
                 bcont.insert(
                     parent="",

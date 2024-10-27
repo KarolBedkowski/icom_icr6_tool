@@ -4,6 +4,8 @@
 
 """ """
 
+from __future__ import annotations
+
 import binascii
 import logging
 import typing as ty
@@ -272,7 +274,6 @@ class Channel:
         self.bank_pos = 0
 
     def __str__(self) -> str:
-        ic(self)
         try:
             bank = f"{BANK_NAMES[self.bank]}/{self.bank_pos}"
         except IndexError:
@@ -307,7 +308,6 @@ class Channel:
 def channel_from_data(
     idx: int, data: bytes | list[int], cflags: bytes | list[int]
 ) -> Channel:
-    # ic(data)
     freq = ((data[2] & 0b00000011) << 16) | (data[1] << 8) | data[0]
     freq_flags = (data[2] & 0b11111100) >> 2
     unknowns = [
@@ -344,7 +344,7 @@ def channel_from_data(
     )
 
 
-def bool2bit(val: bool | int, mask: int):
+def bool2bit(val: bool | int, mask: int) -> int:
     return mask if val else 0
 
 
@@ -404,7 +404,14 @@ def channel_to_data(chan: Channel, data: list[int], cflags: list[int]) -> None:
 class Bank:
     idx: int
     name: str
-    channels: list[Channel | None]
+    channels: list[int | None]
+
+    def find_free_slot(self, start: int = 0) -> int | None:
+        for idx in range(start, len(self.channels)):
+            if self.channels[idx] is None:
+                return idx
+
+        return None
 
 
 def bank_from_data(idx: int, data: bytes | list[int]) -> Bank:
@@ -435,7 +442,7 @@ def scan_link_from_data(idx: int, data: list[int]) -> ScanLink:
 
 
 def scan_link_to_data(sl: ScanLink, data: list[int]) -> None:
-    data[0:6] = sl.name[:6].lujust(6).encode()
+    data[0:6] = sl.name[:6].ljust(6).encode()
 
 
 def scan_link_edges_from_data(data: list[int]) -> list[int]:
@@ -613,6 +620,7 @@ class RadioMemory:
 
         chan = channel_from_data(idx, data, cflags)
         self._cache_channels[idx] = chan
+
         return chan
 
     def set_channel(self, chan: Channel) -> None:
@@ -662,10 +670,9 @@ class RadioMemory:
         # TODO: confilicts / doubles
         for chan in self._get_active_channels():
             if chan.bank == idx:
-                bank.channels[chan.bank_pos] = chan
+                bank.channels[chan.bank_pos] = chan.number
 
         self._cache_banks[idx] = bank
-
         return bank
 
     def set_bank(self, bank: Bank) -> None:
