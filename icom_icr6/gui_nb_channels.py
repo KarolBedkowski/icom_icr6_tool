@@ -253,6 +253,9 @@ class ChannelsListModel(TableViewModel[model.Channel]):
         _LOG.debug("update chan: %r", chan)
 
         coldef = self.columns[column]
+        if (not chan.freq or chan.hide_channel) and coldef.colid != "freq":
+            return None
+
         match coldef.colid:
             case "num":  # num
                 return None
