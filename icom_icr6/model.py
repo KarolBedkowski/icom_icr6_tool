@@ -475,9 +475,11 @@ def scan_link_edges_to_data(edges: list[int], data: list[int]) -> None:
 
 @dataclass
 class ScanEdge:
+    # TODO: vcs?
     idx: int
     start: int
     end: int
+    # TODO: check
     disabled: int
     mode: int
     ts: int
@@ -494,6 +496,10 @@ class ScanEdge:
                 return "-"
 
         return str(self.attn)
+
+    def delete(self) -> None:
+        self.start = self.end = 0
+        self.disabled = True
 
 
 def scan_edge_from_data(idx: int, data: list[int]) -> ScanEdge:
@@ -649,6 +655,15 @@ class RadioMemory:
         data = self.mem[start : start + 16]
 
         return scan_edge_from_data(idx, data)
+
+    def set_scan_edge(self, se: ScanEdge) -> None:
+        idx = se.idx
+        start = 0x5DC0 + idx * 16
+        data = self.mem[start : start + 16]
+
+        scan_edges_to_data(se, data)
+
+        self.mem[start : start + 16] = data
 
     def _get_active_channels(self) -> ty.Iterable[Channel]:
         for cidx in range(NUM_CHANNELS):

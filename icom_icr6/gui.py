@@ -10,7 +10,14 @@ import typing as ty
 from pathlib import Path
 from tkinter import filedialog, ttk
 
-from . import gui_model, gui_nb_banks, gui_nb_channels, io, model
+from . import (
+    gui_model,
+    gui_nb_banks,
+    gui_nb_channels,
+    gui_nb_scan_edge,
+    io,
+    model,
+)
 from .gui_widgets import build_list
 
 _ty = ty
@@ -69,17 +76,10 @@ class App(tk.Frame):
         return self._nb_banks
 
     def __create_nb_scan_edge(self) -> tk.Frame:
-        columns = [
-            ("no", "No", tk.E, 30),
-            ("name", "name", tk.W, 30),
-            ("start", "Start", tk.E, 30),
-            ("end", "End", tk.E, 30),
-            ("ts", "TS", tk.CENTER, 30),
-            ("mode", "Mode", tk.CENTER, 30),
-            ("att", "ATT", tk.CENTER, 30),
-        ]
-        frame, self._scan_edges = build_list(self, columns)
-        return frame
+        self._nb_scan_edge = gui_nb_scan_edge.ScanEdgePage(
+            self, self._radio_memory
+        )
+        return self._nb_scan_edge
 
     def __create_nb_scan_links(self) -> ttk.PanedWindow:
         pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
@@ -131,9 +131,10 @@ class App(tk.Frame):
         self.focus_set()
 
     def __fill_widgets(self) -> None:
+        # TODO: remove
         self._nb_channels.set(self._radio_memory)
         self._nb_banks.set(self._radio_memory)
-        self.__fill_scan_edges()
+        self._nb_scan_edge.set(self._radio_memory)
         self.__fill_scan_links()
 
     def __fill_scan_edges(self) -> None:
