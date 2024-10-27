@@ -111,7 +111,7 @@ class App(tk.Frame):
         self.focus_set()
 
     def load_icf(self, file: Path) -> None:
-        self._radio_memory = io.load_icf_file(file)
+        self._radio_memory.update_from(io.load_icf_file(file))
         self._last_file = file
         self.__fill_widgets()
 

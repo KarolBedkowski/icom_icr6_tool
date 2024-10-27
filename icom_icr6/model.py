@@ -569,6 +569,14 @@ class RadioMemory:
         self._cache_channels: dict[int, Channel] = {}
         self._cache_banks: dict[int, Bank] = {}
 
+    def reset(self) -> None:
+        self._cache_banks.clear()
+        self._cache_channels.clear()
+
+    def update_from(self, rm: RadioMemory) -> None:
+        self.mem = rm.mem
+        self.reset()
+
     def update(self, addr: int, length: int, data: bytes) -> None:
         assert len(data) == length
         self.mem[addr : addr + length] = data
