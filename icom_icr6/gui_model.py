@@ -467,6 +467,7 @@ class ChannelsListModel(TableViewModel[model.Channel]):
 
         _LOG.debug("new chan: %r", chan)
         self._radio_memory.set_channel(chan)
+        self.data[row] = chan
         return res, chan
 
     def data2row(self, channel: model.Channel) -> TableViewModelRow:

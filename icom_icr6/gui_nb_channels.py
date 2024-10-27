@@ -46,8 +46,6 @@ class ChannelsPage(tk.Frame):
 
     def set(self, radio_memory: model.RadioMemory) -> None:
         self._radio_memory = radio_memory
-        self._channel_ranges.activate(0)
-        self._channel_ranges.selection_set(0)
 
     def _create_channel_list(self, frame: tk.Frame) -> None:
         self._tb_model = gui_model.ChannelsListModel(self._radio_memory)

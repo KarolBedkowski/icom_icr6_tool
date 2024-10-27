@@ -403,6 +403,7 @@ def channel_to_data(chan: Channel, data: list[int], cflags: list[int]) -> None:
 @dataclass
 class Bank:
     idx: int
+    # 6 characters
     name: str
     channels: list[int | None]
 
