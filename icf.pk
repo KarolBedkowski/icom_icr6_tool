@@ -155,14 +155,15 @@ struct
 
     ICF_channel_flag[1300] channels_flag @ 0x5f80#B; // - 0x69A7 = 2600B
 
-    // 0x69A8 - 0x68CF = 552B unknown
-    bytes[552] unknown2  @ 0x69A8#B;
-    
-    // 0x6BD0 - 0x6C0F = 63B
-    bytes[63] settings @ 0x6A70#B;
+    bytes[136] unknown2  @ 0x69A8#B; // - 0x6A2F = 137B unknown
 
-    // 0x6C10 - 0x6CFF = 240B unknown
-    bytes[240] unknown3 @ 0x6C10#B;
+    bytes[200] aw_channels_pos @ 0x6A30#B; // - 0x6Af7 = 200B  
+    
+    bytes[216] unknown2a  @ 0x6AF8#B; // - 0x6BCF = 216B unknown
+
+    bytes[63] settings @ 0x6BD0#B; // - 0x6C0F = 63B
+
+    bytes[240] unknown3 @ 0x6C10#B; // - 0x6CFF = 240B unknown
 
     char[16] comment @ 0x6D00#B; // - 0x6D0F = 16B
 
@@ -174,6 +175,7 @@ struct
 
     // 0x6C54 - 0x6E4F = 508B unknown
     bytes[508] unknown4 @ 0x6C54#B;
+
 
     char[16] footer = "IcomCloneFormat3" @ 0X6E50#B;
 };

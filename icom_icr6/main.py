@@ -71,7 +71,7 @@ def main_print_aw_channels() -> None:
     mem = io.load_icf_file(Path(sys.argv[2]))
 
     print("Autowrite channels")
-    for channel in mem.get_autowrite_channels():
+    for channel in sorted(mem.get_autowrite_channels()):
         print(channel, channel)
 
 
@@ -124,7 +124,7 @@ Command:
    write_mem <icf file> [<raw file>]
    clone_from_radio <icf file>
    radio_info
-   autowrite_channels <icf file>
+   autowrite <icf file>
 """)
 
 

@@ -305,6 +305,9 @@ class Channel:
             f"raws={binascii.hexlify(self.raw)!r}"
         )
 
+    def __lt__(self, other):
+        return self.number < other.number
+
 
 def channel_from_data(
     idx: int, data: bytes | list[int], cflags: bytes | list[int] | None
@@ -657,16 +660,15 @@ class RadioMemory:
         self.mem[cflags_start : cflags_start + 2] = cflags
 
     def get_autowrite_channels(self) -> ty.Iterable[Channel]:
-        # TODO: how to detect valid channels?
-        # somewhere is positon
-        num = 0
         for idx in range(NUM_AUTOWRITE_CHANNELS):
             start = idx * 16 + 0x5140
             data = self.mem[start : start + 16]
             chan = channel_from_data(idx, data, None)
-            if not chan.unknowns[1]:
-                chan.number = num
-                num += 1
+
+            # chan pos
+            # TODO: CHECK !!!!
+            if (pos := self.mem[idx + 0x6A30]) < NUM_AUTOWRITE_CHANNELS:
+                chan.number = pos
                 yield chan
 
     def get_scan_edge(self, idx: int) -> ScanEdge:

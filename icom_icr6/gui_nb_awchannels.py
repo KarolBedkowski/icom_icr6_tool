@@ -51,7 +51,11 @@ class AutoWriteChannelsPage(tk.Frame):
         )
 
     def __fill_channels(self, event: tk.Event | None) -> None:  # type: ignore
-        self._tb_model.data = list(self._radio_memory.get_autowrite_channels())
+        data = sorted(self._radio_memory.get_autowrite_channels())
+        for idx, ch in enumerate(data):
+            ch.number = idx
+
+        self._tb_model.data = data
         self._channels_content.update_all()
 
         if event is not None:
