@@ -178,6 +178,13 @@ class ScanEdgeListModel(TableViewModel[model.ScanEdge]):
 
         res = UpdateCellResult.UPDATE_ROW
 
+        if (not se.start or not se.end) and coldef.colid not in (
+            "start",
+            "end",
+        ):
+            # do not allow edit other fields if there is no start and end
+            return UpdateCellResult.NOOP, None
+
         match coldef.colid:
             case "num":  # num
                 return UpdateCellResult.NOOP, None
@@ -216,6 +223,14 @@ class ScanEdgeListModel(TableViewModel[model.ScanEdge]):
         return res, se
 
     def data2row(self, se: model.ScanEdge) -> TableViewModelRow:
+        if not se.start or not se.end:
+            return (
+                str(se.idx),
+                se.name.rstrip(),
+                str(se.start // 1000),
+                str(se.end // 1000),
+            )
+
         return (
             str(se.idx),
             se.name.rstrip(),

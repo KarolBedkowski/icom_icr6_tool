@@ -479,7 +479,7 @@ class ScanEdge:
     idx: int
     start: int
     end: int
-    # TODO: check
+    # TODO: check - always False
     disabled: int
     mode: int
     ts: int
