@@ -25,6 +25,7 @@ NUM_CHANNELS: ty.Final[int] = 1300
 NUM_BANKS: ty.Final[int] = 22
 NUM_SCAN_EDGES: ty.Final[int] = 25
 NUM_SCAN_LINKS: ty.Final[int] = 10
+NUM_AUTOWRITE_CHANNELS: ty.Final[int] = 200
 NAME_LEN: ty.Final[int] = 6
 
 MIN_FREQUENCY: ty.Final[int] = 100_000
@@ -280,7 +281,7 @@ class Channel:
             bank = f"{self.bank}/{self.bank_pos}"
 
         return (
-            "Channel {self.number}: "
+            f"Channel {self.number}: "
             f"f={self.freq}, "
             f"ff={self.freq_flags}, "
             f"af={self.af_filter}, "
@@ -306,16 +307,24 @@ class Channel:
 
 
 def channel_from_data(
-    idx: int, data: bytes | list[int], cflags: bytes | list[int]
+    idx: int, data: bytes | list[int], cflags: bytes | list[int] | None
 ) -> Channel:
     freq = ((data[2] & 0b00000011) << 16) | (data[1] << 8) | data[0]
     freq_flags = (data[2] & 0b11111100) >> 2
     unknowns = [
         data[4] & 0b11000000,
-        data[4] & 0b00001000,
+        data[4] & 0b00001000,  # TODO: flag "is channel valid"?
         data[7] & 0b11111110,
         data[10] & 0b01111000,
     ]
+
+    if cflags:
+        hide_channel = cflags[0] & 0b10000000
+        skip = (cflags[0] & 0b01100000) >> 5
+        bank = cflags[0] & 0b00011111  # TODO: verify
+        bank_pos = cflags[1]  # TODO: verify
+    else:
+        hide_channel = skip = bank = bank_pos = 0
 
     return Channel(
         number=idx,
@@ -335,10 +344,10 @@ def channel_from_data(
         vsc=bool(data[10] & 0b00000100),
         canceller=bool(data[10] & 0b00000011),
         name=decode_name(data[11:16]),
-        hide_channel=bool(cflags[0] & 0b10000000),
-        skip=(cflags[0] & 0b01100000) >> 5,
-        bank=(cflags[0] & 0b00011111),  # TODO: verify
-        bank_pos=cflags[1],  # TODO: verify
+        hide_channel=bool(hide_channel),
+        skip=skip,
+        bank=bank,
+        bank_pos=bank_pos,
         unknowns=unknowns,
         raw=bytes(data),
     )
@@ -646,6 +655,19 @@ class RadioMemory:
         channel_to_data(chan, data, cflags)
         self.mem[start : start + 16] = data
         self.mem[cflags_start : cflags_start + 2] = cflags
+
+    def get_autowrite_channels(self) -> ty.Iterable[Channel]:
+        # TODO: how to detect valid channels?
+        # somewhere is positon
+        num = 0
+        for idx in range(NUM_AUTOWRITE_CHANNELS):
+            start = idx * 16 + 0x5140
+            data = self.mem[start : start + 16]
+            chan = channel_from_data(idx, data, None)
+            if not chan.unknowns[1]:
+                chan.number = num
+                num += 1
+                yield chan
 
     def get_scan_edge(self, idx: int) -> ScanEdge:
         if idx < 0 or idx > NUM_SCAN_EDGES - 1:

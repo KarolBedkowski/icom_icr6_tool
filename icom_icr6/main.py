@@ -13,7 +13,7 @@ from pathlib import Path
 
 import icecream
 
-from . import gui, io
+from . import gui, io, model
 
 icecream.install()
 
@@ -61,6 +61,18 @@ def main_print_channels() -> None:
         ch = mem.get_channel(channel)
         if not ch.hide_channel or not ch.freq or hidden:
             print(channel, ch)
+
+
+def main_print_aw_channels() -> None:
+    if len(sys.argv) < 3:
+        print("file name required")
+        return
+
+    mem = io.load_icf_file(Path(sys.argv[2]))
+
+    print("Autowrite channels")
+    for channel in mem.get_autowrite_channels():
+        print(channel, channel)
 
 
 def main_print_banks() -> None:
@@ -112,6 +124,7 @@ Command:
    write_mem <icf file> [<raw file>]
    clone_from_radio <icf file>
    radio_info
+   autowrite_channels <icf file>
 """)
 
 
@@ -131,6 +144,8 @@ def main() -> None:
             main_write_mem_raw()
         case "clone_from_radio":
             main_clone_from_radio()
+        case "autowrite":
+            main_print_aw_channels()
         case "radio_info":
             main_radio_info()
         case _:

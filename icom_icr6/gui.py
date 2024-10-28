@@ -12,6 +12,7 @@ from tkinter import filedialog, ttk
 
 from . import (
     gui_model,
+    gui_nb_awchannels,
     gui_nb_banks,
     gui_nb_channels,
     gui_nb_scan_edge,
@@ -40,6 +41,7 @@ class App(tk.Frame):
         self._ntb.add(self.__create_nb_banks(), text="Banks")
         self._ntb.add(self.__create_nb_scan_edge(), text="Scan Edge")
         self._ntb.add(self.__create_nb_scan_links(), text="Scan Link")
+        self._ntb.add(self.__create_nb_awchannels(), text="Autowrite channels")
 
         self._ntb.pack(fill="both", expand=1)
 
@@ -84,17 +86,21 @@ class App(tk.Frame):
     def __create_nb_scan_links(self) -> ttk.PanedWindow:
         pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
         sl = self._scan_links = tk.Listbox(pw, selectmode=tk.SINGLE)
-        self.__fill_scan_links()
 
         sl.bind("<<ListboxSelect>>", self.__fill_scan_link)
         pw.add(sl, weight=0)
 
-        slf = tk.Frame(pw)
+        slf = tk.Frame(pw, borderwidth=6)
         self._scan_links_edges = []
         for idx in range(model.NUM_SCAN_EDGES):
             var = tk.IntVar()
             cb = tk.Checkbutton(
-                slf, text=str(idx), variable=var, onvalue=1, offvalue=0
+                slf,
+                text=str(idx),
+                variable=var,
+                onvalue=1,
+                offvalue=0,
+                state="disabled",
             )
             cb.grid(row=idx, column=0, sticky=tk.W)
             self._scan_links_edges.append((var, cb))
@@ -102,6 +108,12 @@ class App(tk.Frame):
         pw.add(slf, weight=1)
 
         return pw
+
+    def __create_nb_awchannels(self) -> tk.Widget:
+        self._nb_aw_channels = gui_nb_awchannels.AutoWriteChannelsPage(
+            self, self._radio_memory
+        )
+        return self._nb_aw_channels
 
     def __about_handler(self) -> None:
         pass
@@ -145,6 +157,7 @@ class App(tk.Frame):
         self._nb_banks.set(self._radio_memory)
         self._nb_scan_edge.set(self._radio_memory)
         self.__fill_scan_links()
+        self._nb_aw_channels.set(self._radio_memory)
 
     def __fill_scan_links(self) -> None:
         sls = self._scan_links
@@ -169,6 +182,7 @@ class App(tk.Frame):
                 name = str(idx)
 
             cb["text"] = name
+            cb["state"] = "normal"
             var.set(1 if idx in sl.edges else 0)
 
 
