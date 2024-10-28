@@ -715,6 +715,9 @@ class RadioMemory:
         return sl
 
 
+# list of valid characters
+VALID_CHAR = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789()*+-./:= "
+# list of coded characters; ^ is invalid character
 CODED_CHRS: ty.Final[str] = (
     " ^^^^^^^()*+^-./0123456789:^^=^^^ABCDEFGHIJKLMNOPQRSTUVWXYZ^^^^^"
 )
@@ -750,7 +753,7 @@ def decode_name(inp: list[int] | bytes) -> str:
 def encode_name(inp: str) -> list[int]:
     inp = inp[:NAME_LEN].upper().ljust(NAME_LEN)
 
-    iic = [CODED_CHRS.index(x) for x in inp]
+    iic = [0 if x == "^" else CODED_CHRS.index(x) for x in inp]
     return [
         (iic[0] & 0b00111100) >> 2,  # padding
         ((iic[0] & 0b00000011) << 6) | (iic[1] & 0b00111111),
@@ -851,7 +854,7 @@ def validate_name(name: str) -> None:
     if len(name) > 6:
         raise ValueError
 
-    if any(i not in CODED_CHRS for i in name.upper()):
+    if any(i not in VALID_CHAR for i in name.upper()):
         raise ValueError
 
 
@@ -890,5 +893,5 @@ def fix_name(name: str) -> str:
     name = (
         unicodedata.normalize("NFKD", name).encode("ascii", "replace").decode()
     )
-    name = "".join(c for c in name if c in CODED_CHRS)
+    name = "".join(c for c in name if c in VALID_CHAR)
     return name[:6]

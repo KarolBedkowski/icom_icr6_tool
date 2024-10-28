@@ -217,7 +217,7 @@ def name_validator(char: str, value: str) -> bool:
     if not value:
         return True
 
-    if char.upper() not in model.CODED_CHRS:
+    if char.upper() not in model.VALID_CHAR:
         return False
 
     try:
