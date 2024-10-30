@@ -564,14 +564,15 @@ class RadioSettings:
     func_dial_step: int
     key_beep: bool
     beep_level: int
-    back_light: int
+    backlight: int
     power_save: bool
     am_ant: int
     fm_ant: int
     civ_address: int
     civ_baud_rate: int
     civ_transceive: bool
-    dial_function: bool
+    # 0-1
+    dial_function: int
     mem_display_type: int
     program_skip_scan: bool
     # Y -> Z
@@ -581,6 +582,21 @@ class RadioSettings:
     # 0 -6
     resume_timer: int
     stop_beep: bool
+    set_expand: bool
+    # 0-3
+    key_lock: int
+    dial_speed_up: bool
+    # 0=push, 1=hold
+    monitor: int
+    # 0 - 6
+    auto_power_off: int
+    # 0-4 -> 1-5
+    lcd_contrast: int
+    af_filer_fm: bool
+    af_filer_wfm: bool
+    af_filer_am: bool
+    # 0-1
+    charging_type: int
 
 
 def settings_from_data(data: bytes | list[int]) -> RadioSettings:
@@ -588,14 +604,14 @@ def settings_from_data(data: bytes | list[int]) -> RadioSettings:
         func_dial_step=data[13] & 0b00000011,
         key_beep=bool(data[15] & 1),
         beep_level=data[16] & 0b00111111,
-        back_light=data[17] & 0b00000011,
+        backlight=data[17] & 0b00000011,
         power_save=bool(data[18] & 1),
         am_ant=data[19] & 1,
         fm_ant=data[20] & 1,
         civ_address=data[34],
         civ_baud_rate=data[35] & 0b00000111,
         civ_transceive=bool(data[36] & 1),
-        dial_function=bool(data[52] & 0b00010000),
+        dial_function=(data[52] & 0b00010000) >> 4,
         mem_display_type=data[52] & 0b00000011,
         program_skip_scan=bool(data[53] & 0b00001000),
         bank_links=((data[62] & 0b00111111) << 16)
@@ -604,6 +620,16 @@ def settings_from_data(data: bytes | list[int]) -> RadioSettings:
         pause_timer=data[26] & 0b00001111,
         resume_timer=data[27] & 0b00000111,
         stop_beep=bool(data[28] & 1),
+        set_expand=bool(data[21] & 1),
+        key_lock=data[22] & 0b00000011,
+        dial_speed_up=bool(data[23] & 1),
+        monitor=data[24] & 1,
+        auto_power_off=data[25] & 0b00000111,
+        lcd_contrast=data[29] & 0b00000111,
+        af_filer_fm=bool(data[31] & 1),
+        af_filer_wfm=bool(data[32] & 1),
+        af_filer_am=bool(data[33] & 1),
+        charging_type=data[37] & 1,
     )
 
 

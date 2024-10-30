@@ -236,7 +236,7 @@ types:
       # @17
       - id: unknown4a
         type: b6
-      - id: back_light
+      - id: backlight
         type: b2
 
       # @18
@@ -258,8 +258,34 @@ types:
         type: b1
 
       # @21
+      - id: unknown7a
+        type: b7
+      - id: set_expand
+        type: b1
+
+      # @22
+      - id: unknown7b
+        type: b5
+      - id: key_lock
+        type: b2
+
+      # @23
+      - id: unknown7c
+        type: b7
+      - id: dial_speed_up
+        type: b1
+
+      # @24
+      - id: unknown7d
+        type: b7
+      - id: monitor
+        type: b1
+
+      # @25
       - id: unknown8
-        size: 5
+        type: b5
+      - id: auto_power_off
+        type: b3
 
       # @26
       - id: unknown8b
@@ -281,7 +307,31 @@ types:
 
       # @29
       - id: unknown8a
-        size: 6
+        type: b5
+      - id: lcd_contrast
+        type: b3
+
+      # @30
+      - id: unknown8e
+        size: 1
+
+      # @31
+      - id: unknown8f
+        type: b7
+      - id: af_filer_fm
+        type: b1
+
+      # @32
+      - id: unknown8f1
+        type: b7
+      - id: af_filer_wfm
+        type: b1
+
+      # @33
+      - id: unknown8g
+        type: b7
+      - id: af_filer_am
+        type: b1
 
       # @34
       - id: civ_address
@@ -300,8 +350,14 @@ types:
         type: b1
 
       # @37
+      - id: unknown11a
+        type: b7
+      - id: charging_type
+        type: b1
+
+      # @38
       - id: unknown11
-        size: 15
+        size: 14
 
       # @52
       - id: unknown12
