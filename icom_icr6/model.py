@@ -560,33 +560,51 @@ def scan_edges_to_data(se: ScanEdge, data: list[int]) -> None:
 
 
 @dataclass
-class RarioSettings:
-    unk1: list[int]  # 13
-    unk13: int
+class RadioSettings:
     func_dial_step: int
-    unk14: int
-    unk15: int
     key_beep: bool
-    unk16: int
     beep_level: int
-    unk17: int
     back_light: int
-    unk18: int
     power_save: bool
-    unk19: int
     am_ant: int
-    unk20: int
     fm_ant: int
-    unk21: list[int]  # 13
     civ_address: int
-    unk35: int
     civ_baud_rate: int
-    unk37: list[int]  # 15
-    unk52: int
+    civ_transceive: bool
     dial_function: bool
-    unk52m: int
     mem_display_type: int
-    unk54: list[int]  # 11
+    program_skip_scan: bool
+    # Y -> Z
+    bank_links: int
+    # 0-10
+    pause_timer: int
+    # 0 -6
+    resume_timer: int
+    stop_beep: bool
+
+
+def settings_from_data(data: bytes | list[int]) -> RadioSettings:
+    return RadioSettings(
+        func_dial_step=data[13] & 0b00000011,
+        key_beep=bool(data[15] & 1),
+        beep_level=data[16] & 0b00111111,
+        back_light=data[17] & 0b00000011,
+        power_save=bool(data[18] & 1),
+        am_ant=data[19] & 1,
+        fm_ant=data[20] & 1,
+        civ_address=data[34],
+        civ_baud_rate=data[35] & 0b00000111,
+        civ_transceive=bool(data[36] & 1),
+        dial_function=bool(data[52] & 0b00010000),
+        mem_display_type=data[52] & 0b00000011,
+        program_skip_scan=bool(data[53] & 0b00001000),
+        bank_links=((data[62] & 0b00111111) << 16)
+        | (data[61] << 8)
+        | data[60],
+        pause_timer=data[26] & 0b00001111,
+        resume_timer=data[27] & 0b00000111,
+        stop_beep=bool(data[28] & 1),
+    )
 
 
 class RadioMemory:
@@ -737,6 +755,10 @@ class RadioMemory:
         sl.edges = scan_link_edges_from_data(mdata)
 
         return sl
+
+    def get_settings(self) -> RadioSettings:
+        data = self.mem[0x6BD0 : 0x6BD0 + 64]
+        return settings_from_data(data)
 
 
 # list of valid characters

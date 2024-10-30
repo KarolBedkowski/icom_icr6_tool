@@ -115,6 +115,18 @@ def main_write_mem_raw() -> None:
     io.save_raw_memory(dst, mem)
 
 
+def main_print_settings() -> None:
+    if len(sys.argv) < 3:
+        print("file name required")
+        return
+
+    file = Path(sys.argv[2])
+    mem = io.load_icf_file(file)
+
+    print("Settings")
+    print(repr(mem.get_settings()))
+
+
 def main_help() -> None:
     print(f"""{sys.argv[0]} <command>
 Command:
@@ -125,6 +137,7 @@ Command:
    clone_from_radio <icf file>
    radio_info
    autowrite <icf file>
+   settings <icf file>
 """)
 
 
@@ -148,6 +161,8 @@ def main() -> None:
             main_print_aw_channels()
         case "radio_info":
             main_radio_info()
+        case "settings":
+            main_print_settings()
         case _:
             main_help()
 

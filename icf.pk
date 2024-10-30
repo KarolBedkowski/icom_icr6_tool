@@ -86,6 +86,7 @@ struct
 type ICF_scan_edge =
 struct
 {
+    //@0
     uint<32> start; // l-h
     uint<32> end; // l-h
 
@@ -95,7 +96,7 @@ struct
     uint<4> ts;
 
     //@9
-    uint<8> unknown1;
+    uint<2> unknown1;
     uint<2> attenuator;
     uint<4> unknown2;
 
@@ -113,7 +114,7 @@ struct
 type ICF_bank_name =
 struct
 {
-    char[5] name;
+    char[6] name;
     byte[2] padding;
 
     method _print_name = void:
@@ -125,7 +126,7 @@ struct
 type ICF_scan_link_name =
 struct
 {
-    char[5] name;
+    char[6] name;
     byte[2] padding;
 
     method _print_name = void:
@@ -161,21 +162,24 @@ struct
     
     bytes[216] unknown2a  @ 0x6AF8#B; // - 0x6BCF = 216B unknown
 
-    bytes[63] settings @ 0x6BD0#B; // - 0x6C0F = 63B
+    bytes[64] settings @ 0x6BD0#B; // - 0x6C0F = 64B
 
-    bytes[240] unknown3 @ 0x6C10#B; // - 0x6CFF = 240B unknown
+    bytes[28] unknown3 @ 0x6C10#B; // - 0x6C2B = 28B unknown
+    
+    ICF_scan_link[10] @ 0x6C2C#B;  // - 0x6C53 = 40B
+    
+    bytes[172] unknown3a @ 0x6C54#B; // - 0x6CFF = 172B unknown
 
     char[16] comment @ 0x6D00#B; // - 0x6D0F = 16B
 
-    ICF_bank_name[22] @ 0x6D10#B; // - 0x6DBF = 22B
+    ICF_bank_name[22] @ 0x6D10#B; // - 0x6DBF = 176B
 
-    ICF_scan_link_name[10] @ 0x6DC0#B; // - 0x6E0F = 10B
+    ICF_scan_link_name[10] @ 0x6DC0#B; // - 0x6E0F = 80B
 
-    ICF_scan_link[10] @ 0x6C2C#B;  // - 0x6C53 = 40B
 
-    // 0x6C54 - 0x6E4F = 508B unknown
-    bytes[508] unknown4 @ 0x6C54#B;
 
+    // 0x6e10 to 0x6e4f = 63B unknown
+    bytes[64] unknown4 @ 0x6C54#B;
 
     char[16] footer = "IcomCloneFormat3" @ 0X6E50#B;
 };
