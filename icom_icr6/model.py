@@ -220,6 +220,33 @@ DTCS_CODES = [
     "",
 ]
 
+SETT_FUNC_DIAL_STEP = ["100kHz", "1MHz", "10MHz"]
+SETT_DIAL_FUNCTION = ["Tuning", "Volume"]
+SETT_BEEP_LEVEL = [str(x) for x in range(40)] + ["Volume"]
+SETT_BACKLIGHT = ["Off", "On", "Auto 1", "Auto 2"]
+SETT_MEM_DISPLAY_TYPE = [
+    "Frequency",
+    "Bank name",
+    "Memory name",
+    "Channel number",
+]
+SETT_AM_ANT = ["External", "Bar"]
+SETT_FM_ANT = ["External", "Earphone"]
+SETT_LCD_CONTRAST = list("12345")
+SETT_KEY_LOCK = ["Normal", "No SQL", "No Vol", "ALL"]
+SETT_MONITOR = ["Push", "Hold"]
+SETT_CHARGE_TYPE = ["Type 1", "Type 2"]
+SETT_PAUSE_TIMER = [f"{x}sec" for x in range(2, 22, 2)] + ["Hold"]
+SETT_RESUME_TIMER = [f"{x}sec" for x in range(6)] + ["Hold"]
+SETT_CIV_BAUD_RATE = [
+    "300bps",
+    "1200bps",
+    "4800bps",
+    "9600bps",
+    "19200bps",
+    "Auto",
+]
+
 
 def _try_get(inlist: list[str] | tuple[str, ...], idx: int) -> str:
     try:

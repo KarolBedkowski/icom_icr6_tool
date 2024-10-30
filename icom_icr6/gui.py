@@ -16,6 +16,7 @@ from . import (
     gui_nb_banks,
     gui_nb_channels,
     gui_nb_scan_edge,
+    gui_nb_settings,
     io,
     model,
 )
@@ -42,6 +43,7 @@ class App(tk.Frame):
         self._ntb.add(self.__create_nb_scan_edge(), text="Scan Edge")
         self._ntb.add(self.__create_nb_scan_links(), text="Scan Link")
         self._ntb.add(self.__create_nb_awchannels(), text="Autowrite channels")
+        self._ntb.add(self.__create_nb_settings(), text="Settings")
 
         self._ntb.pack(fill="both", expand=1)
 
@@ -115,6 +117,12 @@ class App(tk.Frame):
         )
         return self._nb_aw_channels
 
+    def __create_nb_settings(self) -> tk.Widget:
+        self._nb_settings = gui_nb_settings.SettingsPage(
+            self, self._radio_memory
+        )
+        return self._nb_settings
+
     def __about_handler(self) -> None:
         pass
 
@@ -152,12 +160,12 @@ class App(tk.Frame):
         self.focus_set()
 
     def __fill_widgets(self) -> None:
-        # TODO: remove
         self._nb_channels.set(self._radio_memory)
         self._nb_banks.set(self._radio_memory)
         self._nb_scan_edge.set(self._radio_memory)
         self.__fill_scan_links()
         self._nb_aw_channels.set(self._radio_memory)
+        self._nb_settings.set(self._radio_memory)
 
     def __fill_scan_links(self) -> None:
         sls = self._scan_links
