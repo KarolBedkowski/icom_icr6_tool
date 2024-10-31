@@ -641,61 +641,61 @@ class RadioSettings:
         cls: type[RadioSettings], data: bytes | list[int]
     ) -> RadioSettings:
         return RadioSettings(
-            af_filer_am=bool(data[33] & 1),
+            func_dial_step=data[13] & 0b00000011,
+            key_beep=bool(data[15] & 1),
+            beep_level=data[16] & 0b00111111,
+            backlight=data[17] & 0b00000011,
+            power_save=bool(data[18] & 1),
+            am_ant=data[19] & 1,
+            fm_ant=data[20] & 1,
+            set_expand=bool(data[21] & 1),
+            key_lock=data[22] & 0b00000011,
+            dial_speed_up=bool(data[23] & 1),
+            monitor=data[24] & 1,
+            auto_power_off=data[25] & 0b00000111,
+            pause_timer=data[26] & 0b00001111,
+            resume_timer=data[27] & 0b00000111,
+            stop_beep=bool(data[28] & 1),
+            lcd_contrast=data[29] & 0b00000111,
             af_filer_fm=bool(data[31] & 1),
             af_filer_wfm=bool(data[32] & 1),
-            am_ant=data[19] & 1,
-            auto_power_off=data[25] & 0b00000111,
-            backlight=data[17] & 0b00000011,
-            beep_level=data[16] & 0b00111111,
-            charging_type=data[37] & 1,
+            af_filer_am=bool(data[33] & 1),
             civ_address=data[34],
             civ_baud_rate=data[35] & 0b00000111,
             civ_transceive=bool(data[36] & 1),
+            charging_type=data[37] & 1,
             dial_function=(data[52] & 0b00010000) >> 4,
-            dial_speed_up=bool(data[23] & 1),
-            fm_ant=data[20] & 1,
-            func_dial_step=data[13] & 0b00000011,
-            key_beep=bool(data[15] & 1),
-            key_lock=data[22] & 0b00000011,
-            lcd_contrast=data[29] & 0b00000111,
             mem_display_type=data[52] & 0b00000011,
-            monitor=data[24] & 1,
-            pause_timer=data[26] & 0b00001111,
-            power_save=bool(data[18] & 1),
             program_skip_scan=bool(data[53] & 0b00001000),
-            resume_timer=data[27] & 0b00000111,
-            set_expand=bool(data[21] & 1),
-            stop_beep=bool(data[28] & 1),
         )
 
     def to_data(self, data: list[int]) -> None:
-        data_set_bit(data, 33, 0, self.af_filer_am)
+        data_set(data, 13, 0b11, self.func_dial_step)
+        data_set_bit(data, 15, 0, self.key_beep)
+        data_set(data, 16, 0b00111111, self.beep_level)
+        data_set(data, 17, 0b11, self.backlight)
+        data_set_bit(data, 18, 0, self.power_save)
+        data_set_bit(data, 19, 0, self.am_ant)
+        data_set_bit(data, 20, 0, self.fm_ant)
+        data_set_bit(data, 21, 0, self.set_expand)
+        data_set(data, 22, 0b11, self.key_lock)
+        data_set_bit(data, 23, 0, self.dial_speed_up)
+        data_set_bit(data, 24, 0, self.monitor)
+        data_set(data, 25, 0b111, self.auto_power_off)
+        data_set(data, 26, 0b1111, self.pause_timer)
+        data_set(data, 27, 0b111, self.resume_timer)
+        data_set_bit(data, 28, 0, self.stop_beep)
+        data_set(data, 29, 0b111, self.lcd_contrast)
         data_set_bit(data, 31, 0, self.af_filer_fm)
         data_set_bit(data, 32, 0, self.af_filer_wfm)
-        data_set_bit(data, 19, 0, self.am_ant)
-        data_set(data, 25, 0b111, self.auto_power_off)
-        data_set(data, 17, 0b11, self.backlight)
-        data_set(data, 16, 0b00111111, self.beep_level)
-        data_set_bit(data, 37, 0, self.charging_type)
+        data_set_bit(data, 33, 0, self.af_filer_am)
         data[34] = self.civ_address
         data_set(data, 35, 0b00000111, self.civ_baud_rate)
         data_set_bit(data, 36, 0, self.civ_transceive)
+        data_set_bit(data, 37, 0, self.charging_type)
         data_set_bit(data, 52, 4, self.dial_function)
-        data_set_bit(data, 23, 0, self.dial_speed_up)
-        data_set_bit(data, 20, 0, self.fm_ant)
-        data_set(data, 13, 0b11, self.func_dial_step)
-        data_set_bit(data, 15, 0, self.key_beep)
-        data_set(data, 22, 0b11, self.key_lock)
-        data_set(data, 29, 0b111, self.lcd_contrast)
         data_set(data, 52, 0b11, self.mem_display_type)
-        data_set_bit(data, 24, 0, self.monitor)
-        data_set(data, 26, 0b1111, self.pause_timer)
-        data_set_bit(data, 18, 0, self.power_save)
         data_set_bit(data, 53, 3, self.program_skip_scan)
-        data_set(data, 27, 0b111, self.resume_timer)
-        data_set_bit(data, 21, 0, self.set_expand)
-        data_set_bit(data, 28, 0, self.stop_beep)
 
 
 @dataclass
