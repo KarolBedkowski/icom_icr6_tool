@@ -508,3 +508,26 @@ class ChannelsListModel(TableViewModel[model.Channel]):
             bank,
             bank_pos,
         )
+
+
+class ListVar(tk.StringVar):
+    def __init__(self, values: list[str]) -> None:
+        super().__init__()
+        self._values = values
+
+    def set_raw(self, value: int | None) -> None:
+        if value is not None:
+            self.set(self._values[value])
+        else:
+            self.set("")
+
+    def get_raw(self) -> int:
+        return self._values.index(self.get())
+
+
+class BoolVar(tk.IntVar):
+    def set_raw(self, value: object) -> None:
+        self.set(1 if value else 0)
+
+    def get_raw(self) -> bool:
+        return self.get() == 1

@@ -46,7 +46,7 @@ class Frame:
 
 class Radio:
     def __init__(self) -> None:
-        self.ser = serial.Serial("/dev/ttyUSB1", 9600)
+        self.ser = serial.Serial("/dev/ttyUSB0", 9600)
 
     def _write(self, payload: bytes) -> None:
         LOG.debug("write: %s", binascii.hexlify(payload))
