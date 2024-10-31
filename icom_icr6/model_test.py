@@ -74,3 +74,19 @@ def test_encode_decode_channel(inp):
 
     assert data == new_data
     assert cflags == new_cflags
+
+
+@pytest.mark.parametrize(
+    ("inp", "exp"),
+    [
+        ([0b00101001, 0b01001101, 0b00011011], "A  D F  I KL  O QR UW "),
+        ([0b10101010, 0b10100100, 0b00100101], " B D F H  K  N PQ T  Y"),
+    ],
+)
+def test_bank_links(inp, exp):
+    bl = model.BankLinks.from_data(inp)
+    assert bl.human() == exp
+    data = [0, 0, 0]
+    bl.to_data(data)
+
+    assert data == inp

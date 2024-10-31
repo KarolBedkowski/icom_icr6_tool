@@ -391,6 +391,27 @@ def set_bits(value: int, newval: int, mask: int) -> int:
     return (value & (~mask)) | (newval & mask)
 
 
+def set_bit(value: int, newval: object, bit: int) -> int:
+    mask = 1 << bit
+    if newval:
+        return value | mask
+
+    return value & (~mask)
+
+
+def data_set_bit(
+    data: list[int], offset: int, bit: int, value: object
+) -> None:
+    if value:
+        data[offset] = data[offset] | (1 << bit)
+    else:
+        data[offset] = data[offset] & (~(1 << bit))
+
+
+def data_set(data: list[int], offset: int, mask: int, value: int) -> None:
+    data[offset] = (data[offset] & (~mask)) | (value & mask)
+
+
 def channel_to_data(chan: Channel, data: list[int], cflags: list[int]) -> None:
     enc_freq = encode_freq(chan.freq, chan.offset)
     freq0, freq1, freq2 = enc_freq.freq_bytes()
@@ -588,72 +609,93 @@ def scan_edges_to_data(se: ScanEdge, data: list[int]) -> None:
 
 @dataclass
 class RadioSettings:
-    func_dial_step: int
-    key_beep: bool
-    beep_level: int
-    backlight: int
-    power_save: bool
+    af_filer_am: bool
+    af_filer_fm: bool
+    af_filer_wfm: bool
     am_ant: int
-    fm_ant: int
+    auto_power_off: int  # 0 - 6
+    backlight: int
+    beep_level: int
+    charging_type: int  # 0-1
     civ_address: int
     civ_baud_rate: int
     civ_transceive: bool
-    # 0-1
-    dial_function: int
-    mem_display_type: int
-    program_skip_scan: bool
-    # 0-10
-    pause_timer: int
-    # 0 -6
-    resume_timer: int
-    stop_beep: bool
-    set_expand: bool
-    # 0-3
-    key_lock: int
+    dial_function: int  # 0-1
     dial_speed_up: bool
-    # 0=push, 1=hold
-    monitor: int
-    # 0 - 6
-    auto_power_off: int
-    # 0-4 -> 1-5
-    lcd_contrast: int
-    af_filer_fm: bool
-    af_filer_wfm: bool
-    af_filer_am: bool
-    # 0-1
-    charging_type: int
+    fm_ant: int
+    func_dial_step: int
+    key_beep: bool
+    key_lock: int  # 0-3
+    lcd_contrast: int  # 0-4 -> 1-5
+    mem_display_type: int
+    monitor: int  # 0=push, 1=hold
+    pause_timer: int  # 0-10
+    power_save: bool
+    program_skip_scan: bool
+    resume_timer: int  # 0 -6
+    set_expand: bool
+    stop_beep: bool
 
+    @classmethod
+    def from_data(
+        cls: type[RadioSettings], data: bytes | list[int]
+    ) -> RadioSettings:
+        return RadioSettings(
+            af_filer_am=bool(data[33] & 1),
+            af_filer_fm=bool(data[31] & 1),
+            af_filer_wfm=bool(data[32] & 1),
+            am_ant=data[19] & 1,
+            auto_power_off=data[25] & 0b00000111,
+            backlight=data[17] & 0b00000011,
+            beep_level=data[16] & 0b00111111,
+            charging_type=data[37] & 1,
+            civ_address=data[34],
+            civ_baud_rate=data[35] & 0b00000111,
+            civ_transceive=bool(data[36] & 1),
+            dial_function=(data[52] & 0b00010000) >> 4,
+            dial_speed_up=bool(data[23] & 1),
+            fm_ant=data[20] & 1,
+            func_dial_step=data[13] & 0b00000011,
+            key_beep=bool(data[15] & 1),
+            key_lock=data[22] & 0b00000011,
+            lcd_contrast=data[29] & 0b00000111,
+            mem_display_type=data[52] & 0b00000011,
+            monitor=data[24] & 1,
+            pause_timer=data[26] & 0b00001111,
+            power_save=bool(data[18] & 1),
+            program_skip_scan=bool(data[53] & 0b00001000),
+            resume_timer=data[27] & 0b00000111,
+            set_expand=bool(data[21] & 1),
+            stop_beep=bool(data[28] & 1),
+        )
 
-def settings_from_data(data: bytes | list[int]) -> RadioSettings:
-    ic(data[60:64])
-    return RadioSettings(
-        func_dial_step=data[13] & 0b00000011,
-        key_beep=bool(data[15] & 1),
-        beep_level=data[16] & 0b00111111,
-        backlight=data[17] & 0b00000011,
-        power_save=bool(data[18] & 1),
-        am_ant=data[19] & 1,
-        fm_ant=data[20] & 1,
-        civ_address=data[34],
-        civ_baud_rate=data[35] & 0b00000111,
-        civ_transceive=bool(data[36] & 1),
-        dial_function=(data[52] & 0b00010000) >> 4,
-        mem_display_type=data[52] & 0b00000011,
-        program_skip_scan=bool(data[53] & 0b00001000),
-        pause_timer=data[26] & 0b00001111,
-        resume_timer=data[27] & 0b00000111,
-        stop_beep=bool(data[28] & 1),
-        set_expand=bool(data[21] & 1),
-        key_lock=data[22] & 0b00000011,
-        dial_speed_up=bool(data[23] & 1),
-        monitor=data[24] & 1,
-        auto_power_off=data[25] & 0b00000111,
-        lcd_contrast=data[29] & 0b00000111,
-        af_filer_fm=bool(data[31] & 1),
-        af_filer_wfm=bool(data[32] & 1),
-        af_filer_am=bool(data[33] & 1),
-        charging_type=data[37] & 1,
-    )
+    def to_data(self, data: list[int]) -> None:
+        data_set_bit(data, 33, 0, self.af_filer_am)
+        data_set_bit(data, 31, 0, self.af_filer_fm)
+        data_set_bit(data, 32, 0, self.af_filer_wfm)
+        data_set_bit(data, 19, 0, self.am_ant)
+        data_set(data, 25, 0b111, self.auto_power_off)
+        data_set(data, 17, 0b11, self.backlight)
+        data_set(data, 16, 0b00111111, self.beep_level)
+        data_set_bit(data, 37, 0, self.charging_type)
+        data[34] = self.civ_address
+        data_set(data, 35, 0b00000111, self.civ_baud_rate)
+        data_set_bit(data, 36, 0, self.civ_transceive)
+        data_set_bit(data, 52, 4, self.dial_function)
+        data_set_bit(data, 23, 0, self.dial_speed_up)
+        data_set_bit(data, 20, 0, self.fm_ant)
+        data_set(data, 13, 0b11, self.func_dial_step)
+        data_set_bit(data, 15, 0, self.key_beep)
+        data_set(data, 22, 0b11, self.key_lock)
+        data_set(data, 29, 0b111, self.lcd_contrast)
+        data_set(data, 52, 0b11, self.mem_display_type)
+        data_set_bit(data, 24, 0, self.monitor)
+        data_set(data, 26, 0b1111, self.pause_timer)
+        data_set_bit(data, 18, 0, self.power_save)
+        data_set_bit(data, 53, 3, self.program_skip_scan)
+        data_set(data, 27, 0b111, self.resume_timer)
+        data_set_bit(data, 21, 0, self.set_expand)
+        data_set_bit(data, 28, 0, self.stop_beep)
 
 
 @dataclass
@@ -661,22 +703,27 @@ class BankLinks:
     banks: list[bool]
 
     def __str__(self) -> str:
-        return (
-            "<BankLinks: "
-            + "".join(
-                bn if b else " "
-                for bn, b in zip(BANK_NAMES, self.banks, strict=True)
-            )
-            + ">"
+        return f"<BankLinks: {self.human()}>"
+
+    @classmethod
+    def from_data(cls: type[BankLinks], data: bytes | list[int]) -> BankLinks:
+        # Y -> A
+        assert len(data) == 3
+        val = ((data[2] & 0b00111111) << 16) | (data[1] << 8) | data[0]
+        banks = [bool((val >> i) & 1) for i in range(NUM_BANKS)]
+        return BankLinks(banks)
+
+    def to_data(self, data: list[int]) -> None:
+        val = sum(1 << i for i in range(NUM_BANKS) if self.banks[i])
+        data[0] = val & 0xFF
+        data[1] = (val >> 8) & 0xFF
+        data[2] = (data[2] & 0b11000000) | ((val >> 16) & 0b111111)
+
+    def human(self) -> str:
+        return "".join(
+            bn if b else " "
+            for bn, b in zip(BANK_NAMES, self.banks, strict=True)
         )
-
-
-def bank_links_from_data(data: bytes | list[int]) -> BankLinks:
-    # Y -> A
-    assert len(data) == 3
-    val = ((data[2] & 0b00111111) << 16) | (data[1] << 8) | data[0]
-    banks = [bool((val >> i) & 1) for i in range(NUM_BANKS)]
-    return BankLinks(banks)
 
 
 class RadioMemory:
@@ -830,11 +877,21 @@ class RadioMemory:
 
     def get_settings(self) -> RadioSettings:
         data = self.mem[0x6BD0 : 0x6BD0 + 64]
-        return settings_from_data(data)
+        return RadioSettings.from_data(data)
+
+    def set_settings(self, sett: RadioSettings) -> None:
+        data = self.mem[0x6BD0 : 0x6BD0 + 64]
+        sett.to_data(data)
+        self.mem[0x6BD0 : 0x6BD0 + 64] = data
 
     def get_bank_links(self) -> BankLinks:
         data = self.mem[0x6C28 : 0x6C28 + 3]
-        return bank_links_from_data(data)
+        return BankLinks.from_data(data)
+
+    def set_bank_links(self, bl: BankLinks) -> None:
+        data = self.mem[0x6C28 : 0x6C28 + 3]
+        bl.to_data(data)
+        self.mem[0x6C28 : 0x6C28 + 3] = data
 
 
 # list of valid characters

@@ -194,6 +194,7 @@ class SettingsPage(tk.Frame):
     def __fill(self) -> None:
         sett = self._radio_memory.get_settings()
         ic(sett)
+
         self._var_func_dial_step.set_raw(sett.func_dial_step)
         self._var_key_beep.set_raw(sett.key_beep)
         self._var_beep_level.set_raw(sett.beep_level)
@@ -236,7 +237,8 @@ class SettingsPage(tk.Frame):
         sett.am_ant = self._var_am_ant.get_raw()
         sett.fm_ant = self._var_fm_ant.get_raw()
         if add := self._var_civ_address.get():
-            sett.civ_address = int(add[0], 16)
+            sett.civ_address = int(add, 16) & 0xFF
+
         sett.civ_baud_rate = self._var_civ_baud_rate.get_raw()
         sett.civ_transceive = self._var_civ_transceive.get_raw()
         sett.dial_function = self._var_dial_function.get_raw()
@@ -256,9 +258,12 @@ class SettingsPage(tk.Frame):
         sett.af_filer_am = self._var_af_filer_am.get_raw()
         sett.charging_type = self._var_charging_type.get_raw()
 
+        self._radio_memory.set_settings(sett)
+
         bl = self._radio_memory.get_bank_links()
         for idx, blvar in enumerate(self._var_bank_links):
             bl.banks[idx] = blvar.get() == 1
 
-        ic(sett)
-        ic(bl)
+        self._radio_memory.set_bank_links(bl)
+
+        self.__fill()
