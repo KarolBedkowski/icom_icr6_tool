@@ -18,6 +18,7 @@ from .gui_widgets import (
     TableViewModelRow,
     UpdateCellResult,
     build_list_model,
+    new_checkbox,
     new_entry,
 )
 
@@ -34,6 +35,7 @@ class BanksPage(tk.Frame):
 
         self._bank_number = tk.IntVar()
         self._bank_name = tk.StringVar()
+        self._bank_link = gui_model.BoolVar()
         self._radio_memory = radio_memory
 
         pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
@@ -65,14 +67,16 @@ class BanksPage(tk.Frame):
     def _create_bank_fields(self, frame: tk.Frame) -> None:
         fields = tk.Frame(frame)
         fields.columnconfigure(0, weight=0)
-        fields.columnconfigure(1, weight=1)
+        fields.columnconfigure(1, weight=0)
         fields.columnconfigure(2, weight=0)
+        fields.columnconfigure(3, weight=0)
         validator = self.register(validate_bank_name)
         new_entry(
             fields, 0, 0, "Bank name: ", self._bank_name, validator=validator
         )
+        new_checkbox(fields, 0, 2, "Bank link", self._bank_link)
         ttk.Button(fields, text="Update", command=self.__on_bank_update).grid(
-            row=0, column=7, sticky=tk.E
+            row=0, column=3, sticky=tk.E
         )
 
         fields.grid(row=0, column=0, sticky=tk.N + tk.E + tk.W + tk.S, ipady=6)
@@ -114,6 +118,9 @@ class BanksPage(tk.Frame):
         self._bank_name.set(bank.name.rstrip())
         self._bank_number.set(selected_bank)
 
+        bl = self._radio_memory.get_bank_links()
+        self._bank_link.set_raw(bl[selected_bank])
+
         self._tb_model.data = [
             self._radio_memory.get_channel(channum)
             if channum is not None
@@ -129,10 +136,17 @@ class BanksPage(tk.Frame):
     def __on_bank_update(self) -> None:
         if sel := self._banks.curselection():  # type: ignore
             selected_bank = sel[0]
+        else:
+            return
 
         bank = self._radio_memory.get_bank(selected_bank)
         bank.name = self._bank_name.get().strip()[:6]
         self._radio_memory.set_bank(bank)
+
+        bl = self._radio_memory.get_bank_links()
+        bl[selected_bank] = self._bank_link.get_raw()
+        self._radio_memory.set_bank_links(bl)
+
         self.__fill_banks()
 
     def __on_channel_select(self, _event: tk.Event) -> None:  # type: ignore

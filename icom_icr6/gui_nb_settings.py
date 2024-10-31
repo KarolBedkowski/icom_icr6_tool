@@ -223,8 +223,8 @@ class SettingsPage(tk.Frame):
         self._var_charging_type.set_raw(sett.charging_type)
 
         bl = self._radio_memory.get_bank_links()
-        for blvar, bv in zip(self._var_bank_links, bl.banks, strict=True):
-            blvar.set(1 if bv else 0)
+        for blvar, val in zip(self._var_bank_links, bl.bits(), strict=True):
+            blvar.set(val)
 
     def __on_update(self) -> None:
         sett = self._radio_memory.get_settings()
@@ -262,7 +262,7 @@ class SettingsPage(tk.Frame):
 
         bl = self._radio_memory.get_bank_links()
         for idx, blvar in enumerate(self._var_bank_links):
-            bl.banks[idx] = blvar.get() == 1
+            bl[idx] = blvar.get() == 1
 
         self._radio_memory.set_bank_links(bl)
 

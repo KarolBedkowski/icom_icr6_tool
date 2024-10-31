@@ -700,29 +700,38 @@ class RadioSettings:
 
 @dataclass
 class BankLinks:
-    banks: list[bool]
+    banks: int
 
     def __str__(self) -> str:
         return f"<BankLinks: {self.human()}>"
+
+    def __getitem__(self, idx: int) -> bool:
+        return bool(self.banks & (1 << idx))
+
+    def __setitem__(self, idx: int, value: object) -> None:
+        bit = 1 << idx
+        self.banks = (self.banks & (~bit)) | (bit if value else 0)
+
+    def bits(self) -> ty.Iterable[bool]:
+        return (bool(self.banks & (1 << i)) for i in range(NUM_BANKS))
 
     @classmethod
     def from_data(cls: type[BankLinks], data: bytes | list[int]) -> BankLinks:
         # Y -> A
         assert len(data) == 3
-        val = ((data[2] & 0b00111111) << 16) | (data[1] << 8) | data[0]
-        banks = [bool((val >> i) & 1) for i in range(NUM_BANKS)]
+        banks = ((data[2] & 0b00111111) << 16) | (data[1] << 8) | data[0]
         return BankLinks(banks)
 
     def to_data(self, data: list[int]) -> None:
-        val = sum(1 << i for i in range(NUM_BANKS) if self.banks[i])
+        val = self.banks
         data[0] = val & 0xFF
         data[1] = (val >> 8) & 0xFF
         data[2] = (data[2] & 0b11000000) | ((val >> 16) & 0b111111)
 
     def human(self) -> str:
         return "".join(
-            bn if b else " "
-            for bn, b in zip(BANK_NAMES, self.banks, strict=True)
+            bn if self.banks & (1 << idx) else " "
+            for idx, bn in enumerate(BANK_NAMES)
         )
 
 
