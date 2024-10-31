@@ -602,8 +602,6 @@ class RadioSettings:
     dial_function: int
     mem_display_type: int
     program_skip_scan: bool
-    # Y -> Z
-    bank_links: int
     # 0-10
     pause_timer: int
     # 0 -6
@@ -627,6 +625,7 @@ class RadioSettings:
 
 
 def settings_from_data(data: bytes | list[int]) -> RadioSettings:
+    ic(data[60:64])
     return RadioSettings(
         func_dial_step=data[13] & 0b00000011,
         key_beep=bool(data[15] & 1),
@@ -641,9 +640,6 @@ def settings_from_data(data: bytes | list[int]) -> RadioSettings:
         dial_function=(data[52] & 0b00010000) >> 4,
         mem_display_type=data[52] & 0b00000011,
         program_skip_scan=bool(data[53] & 0b00001000),
-        bank_links=((data[62] & 0b00111111) << 16)
-        | (data[61] << 8)
-        | data[60],
         pause_timer=data[26] & 0b00001111,
         resume_timer=data[27] & 0b00000111,
         stop_beep=bool(data[28] & 1),
@@ -658,6 +654,29 @@ def settings_from_data(data: bytes | list[int]) -> RadioSettings:
         af_filer_am=bool(data[33] & 1),
         charging_type=data[37] & 1,
     )
+
+
+@dataclass
+class BankLinks:
+    banks: list[bool]
+
+    def __str__(self) -> str:
+        return (
+            "<BankLinks: "
+            + "".join(
+                bn if b else " "
+                for bn, b in zip(BANK_NAMES, self.banks, strict=True)
+            )
+            + ">"
+        )
+
+
+def bank_links_from_data(data: bytes | list[int]) -> BankLinks:
+    # Y -> A
+    assert len(data) == 3
+    val = ((data[2] & 0b00111111) << 16) | (data[1] << 8) | data[0]
+    banks = [bool((val >> i) & 1) for i in range(NUM_BANKS)]
+    return BankLinks(banks)
 
 
 class RadioMemory:
@@ -812,6 +831,10 @@ class RadioMemory:
     def get_settings(self) -> RadioSettings:
         data = self.mem[0x6BD0 : 0x6BD0 + 64]
         return settings_from_data(data)
+
+    def get_bank_links(self) -> BankLinks:
+        data = self.mem[0x6C28 : 0x6C28 + 3]
+        return bank_links_from_data(data)
 
 
 # list of valid characters

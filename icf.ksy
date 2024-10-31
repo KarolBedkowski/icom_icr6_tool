@@ -47,7 +47,14 @@ seq:
     size: 64
 
   - id: unknown3
-    size: 28
+    size: 24
+
+  - id: bank_links
+    type: bank_links
+    size: 3
+
+  - id: unknown3b
+    size: 1
 
   - id: scanlinks
     type: scanlink
@@ -377,22 +384,22 @@ types:
       - id: unknown14b
         type: b3
 
-      # @b4
+      # @54
       - id: unknown14
-        size: 6
+        size: 10
 
+  bank_links:
+    seq:
       # @60
       - id: bank_link_1
         type: u1
 
+      # @61
       - id: bank_link_2
         type: u1
 
+      # @62
       - id: unknown14c
         type: b2
       - id: bank_link_3
         type: b6
-
-      # @53
-      - id: unknown15
-        size: 1

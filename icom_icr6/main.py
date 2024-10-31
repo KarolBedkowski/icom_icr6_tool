@@ -82,7 +82,7 @@ def main_print_banks() -> None:
 
     mem = io.load_icf_file(Path(sys.argv[2]))
 
-    print("Nanks")
+    print("Banks")
     for idx in range(22):
         print(idx, mem.get_bank(idx))
 
@@ -124,7 +124,12 @@ def main_print_settings() -> None:
     mem = io.load_icf_file(file)
 
     print("Settings")
-    print(repr(mem.get_settings()))
+    sett = mem.get_settings()
+    print(repr(sett))
+
+    print("Bank links")
+    bl = mem.get_bank_links()
+    print(bl)
 
 
 def main_help() -> None:
