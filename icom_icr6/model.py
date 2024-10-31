@@ -491,51 +491,41 @@ def bank_to_data(bank: Bank, data: list[int]) -> None:
 class ScanLink:
     idx: int
     name: str
-    edges: list[int]
+    edges: int
+
+    def __getitem__(self, idx: int) -> bool:
+        return bool(self.edges & (1 << idx))
+
+    def __setitem__(self, idx: int, value: object) -> None:
+        bit = 1 << idx
+        self.edges = (self.edges & (~bit)) | (bit if value else 0)
+
+    @classmethod
+    def from_data(cls: type[ScanLink], idx: int, data: list[int]) -> ScanLink:
+        return ScanLink(
+            idx=idx,
+            name=bytes(data[0:6]).decode() if data[0] else "",
+            edges=0,
+        )
+
+    def to_data(self, data: list[int]) -> None:
+        data[0:6] = self.name[:6].ljust(6).encode()
 
 
-def scan_link_from_data(idx: int, data: list[int]) -> ScanLink:
-    return ScanLink(
-        idx=idx,
-        name=bytes(data[0:6]).decode() if data[0] else "",
-        edges=[],
-    )
-
-
-def scan_link_to_data(sl: ScanLink, data: list[int]) -> None:
-    data[0:6] = sl.name[:6].ljust(6).encode()
-
-
-def scan_link_edges_from_data(data: list[int]) -> list[int]:
+def scan_link_edges_from_data(data: list[int]) -> int:
     # 4 bytes, with 7bite padding
-    mask = (data[3] << 24) | (data[2] << 16) | (data[1] << 8) | data[0]
-    edges = []
-    for i in range(NUM_SCAN_EDGES):
-        if mask & 1:
-            edges.append(i)
-
-        mask >>= 1
-
-    return edges
+    return (data[3] << 24) | (data[2] << 16) | (data[1] << 8) | data[0]
 
 
-def scan_link_edges_to_data(edges: list[int], data: list[int]) -> None:
-    mask = 0
-    for e in edges:
-        if e:
-            mask |= 1
-
-        mask <<= 1
-
-    data[0] = mask & 0xFF
-    data[1] = (mask >> 8) & 0xFF
-    data[2] = (mask >> 16) & 0xFF
-    data[3] = (mask >> 24) & 0xFF
+def scan_link_edges_to_data(edges: int, data: list[int]) -> None:
+    data[0] = edges & 0xFF
+    data[1] = (edges >> 8) & 0xFF
+    data[2] = (edges >> 16) & 0xFF
+    data[3] = (edges >> 24) & 0xFF
 
 
 @dataclass
 class ScanEdge:
-    # TODO: vcs?
     idx: int
     start: int
     end: int
@@ -561,50 +551,49 @@ class ScanEdge:
         self.start = self.end = 0
         self.disabled = True
 
+    @classmethod
+    def from_data(cls: type[ScanEdge], idx: int, data: list[int]) -> ScanEdge:
+        start = (data[3] << 24) | (data[2] << 16) | (data[1] << 8) | data[0]
+        start *= 3
+        end = (data[7] << 24) | (data[6] << 16) | (data[5] << 8) | data[4]
+        end *= 3
 
-def scan_edge_from_data(idx: int, data: list[int]) -> ScanEdge:
-    start = (data[3] << 24) | (data[2] << 16) | (data[1] << 8) | data[0]
-    start *= 3
-    end = (data[7] << 24) | (data[6] << 16) | (data[5] << 8) | data[4]
-    end *= 3
+        return ScanEdge(
+            idx=idx,
+            start=start,
+            end=end,
+            disabled=bool(data[8] & 0b10000000),
+            mode=(data[8] & 0b01110000) >> 4,
+            ts=(data[8] & 0b00001111),
+            attn=(data[9] & 0b00110000) >> 4,
+            name=bytes(data[10:16]).decode() if data[10] else "",
+        )
 
-    return ScanEdge(
-        idx=idx,
-        start=start,
-        end=end,
-        disabled=bool(data[8] & 0b10000000),
-        mode=(data[8] & 0b01110000) >> 4,
-        ts=(data[8] & 0b00001111),
-        attn=(data[9] & 0b00110000) >> 4,
-        name=bytes(data[10:16]).decode() if data[10] else "",
-    )
+    def to_data(self, data: list[int]) -> None:
+        start = self.start // 3
+        data[0] = start & 0xFF
+        data[1] = (start >> 8) & 0xFF
+        data[2] = (start >> 16) & 0xFF
+        data[3] = (start >> 24) & 0xFF
 
+        end = self.end // 3
+        data[4] = end & 0xFF
+        data[5] = (end >> 8) & 0xFF
+        data[6] = (end >> 16) & 0xFF
+        data[7] = (end >> 24) & 0xFF
 
-def scan_edges_to_data(se: ScanEdge, data: list[int]) -> None:
-    start = se.start // 3
-    data[0] = start & 0xFF
-    data[1] = (start >> 8) & 0xFF
-    data[2] = (start >> 16) & 0xFF
-    data[3] = (start >> 24) & 0xFF
+        data[8] = (
+            bool2bit(self.disabled, 0b10000000)
+            | (self.mode & 0b111) << 4
+            | (self.ts & 0b1111)
+        )
 
-    end = se.end // 3
-    data[4] = end & 0xFF
-    data[5] = (end >> 8) & 0xFF
-    data[6] = (end >> 16) & 0xFF
-    data[7] = (end >> 24) & 0xFF
+        data_set(data, 9, 0b00110000, self.attn << 4)
 
-    data[8] = (
-        bool2bit(se.disabled, 0b10000000)
-        | (se.mode & 0b111) << 4
-        | (se.ts & 0b1111)
-    )
-
-    data[9] = set_bits(data[9], se.attn << 4, 0b00110000)
-
-    if se.name:
-        data[10:16] = se.name[:6].ljust(6).encode()
-    else:
-        data[10:16] = [0, 0, 0, 0, 0, 0]
+        if self.name:
+            data[10:16] = self.name[:6].ljust(6).encode()
+        else:
+            data[10:16] = [0, 0, 0, 0, 0, 0]
 
 
 @dataclass
@@ -824,14 +813,14 @@ class RadioMemory:
         start = 0x5DC0 + idx * 16
         data = self.mem[start : start + 16]
 
-        return scan_edge_from_data(idx, data)
+        return ScanEdge.from_data(idx, data)
 
     def set_scan_edge(self, se: ScanEdge) -> None:
         idx = se.idx
         start = 0x5DC0 + idx * 16
         data = self.mem[start : start + 16]
 
-        scan_edges_to_data(se, data)
+        se.to_data(data)
 
         self.mem[start : start + 16] = data
 
@@ -875,7 +864,7 @@ class RadioMemory:
 
         start = 0x6DC0 + idx * 8
         data = self.mem[start : start + 8]
-        sl = scan_link_from_data(idx, data)
+        sl = ScanLink.from_data(idx, data)
 
         # mapping
         start = 0x6C2C + 4 * idx
@@ -883,6 +872,18 @@ class RadioMemory:
         sl.edges = scan_link_edges_from_data(mdata)
 
         return sl
+
+    def set_scan_link(self, sl: ScanLink) -> None:
+        start = 0x6DC0 + sl.idx * 8
+        data = self.mem[start : start + 8]
+        sl.to_data(data)
+        self.mem[start : start + 8] = data
+
+        # mapping
+        start = 0x6C2C + 4 * sl.idx
+        mdata = self.mem[start : start + 4]
+        scan_link_edges_to_data(sl.edges, mdata)
+        self.mem[start : start + 4] = mdata
 
     def get_settings(self) -> RadioSettings:
         data = self.mem[0x6BD0 : 0x6BD0 + 64]

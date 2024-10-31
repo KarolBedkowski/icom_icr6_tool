@@ -16,6 +16,7 @@ from . import (
     gui_nb_banks,
     gui_nb_channels,
     gui_nb_scan_edge,
+    gui_nb_scan_links,
     gui_nb_settings,
     io,
     model,
@@ -85,31 +86,11 @@ class App(tk.Frame):
         )
         return self._nb_scan_edge
 
-    def __create_nb_scan_links(self) -> ttk.PanedWindow:
-        pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
-        sl = self._scan_links = tk.Listbox(pw, selectmode=tk.SINGLE)
-
-        sl.bind("<<ListboxSelect>>", self.__fill_scan_link)
-        pw.add(sl, weight=0)
-
-        slf = tk.Frame(pw, borderwidth=6)
-        self._scan_links_edges = []
-        for idx in range(model.NUM_SCAN_EDGES):
-            var = tk.IntVar()
-            cb = tk.Checkbutton(
-                slf,
-                text=str(idx),
-                variable=var,
-                onvalue=1,
-                offvalue=0,
-                state="disabled",
-            )
-            cb.grid(row=idx, column=0, sticky=tk.W)
-            self._scan_links_edges.append((var, cb))
-
-        pw.add(slf, weight=1)
-
-        return pw
+    def __create_nb_scan_links(self) -> tk.Widget:
+        self._nb_scan_links = gui_nb_scan_links.ScanLinksPage(
+            self, self._radio_memory
+        )
+        return self._nb_scan_links
 
     def __create_nb_awchannels(self) -> tk.Widget:
         self._nb_aw_channels = gui_nb_awchannels.AutoWriteChannelsPage(
@@ -163,35 +144,9 @@ class App(tk.Frame):
         self._nb_channels.set(self._radio_memory)
         self._nb_banks.set(self._radio_memory)
         self._nb_scan_edge.set(self._radio_memory)
-        self.__fill_scan_links()
+        self._nb_scan_links.set(self._radio_memory)
         self._nb_aw_channels.set(self._radio_memory)
         self._nb_settings.set(self._radio_memory)
-
-    def __fill_scan_links(self) -> None:
-        sls = self._scan_links
-        sls.delete(0, sls.size())
-        for idx in range(10):
-            sl = self._radio_memory.get_scan_link(idx)
-            name = f"{idx}: {sl.name}" if sl.name else str(idx)
-            sls.insert(tk.END, name)
-
-    def __fill_scan_link(self, _event: tk.Event) -> None:  # type: ignore
-        sel_sl = self._scan_links.curselection()  # type: ignore
-        if not sel_sl:
-            return
-
-        sl = self._radio_memory.get_scan_link(sel_sl[0])
-        for idx, (var, cb) in enumerate(self._scan_links_edges):
-            se = self._radio_memory.get_scan_edge(idx)
-            if se.start:
-                sename = se.name or "-"
-                name = f"{idx}: {sename} {se.start} - {se.end} / {se.mode}"
-            else:
-                name = str(idx)
-
-            cb["text"] = name
-            cb["state"] = "normal"
-            var.set(1 if idx in sl.edges else 0)
 
 
 def start_gui() -> None:
