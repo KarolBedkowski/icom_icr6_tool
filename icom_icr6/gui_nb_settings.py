@@ -7,8 +7,7 @@
 import logging
 import tkinter as tk
 import typing as ty
-from contextlib import suppress
-from tkinter import messagebox, ttk
+from tkinter import ttk
 
 from . import gui_model, model
 from .gui_widgets import new_checkbox, new_combo, new_entry
@@ -52,7 +51,6 @@ class SettingsPage(tk.Frame):
             model.SETT_MEM_DISPLAY_TYPE
         )
         self._var_program_skip_scan = gui_model.BoolVar()
-        self._var_bank_links = [tk.IntVar() for _ in range(22)]
         self._var_pause_timer = gui_model.ListVar(model.SETT_PAUSE_TIMER)
         self._var_resume_timer = gui_model.ListVar(model.SETT_RESUME_TIMER)
         self._var_stop_beep = gui_model.BoolVar()
@@ -167,33 +165,23 @@ class SettingsPage(tk.Frame):
         )
         new_checkbox(self, 10, 0, "Scan stop beep", self._var_stop_beep)
 
-        tk.Label(self, text="Bank links:").grid(
-            row=11, column=0, sticky=tk.N + tk.W, padx=6, pady=6
-        )
-        for idx, bank in enumerate(model.BANK_NAMES):
-            # TODO: bank links names?
-            new_checkbox(
-                self, 12 + idx // 6, idx % 6, bank, self._var_bank_links[idx]
-            )
-
         new_combo(
             self,
-            16,
+            11,
             0,
             "CIV baud rate",
             self._var_civ_baud_rate,
             model.SETT_CIV_BAUD_RATE,
         )
-        new_entry(self, 16, 2, "CIV address", self._var_civ_address)
-        new_checkbox(self, 16, 4, "CIV transceive", self._var_civ_transceive)
+        new_entry(self, 11, 2, "CIV address", self._var_civ_address)
+        new_checkbox(self, 11, 4, "CIV transceive", self._var_civ_transceive)
 
         ttk.Button(self, text="Update", command=self.__on_update).grid(
-            row=17, column=0, sticky=tk.E
+            row=12, column=5, sticky=tk.E
         )
 
     def __fill(self) -> None:
         sett = self._radio_memory.get_settings()
-        ic(sett)
 
         self._var_func_dial_step.set_raw(sett.func_dial_step)
         self._var_key_beep.set_raw(sett.key_beep)
@@ -221,10 +209,6 @@ class SettingsPage(tk.Frame):
         self._var_af_filer_wfm.set_raw(sett.af_filer_wfm)
         self._var_af_filer_am.set_raw(sett.af_filer_am)
         self._var_charging_type.set_raw(sett.charging_type)
-
-        bl = self._radio_memory.get_bank_links()
-        for blvar, val in zip(self._var_bank_links, bl.bits(), strict=True):
-            blvar.set(val)
 
     def __on_update(self) -> None:
         sett = self._radio_memory.get_settings()
@@ -259,11 +243,5 @@ class SettingsPage(tk.Frame):
         sett.charging_type = self._var_charging_type.get_raw()
 
         self._radio_memory.set_settings(sett)
-
-        bl = self._radio_memory.get_bank_links()
-        for idx, blvar in enumerate(self._var_bank_links):
-            bl[idx] = blvar.get() == 1
-
-        self._radio_memory.set_bank_links(bl)
 
         self.__fill()
