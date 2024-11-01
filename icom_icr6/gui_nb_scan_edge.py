@@ -203,7 +203,7 @@ class ScanEdgeListModel(TableViewModel[model.ScanEdge]):
                 se.name = model.fix_name(value or "")
 
             case "att":
-                se.attn = value == "yes"
+                se.attenuator = value == "yes"
 
             case "ts":
                 se.ts = consts.STEPS.index(value) if value else 0

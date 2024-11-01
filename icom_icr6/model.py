@@ -347,11 +347,11 @@ class ScanEdge:
     disabled: int
     mode: int
     ts: int
-    attn: int
+    attenuator: int
     name: str
 
     def human_attn(self) -> str:
-        match self.attn:
+        match self.attenuator:
             case 0:
                 return "Off"
             case 1:
@@ -359,7 +359,7 @@ class ScanEdge:
             case 2:
                 return "-"
 
-        return str(self.attn)
+        return str(self.attenuator)
 
     def delete(self) -> None:
         self.start = self.end = 0
@@ -379,7 +379,7 @@ class ScanEdge:
             disabled=bool(data[8] & 0b10000000),
             mode=(data[8] & 0b01110000) >> 4,
             ts=(data[8] & 0b00001111),
-            attn=(data[9] & 0b00110000) >> 4,
+            attenuator=(data[9] & 0b00110000) >> 4,
             name=bytes(data[10:16]).decode() if data[10] else "",
         )
 
@@ -402,7 +402,7 @@ class ScanEdge:
             | (self.ts & 0b1111)
         )
 
-        data_set(data, 9, 0b00110000, self.attn << 4)
+        data_set(data, 9, 0b00110000, self.attenuator << 4)
 
         if self.name:
             data[10:16] = self.name[:6].ljust(6).encode()
