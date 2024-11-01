@@ -4,9 +4,9 @@
 
 """ """
 
+import logging
 import sys
 import tkinter as tk
-import typing as ty
 from pathlib import Path
 from tkinter import filedialog, ttk
 
@@ -22,7 +22,7 @@ from . import (
     model,
 )
 
-_ty = ty
+_LOG = logging.getLogger(__name__)
 
 
 class App(tk.Frame):
@@ -44,6 +44,7 @@ class App(tk.Frame):
         self._ntb.add(self.__create_nb_scan_links(), text="Scan Link")
         self._ntb.add(self.__create_nb_awchannels(), text="Autowrite channels")
         self._ntb.add(self.__create_nb_settings(), text="Settings")
+        self._ntb.bind("<<NotebookTabChanged>>", self.__on_nb_page_changed)
 
         self._ntb.pack(fill="both", expand=1)
 
@@ -56,17 +57,25 @@ class App(tk.Frame):
 
         file_menu = tk.Menu(menu_bar)
         file_menu.add_command(
-            label="Open...", command=self.__file_open_handler
+            label="Open...", command=self.__on_file_open, accelerator="Ctrl+O"
         )
+        master.bind_all("<Control-o>", self.__on_file_open)
         file_menu.add_command(
-            label="Save...", command=self.__file_save_handler
+            label="Save...", command=self.__on_file_save, accelerator="Ctrl+S"
         )
+        master.bind_all("<Control-s>", self.__on_file_save)
+        file_menu.add_command(
+            label="Save As...",
+            command=self.__on_file_save_as,
+            accelerator="Shift+Ctrl+S",
+        )
+        master.bind_all("<Shift-Control-S>", self.__on_file_save_as)
         file_menu.add_separator()
         file_menu.add_command(label="Exit", command=self.quit)
         menu_bar.add_cascade(label="File", menu=file_menu)
 
         help_menu = tk.Menu(menu_bar)
-        help_menu.add_command(label="About", command=self.__about_handler)
+        help_menu.add_command(label="About", command=self.__on_about)
         menu_bar.add_cascade(label="Help", menu=help_menu)
 
     def __create_nb_channels(self) -> tk.Widget:
@@ -103,10 +112,10 @@ class App(tk.Frame):
         )
         return self._nb_settings
 
-    def __about_handler(self) -> None:
+    def __on_about(self) -> None:
         pass
 
-    def __file_open_handler(self) -> None:
+    def __on_file_open(self, _event: tk.Event | None = None) -> None:  # type: ignore
         fname = filedialog.askopenfilename(
             parent=self,
             filetypes=[("Supported files", ".icf"), ("All files", "*.*")],
@@ -122,9 +131,17 @@ class App(tk.Frame):
     def load_icf(self, file: Path) -> None:
         self._radio_memory.update_from(io.load_icf_file(file))
         self._last_file = file
-        self.__fill_widgets()
+        self.__update_widgets()
 
-    def __file_save_handler(self) -> None:
+    def __on_file_save(self, _event: tk.Event | None = None) -> None:  # type: ignore
+        if not self._last_file:
+            self.__on_file_save_as()
+            return
+
+        io.save_icf_file(self._last_file, self._radio_memory)
+        self.focus_set()
+
+    def __on_file_save_as(self, _event: tk.Event | None = None) -> None:  # type: ignore
         fname = filedialog.asksaveasfilename(
             parent=self,
             filetypes=[("Supported files", ".icf"), ("All files", "*.*")],
@@ -139,13 +156,27 @@ class App(tk.Frame):
 
         self.focus_set()
 
-    def __fill_widgets(self) -> None:
-        self._nb_channels.set(self._radio_memory)
-        self._nb_banks.set(self._radio_memory)
-        self._nb_scan_edge.set(self._radio_memory)
-        self._nb_scan_links.set(self._radio_memory)
-        self._nb_aw_channels.set(self._radio_memory)
-        self._nb_settings.set(self._radio_memory)
+    def __update_widgets(self, page: int | None = None) -> None:
+        _LOG.debug("update page: %r", page)
+        pages = (
+            self._nb_channels,
+            self._nb_banks,
+            self._nb_scan_edge,
+            self._nb_scan_links,
+            self._nb_aw_channels,
+            self._nb_settings,
+        )
+
+        if page is None:
+            for p in pages:
+                p.set(self._radio_memory)
+
+        else:
+            pages[page].set(self._radio_memory)
+
+    def __on_nb_page_changed(self, _event: tk.Event) -> None:  # type: ignore
+        selected_tab = self._ntb.tabs().index(self._ntb.select())  # type: ignore
+        self.__update_widgets(selected_tab)
 
 
 def start_gui() -> None:
