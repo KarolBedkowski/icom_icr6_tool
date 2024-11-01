@@ -229,7 +229,7 @@ def name_validator(char: str, value: str) -> bool:
     return True
 
 
-class ChannelsListModel(TableViewModel[model.Channel|None]):
+class ChannelsListModel(TableViewModel[model.Channel | None]):
     def __init__(self, radio_memory: model.RadioMemory) -> None:
         super().__init__(self._columns())
         self._radio_memory = radio_memory
@@ -264,7 +264,7 @@ class ChannelsListModel(TableViewModel[model.Channel|None]):
         row: int,
         column: int,
         value: str,
-        parent: TableView2[model.Channel|None],
+        parent: TableView2[model.Channel | None],
     ) -> tk.Widget | None:
         coldef = self.columns[column]
         data_row = self.data[row]
@@ -480,9 +480,9 @@ class ChannelsListModel(TableViewModel[model.Channel|None]):
         self.data[row] = chan
         return res, chan
 
-    def data2row(self, channel: model.Channel|None) -> TableViewModelRow:
+    def data2row(self, channel: model.Channel | None) -> TableViewModelRow:
         if channel is None:
-            return ("", )
+            return ("",)
 
         if channel.hide_channel or not channel.freq:
             return (str(channel.number),)

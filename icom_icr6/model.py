@@ -20,8 +20,9 @@ class RadioModel:
     rev: int
     comment: bytes
 
+
 MEM_SIZE = 0x6E60
-MEM_FOOTER = 'IcomCloneFormat3'
+MEM_FOOTER = "IcomCloneFormat3"
 
 NUM_CHANNELS: ty.Final[int] = 1300
 NUM_BANKS: ty.Final[int] = 22
@@ -777,12 +778,12 @@ class RadioMemory:
         self.mem[addr : addr + size] = data
 
     def validate(self) -> None:
-        if (memlen := len(self.mem)) !=MEM_SIZE:
+        if (memlen := len(self.mem)) != MEM_SIZE:
             err = f"invalid memory size: {memlen}"
             raise ValueError(err)
 
-        mem_footer = bytes(self.mem[MEM_SIZE-len(MEM_FOOTER): ]).decode()
-        if  mem_footer != MEM_FOOTER:
+        mem_footer = bytes(self.mem[MEM_SIZE - len(MEM_FOOTER) :]).decode()
+        if mem_footer != MEM_FOOTER:
             err = f"invalid memory footer: {mem_footer}"
             raise ValueError(err)
 

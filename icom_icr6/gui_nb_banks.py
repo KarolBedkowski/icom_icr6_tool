@@ -250,7 +250,7 @@ class BankChannelsListModel(gui_model.ChannelsListModel):
         row: int,
         column: int,
         value: str,
-        parent: TableView2[model.Channel|None],
+        parent: TableView2[model.Channel | None],
     ) -> tk.Widget | None:
         coldef = self.columns[column]
 

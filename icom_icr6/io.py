@@ -67,17 +67,14 @@ class Radio:
                 _LOG.error("no data")
                 break
 
-            data = b"".join(buf)
-
-            if not data:
+            if not buf:
                 return None
+
+            data = b"".join(buf)
 
             if not data.startswith(b"\xfe\xfe"):
                 _LOG.error("frame out of sync: %r", data)
                 raise OutOfSyncError
-
-            if len(data) < 5:  # noqa: PLR2004
-                continue
 
             # ic(data, len(data))
             while data.startswith(b"\xfe\xfe\xfe"):

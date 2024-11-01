@@ -134,7 +134,7 @@ class ScanEdgeListModel(TableViewModel[model.ScanEdge]):
             chan,
         )
 
-        res : tk.Widget | None = None
+        res: tk.Widget | None = None
 
         match coldef.colid:
             case "num":  # num

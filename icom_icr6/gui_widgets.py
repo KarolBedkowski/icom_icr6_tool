@@ -43,7 +43,7 @@ def new_entry(  # noqa: PLR0913
     return entry
 
 
-def new_combo( # noqa: PLR0913
+def new_combo(  # noqa: PLR0913
     parent: tk.Widget,
     row: int,
     col: int,
@@ -109,8 +109,6 @@ class TableViewColumn(ty.NamedTuple):
     width: int
 
 
-
-
 T = ty.TypeVar("T")
 TableViewModelRow = list[str] | tuple[str, ...]
 
@@ -151,9 +149,9 @@ class TableViewModel(abc.ABC, ty.Generic[T]):
     def get_cols_id(self) -> list[str]:
         return [c.colid for c in self.columns]
 
-    def get_rows(self) -> ty.Iterable[TableViewModelRow]:
+    def get_rows(self) -> ty.Iterable[TableViewModelRow | None]:
         for row in self.data:
-            yield self.data2row(row)
+            yield self.data2row(row) if row is not None else None
 
 
 class TableView2(ttk.Treeview, ty.Generic[T]):
@@ -282,11 +280,11 @@ class ComboboxPopup(ttk.Combobox):
 
 
 class EntryPopup(ttk.Entry):
-    master: TableView2 # type: ignore
+    master: TableView2  # type: ignore
 
     def __init__(
         self,
-        parent: TableView2, # type: ignore
+        parent: TableView2,  # type: ignore
         iid: str,
         column: int,
         text: str,
@@ -326,11 +324,11 @@ class EntryPopup(ttk.Entry):
 
 
 class CheckboxPopup(ttk.Checkbutton):
-    master: TableView2 # type: ignore
+    master: TableView2  # type: ignore
 
     def __init__(
         self,
-        parent: TableView2, # type: ignore
+        parent: TableView2,  # type: ignore
         iid: str,
         column: int,
         text: str,
@@ -358,11 +356,11 @@ class CheckboxPopup(ttk.Checkbutton):
 
 
 class NumEntryPopup(EntryPopup):
-    master: TableView2 # type: ignore
+    master: TableView2  # type: ignore
 
     def __init__(  # noqa: PLR0913
         self,
-        parent: TableView2, # type: ignore
+        parent: TableView2,  # type: ignore
         iid: str,
         column: int,
         text: str,
