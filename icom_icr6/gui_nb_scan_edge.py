@@ -206,7 +206,7 @@ class ScanEdgeListModel(TableViewModel[model.ScanEdge]):
                 se.attenuator = value == "yes"
 
             case "ts":
-                se.ts = consts.STEPS.index(value) if value else 0
+                se.tuning_step = consts.STEPS.index(value) if value else 0
 
             case _:
                 return UpdateCellResult.NOOP, None
@@ -233,7 +233,7 @@ class ScanEdgeListModel(TableViewModel[model.ScanEdge]):
             se.name.rstrip(),
             str(se.start // 1000),
             str(se.end // 1000),
-            consts.STEPS[se.ts] if se.start and se.end else "",
+            consts.STEPS[se.tuning_step] if se.start and se.end else "",
             consts.MODES[se.mode] if se.start and se.end else "",
             se.human_attn(),  # TODOL: fix
         )

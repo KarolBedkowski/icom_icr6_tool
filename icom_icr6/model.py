@@ -119,7 +119,7 @@ class Channel:
             f"af={self.af_filter}, "
             f"att={self.attenuator}, "
             f"mode={consts.MODES[self.mode]}, "
-            f"ts={self.tuning_step}, "
+            f"tuning_step={self.tuning_step}, "
             f"duplex={consts.DUPLEX_DIRS[self.duplex]}, "
             f"tone_mode={consts.TONE_MODES[self.tone_mode]}, "
             f"offset={self.offset}, "
@@ -346,7 +346,7 @@ class ScanEdge:
     # TODO: check - always False
     disabled: int
     mode: int
-    ts: int
+    tuning_step: int
     attenuator: int
     name: str
 
@@ -378,7 +378,7 @@ class ScanEdge:
             end=end,
             disabled=bool(data[8] & 0b10000000),
             mode=(data[8] & 0b01110000) >> 4,
-            ts=(data[8] & 0b00001111),
+            tuning_step=(data[8] & 0b00001111),
             attenuator=(data[9] & 0b00110000) >> 4,
             name=bytes(data[10:16]).decode() if data[10] else "",
         )
@@ -399,7 +399,7 @@ class ScanEdge:
         data[8] = (
             bool2bit(self.disabled, 0b10000000)
             | (self.mode & 0b111) << 4
-            | (self.ts & 0b1111)
+            | (self.tuning_step & 0b1111)
         )
 
         data_set(data, 9, 0b00110000, self.attenuator << 4)
