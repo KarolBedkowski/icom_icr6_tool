@@ -38,10 +38,9 @@ class BanksPage(tk.Frame):
         self._radio_memory = radio_memory
 
         pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
-        banks = self._banks = tk.Listbox(pw, selectmode=tk.SINGLE)
-        self.__fill_banks()
+        banks = self._banks_list = tk.Listbox(pw, selectmode=tk.SINGLE)
 
-        banks.bind("<<ListboxSelect>>", self.__fill_bank)
+        banks.bind("<<ListboxSelect>>", self.__update_chan_list)
         pw.add(banks, weight=0)
 
         frame = tk.Frame(pw)
@@ -50,8 +49,8 @@ class BanksPage(tk.Frame):
         frame.rowconfigure(2, weight=0)
         frame.columnconfigure(0, weight=1)
 
-        self._create_bank_fields(frame)
-        self._create_bank_channels_list(frame)
+        self.__create_bank_fields(frame)
+        self.__create_chan_list(frame)
 
         pw.add(frame, weight=1)
 
@@ -59,28 +58,34 @@ class BanksPage(tk.Frame):
             row=0, column=0, sticky=tk.N + tk.S + tk.E + tk.W, padx=6, pady=6
         )
 
+        self.__update_banks_list()
+
     def set(self, radio_memory: model.RadioMemory) -> None:
         self._radio_memory = radio_memory
-        self.__fill_banks()
+        self.__update_banks_list()
 
-    def _create_bank_fields(self, frame: tk.Frame) -> None:
+    def __create_bank_fields(self, frame: tk.Frame) -> None:
         fields = tk.Frame(frame)
         fields.columnconfigure(0, weight=0)
         fields.columnconfigure(1, weight=0)
         fields.columnconfigure(2, weight=0)
         fields.columnconfigure(3, weight=0)
+
         validator = self.register(validate_bank_name)
-        new_entry(
+        self._field_bank_name = new_entry(
             fields, 0, 0, "Bank name: ", self._bank_name, validator=validator
         )
-        new_checkbox(fields, 0, 2, "Bank link", self._bank_link)
-        ttk.Button(fields, text="Update", command=self.__on_bank_update).grid(
-            row=0, column=3, sticky=tk.E
+        self._field_bank_link = new_checkbox(
+            fields, 0, 2, "Bank link", self._bank_link
         )
+        self._btn_update = ttk.Button(
+            fields, text="Update", command=self.__on_bank_update
+        )
+        self._btn_update.grid(row=0, column=3, sticky=tk.E)
 
         fields.grid(row=0, column=0, sticky=tk.N + tk.E + tk.W + tk.S, ipady=6)
 
-    def _create_bank_channels_list(self, frame: tk.Frame) -> None:
+    def __create_chan_list(self, frame: tk.Frame) -> None:
         self._tb_model = BankChannelsListModel(
             self._radio_memory, self._bank_number
         )
@@ -93,9 +98,11 @@ class BanksPage(tk.Frame):
         )
         self._bank_content.bind("<Delete>", self.__on_channel_delete)
 
-    def __fill_banks(self) -> None:
-        banks = self._banks
+    def __update_banks_list(self) -> None:
+        banks = self._banks_list
         sel = banks.curselection()  # type: ignore
+        ic(sel)
+
         banks.delete(0, banks.size())
         for idx, bname in enumerate(model.BANK_NAMES):
             bank = self._radio_memory.get_bank(idx)
@@ -104,9 +111,17 @@ class BanksPage(tk.Frame):
 
         if sel:
             banks.selection_set(sel[0])
+        else:
+            self._field_bank_name["state"] = "disabled"
+            self._field_bank_link["state"] = "disabled"
+            self._btn_update["state"] = "disabled"
+            self._tb_model.data = []
+            self._bank_content.update_all()
+            self._bank_name.set("")
+            self._bank_number.set(-1)
 
-    def __fill_bank(self, event: tk.Event | None) -> None:  # type: ignore
-        if sel := self._banks.curselection():  # type: ignore
+    def __update_chan_list(self, event: tk.Event | None) -> None:  # type: ignore
+        if sel := self._banks_list.curselection():  # type: ignore
             selected_bank = sel[0]
         else:
             return
@@ -132,8 +147,12 @@ class BanksPage(tk.Frame):
             bcont.yview(0)
             bcont.xview(0)
 
+        self._field_bank_name["state"] = "normal"
+        self._field_bank_link["state"] = "normal"
+        self._btn_update["state"] = "normal"
+
     def __on_bank_update(self) -> None:
-        if sel := self._banks.curselection():  # type: ignore
+        if sel := self._banks_list.curselection():  # type: ignore
             selected_bank = sel[0]
         else:
             return
@@ -146,7 +165,7 @@ class BanksPage(tk.Frame):
         bl[selected_bank] = self._bank_link.get_raw()
         self._radio_memory.set_bank_links(bl)
 
-        self.__fill_banks()
+        self.__update_banks_list()
 
     def __on_channel_select(self, _event: tk.Event) -> None:  # type: ignore
         sel = self._bank_content.selection()
@@ -165,7 +184,7 @@ class BanksPage(tk.Frame):
         ):
             return
 
-        selected_bank: int = int(self._banks.curselection()[0])  # type: ignore
+        selected_bank: int = int(self._banks_list.curselection()[0])  # type: ignore
 
         bank_chan_num = int(sel[0])
         bank = self._radio_memory.get_bank(selected_bank)
@@ -174,7 +193,7 @@ class BanksPage(tk.Frame):
             chan.clear_bank()
             self._radio_memory.set_channel(chan)
 
-        self.__fill_bank(None)
+        self.__update_chan_list(None)
         self._bank_content.selection_set(bank_chan_num)
 
 

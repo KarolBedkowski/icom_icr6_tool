@@ -32,7 +32,7 @@ class SettingsPage(tk.Frame):
 
     def set(self, radio_memory: model.RadioMemory) -> None:
         self._radio_memory = radio_memory
-        self.__fill()
+        self.__update()
 
     def _create_vars(self) -> None:
         self._var_func_dial_step = gui_model.ListVar(model.SETT_FUNC_DIAL_STEP)
@@ -179,7 +179,7 @@ class SettingsPage(tk.Frame):
             row=12, column=5, sticky=tk.E
         )
 
-    def __fill(self) -> None:
+    def __update(self) -> None:
         sett = self._radio_memory.get_settings()
 
         self._var_func_dial_step.set_raw(sett.func_dial_step)
@@ -243,4 +243,4 @@ class SettingsPage(tk.Frame):
 
         self._radio_memory.set_settings(sett)
 
-        self.__fill()
+        self.__update()

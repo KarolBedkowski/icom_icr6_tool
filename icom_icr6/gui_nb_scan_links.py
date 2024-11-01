@@ -28,11 +28,13 @@ class ScanLinksPage(tk.Frame):
         self._sl_name = tk.StringVar()
 
         pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
-        self._scan_links = tk.Listbox(pw, selectmode=tk.SINGLE)
-        self.__fill()
+        self._scan_links_list = tk.Listbox(pw, selectmode=tk.SINGLE)
+        self.__update_scan_links_list()
 
-        self._scan_links.bind("<<ListboxSelect>>", self.__on_select_scan_link)
-        pw.add(self._scan_links, weight=0)
+        self._scan_links_list.bind(
+            "<<ListboxSelect>>", self.__on_select_scan_link
+        )
+        pw.add(self._scan_links_list, weight=0)
 
         frame = tk.Frame(pw)
         frame.rowconfigure(0, weight=0)
@@ -42,9 +44,7 @@ class ScanLinksPage(tk.Frame):
 
         self._create_fields(frame)
         self._create_scan_edges_list(frame)
-        ttk.Button(frame, text="Update", command=self.__on_update).grid(
-            row=3, column=0, sticky=tk.E
-        )
+        self._create_buttons(frame)
         pw.add(frame, weight=1)
 
         pw.grid(
@@ -53,12 +53,13 @@ class ScanLinksPage(tk.Frame):
 
     def set(self, radio_memory: model.RadioMemory) -> None:
         self._radio_memory = radio_memory
-        self.__fill()
+        self.__update_scan_links_list()
+        self.__on_select_scan_link()
 
     def _create_fields(self, frame: tk.Frame) -> None:
         fields = tk.Frame(frame)
         validator = self.register(validate_name)
-        new_entry(
+        self._entry_sl_name = new_entry(
             fields,
             0,
             0,
@@ -66,7 +67,30 @@ class ScanLinksPage(tk.Frame):
             self._sl_name,
             validator=validator,
         )
+        self._entry_sl_name["state"] = "disabled"
         fields.grid(row=0, column=0, sticky=tk.N + tk.E + tk.W, ipady=6)
+
+    def _create_buttons(self, parent: tk.Frame) -> None:
+        frame = tk.Frame(parent, borderwidth=6)
+        frame.columnconfigure(0, weight=0)
+        frame.columnconfigure(1, weight=1)
+
+        self._btn_deselct = ttk.Button(
+            frame,
+            text="Select/Deselect all",
+            command=self.__on_de_select,
+            state="disabled",
+        )
+        self._btn_deselct.grid(row=3, column=0, sticky=tk.E)
+        self._btn_update = ttk.Button(
+            frame,
+            text="Update",
+            command=self.__on_update,
+            state="disabled",
+        )
+        self._btn_update.grid(row=3, column=2, sticky=tk.E)
+
+        frame.grid(row=3, column=0, sticky=tk.N + tk.E + tk.W, ipady=6)
 
     def _create_scan_edges_list(self, parent: tk.Frame) -> None:
         slf = tk.Frame(parent, borderwidth=6)
@@ -86,10 +110,10 @@ class ScanLinksPage(tk.Frame):
 
         slf.grid(row=1, column=0, sticky=tk.N + tk.E + tk.W, ipady=6)
 
-    def __fill(self) -> None:
-        sel_sl = self._scan_links.curselection()  # type: ignore
+    def __update_scan_links_list(self) -> None:
+        sel_sl = self._scan_links_list.curselection()  # type: ignore
 
-        sls = self._scan_links
+        sls = self._scan_links_list
         sls.delete(0, sls.size())
         for idx in range(10):
             sl = self._radio_memory.get_scan_link(idx)
@@ -97,11 +121,12 @@ class ScanLinksPage(tk.Frame):
             sls.insert(tk.END, name)
 
         if sel_sl:
-            self._scan_links.selection_set(sel_sl[0])
+            self._scan_links_list.selection_set(sel_sl[0])
 
-    def __on_select_scan_link(self, _event: tk.Event) -> None:  # type: ignore
-        sel_sl = self._scan_links.curselection()  # type: ignore
+    def __on_select_scan_link(self, _event: tk.Event | None = None) -> None:  # type: ignore
+        sel_sl = self._scan_links_list.curselection()  # type: ignore
         if not sel_sl:
+            self.__disable_widgets()
             return
 
         sl = self._radio_memory.get_scan_link(sel_sl[0])
@@ -119,9 +144,14 @@ class ScanLinksPage(tk.Frame):
             cb["state"] = "normal"
             var.set(1 if sl[idx] else 0)
 
+        self._btn_deselct["state"] = "normal"
+        self._btn_update["state"] = "normal"
+        self._entry_sl_name["state"] = "normal"
+
     def __on_update(self) -> None:
-        sel_sl = self._scan_links.curselection()  # type: ignore
+        sel_sl = self._scan_links_list.curselection()  # type: ignore
         if not sel_sl:
+            self.__disable_widgets()
             return
 
         sl = self._radio_memory.get_scan_link(sel_sl[0])
@@ -130,7 +160,29 @@ class ScanLinksPage(tk.Frame):
             sl[idx] = var.get()
 
         self._radio_memory.set_scan_link(sl)
-        self.__fill()
+        self.__update_scan_links_list()
+
+    def __on_de_select(self) -> None:
+        sel_sl = self._scan_links_list.curselection()  # type: ignore
+        if not sel_sl:
+            return
+
+        val = 1
+        if all(var.get() == 1 for var, _ in self._scan_links_edges):
+            val = 0
+
+        for var, _ in self._scan_links_edges:
+            var.set(val)
+
+    def __disable_widgets(self) -> None:
+        for var, cb in self._scan_links_edges:
+            cb["state"] = "disabled"
+            var.set(0)
+
+        self._btn_deselct["state"] = "disabled"
+        self._btn_update["state"] = "disabled"
+        self._entry_sl_name["state"] = "disabled"
+        self._sl_name.set("")
 
 
 def validate_name(name: str | None) -> bool:

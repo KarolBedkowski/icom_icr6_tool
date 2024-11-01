@@ -34,36 +34,36 @@ class AutoWriteChannelsPage(tk.Frame):
 
     def set(self, radio_memory: model.RadioMemory) -> None:
         self._radio_memory = radio_memory
-        self.__fill_channels(None)
+        self.__update_channels_list(None)
 
     def _create_channel_list(self, frame: tk.Frame) -> None:
-        self._tb_model = RWChannelsListModel(self._radio_memory)
-        ccframe, self._channels_content = build_list_model(
-            frame, self._tb_model
+        self._chan_list_model = RWChannelsListModel(self._radio_memory)
+        ccframe, self._chan_list = build_list_model(
+            frame, self._chan_list_model
         )
         ccframe.grid(
             row=0,
             column=0,
             sticky=tk.N + tk.S + tk.E + tk.W,
         )
-        self._channels_content.bind(
+        self._chan_list.bind(
             "<<TreeviewSelect>>", self.__on_channel_select, add="+"
         )
 
-    def __fill_channels(self, event: tk.Event | None) -> None:  # type: ignore
+    def __update_channels_list(self, event: tk.Event | None) -> None:  # type: ignore
         data = sorted(self._radio_memory.get_autowrite_channels())
         for idx, ch in enumerate(data):
             ch.number = idx
 
-        self._tb_model.data = data  # type: ignore
-        self._channels_content.update_all()
+        self._chan_list_model.data = data  # type: ignore
+        self._chan_list.update_all()
 
         if event is not None:
-            self._channels_content.yview(0)
-            self._channels_content.xview(0)
+            self._chan_list.yview(0)
+            self._chan_list.xview(0)
 
     def __on_channel_select(self, _event: tk.Event) -> None:  # type: ignore
-        sel = self._channels_content.selection()
+        sel = self._chan_list.selection()
         if not sel:
             return
 

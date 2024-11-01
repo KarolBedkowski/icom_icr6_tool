@@ -27,10 +27,12 @@ class ChannelsPage(tk.Frame):
         self._radio_memory = radio_memory
 
         pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
-        self._channel_ranges = tk.Listbox(pw, selectmode=tk.SINGLE)
-        self._channel_ranges.insert(tk.END, *gui_model.CHANNEL_RANGES)
-        self._channel_ranges.bind("<<ListboxSelect>>", self.__fill_channels)
-        pw.add(self._channel_ranges, weight=0)
+        self._chan_group_list = tk.Listbox(pw, selectmode=tk.SINGLE)
+        self._chan_group_list.insert(tk.END, *gui_model.CHANNEL_RANGES)
+        self._chan_group_list.bind(
+            "<<ListboxSelect>>", self.__update_chan_list
+        )
+        pw.add(self._chan_group_list, weight=0)
 
         frame = tk.Frame(pw)
         frame.rowconfigure(0, weight=1)
@@ -46,24 +48,19 @@ class ChannelsPage(tk.Frame):
 
     def set(self, radio_memory: model.RadioMemory) -> None:
         self._radio_memory = radio_memory
+        self.__update_chan_list(None)
 
     def _create_channel_list(self, frame: tk.Frame) -> None:
         self._tb_model = gui_model.ChannelsListModel(self._radio_memory)
-        ccframe, self._channels_content = build_list_model(
-            frame, self._tb_model
-        )
-        ccframe.grid(
-            row=0,
-            column=0,
-            sticky=tk.N + tk.S + tk.E + tk.W,
-        )
-        self._channels_content.bind(
+        ccframe, self._channels_list = build_list_model(frame, self._tb_model)
+        ccframe.grid(row=0, column=0, sticky=tk.N + tk.S + tk.E + tk.W)
+        self._channels_list.bind(
             "<<TreeviewSelect>>", self.__on_channel_select, add="+"
         )
-        self._channels_content.bind("<Delete>", self.__on_channel_delete)
+        self._channels_list.bind("<Delete>", self.__on_channel_delete)
 
     def __on_channel_select(self, _event: tk.Event) -> None:  # type: ignore
-        sel = self._channels_content.selection()
+        sel = self._channels_list.selection()
         if not sel:
             return
 
@@ -72,7 +69,7 @@ class ChannelsPage(tk.Frame):
         _LOG.debug("chan: %r", chan)
 
     def __on_channel_delete(self, _event: tk.Event) -> None:  # type: ignore
-        sel = self._channels_content.selection()
+        sel = self._channels_list.selection()
         if not sel:
             return
 
@@ -87,13 +84,15 @@ class ChannelsPage(tk.Frame):
         chan = self._radio_memory.get_channel(chan_num)
         chan.delete()
         self._radio_memory.set_channel(chan)
-        self.__fill_channels(None)
-        self._channels_content.selection_set(sel)
+        self.__update_chan_list(None)
+        self._channels_list.selection_set(sel)
 
-    def __fill_channels(self, event: tk.Event | None) -> None:  # type: ignore
-        if sel := self._channel_ranges.curselection():  # type: ignore
+    def __update_chan_list(self, event: tk.Event | None) -> None:  # type: ignore
+        if sel := self._chan_group_list.curselection():  # type: ignore
             selected_range = sel[0]
         else:
+            self._tb_model.data = []
+            self._channels_list.update_all()
             return
 
         range_start = selected_range * 100
@@ -101,8 +100,8 @@ class ChannelsPage(tk.Frame):
             self._radio_memory.get_channel(idx)
             for idx in range(range_start, range_start + 100)
         ]
-        self._channels_content.update_all()
+        self._channels_list.update_all()
 
         if event is not None:
-            self._channels_content.yview(0)
-            self._channels_content.xview(0)
+            self._channels_list.yview(0)
+            self._channels_list.xview(0)

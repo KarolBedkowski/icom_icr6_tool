@@ -39,16 +39,12 @@ class ScanEdgePage(tk.Frame):
 
     def set(self, radio_memory: model.RadioMemory) -> None:
         self._radio_memory = radio_memory
-        self.__fill_scan_edges()
+        self.__update_scan_edges_list()
 
     def _create_list(self, frame: tk.Frame) -> None:
         self._tb_model = ScanEdgeListModel(self._radio_memory)
         ccframe, self._se_content = build_list_model(frame, self._tb_model)
-        ccframe.grid(
-            row=0,
-            column=0,
-            sticky=tk.N + tk.S + tk.E + tk.W,
-        )
+        ccframe.grid(row=0, column=0, sticky=tk.N + tk.S + tk.E + tk.W)
         self._se_content.bind(
             "<<TreeviewSelect>>", self.__on_channel_select, add="+"
         )
@@ -79,10 +75,10 @@ class ScanEdgePage(tk.Frame):
         se = self._radio_memory.get_scan_edge(se_num)
         se.delete()
         self._radio_memory.set_scan_edge(se)
-        self.__fill_scan_edges()
+        self.__update_scan_edges_list()
         self._se_content.selection_set(sel)
 
-    def __fill_scan_edges(self) -> None:
+    def __update_scan_edges_list(self) -> None:
         self._tb_model.data = [
             self._radio_memory.get_scan_edge(idx)
             for idx in range(model.NUM_SCAN_EDGES)
@@ -180,15 +176,13 @@ class ScanEdgeListModel(TableViewModel[model.ScanEdge]):
         )
 
         res = UpdateCellResult.UPDATE_ROW
+        colid = coldef.colid
 
-        if (not se.start or not se.end) and coldef.colid not in (
-            "start",
-            "end",
-        ):
+        if (not se.start or not se.end) and colid not in ("start", "end"):
             # do not allow edit other fields if there is no start and end
             return UpdateCellResult.NOOP, None
 
-        match coldef.colid:
+        match colid:
             case "num":  # num
                 return UpdateCellResult.NOOP, None
 
