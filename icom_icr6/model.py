@@ -367,9 +367,9 @@ class ScanEdge:
     @classmethod
     def from_data(cls: type[ScanEdge], idx: int, data: list[int]) -> ScanEdge:
         start = (data[3] << 24) | (data[2] << 16) | (data[1] << 8) | data[0]
-        start *= 3
+        start //= 3
         end = (data[7] << 24) | (data[6] << 16) | (data[5] << 8) | data[4]
-        end *= 3
+        end //= 3
 
         return ScanEdge(
             idx=idx,
@@ -383,13 +383,13 @@ class ScanEdge:
         )
 
     def to_data(self, data: list[int]) -> None:
-        start = self.start // 3
+        start = self.start * 3
         data[0] = start & 0xFF
         data[1] = (start >> 8) & 0xFF
         data[2] = (start >> 16) & 0xFF
         data[3] = (start >> 24) & 0xFF
 
-        end = self.end // 3
+        end = self.end * 3
         data[4] = end & 0xFF
         data[5] = (end >> 8) & 0xFF
         data[6] = (end >> 16) & 0xFF
