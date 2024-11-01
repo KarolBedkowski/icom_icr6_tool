@@ -275,14 +275,18 @@ class BankChannelsListModel(gui_model.ChannelsListModel):
         if coldef.colid != "chan":
             return super().update_cell(row, column, value)
 
+        _LOG.debug("update_cell: %r,%r = %r", row, column, value)
+
         bank_num = self._bank_number.get()
         bank = self._radio_memory.get_bank(bank_num)
 
         if not value:
             if channum := bank.channels[row]:
                 chan = self._radio_memory.get_channel(channum)
+                _LOG.debug("clean bank in: %r", chan)
                 chan.clear_bank()
                 self._radio_memory.set_channel(chan)
+                self.data[row] = None
 
                 return UpdateCellResult.UPDATE_ROW, chan
 
@@ -291,13 +295,17 @@ class BankChannelsListModel(gui_model.ChannelsListModel):
 
         channum = int(value)
         assert 0 <= channum < model.NUM_CHANNELS
+        # new channel to set
         chan = self._radio_memory.get_channel(channum)
 
-        res = (
-            UpdateCellResult.UPDATE_ALL
-            if channum in bank.channels
-            else UpdateCellResult.UPDATE_ROW
-        )
+        # check if replacing other chan in this bank
+        try:
+            idx = bank.channels.index(channum)
+        except ValueError:
+            res = UpdateCellResult.UPDATE_ROW
+        else:
+            self.data[idx] = None
+            res = UpdateCellResult.UPDATE_ALL
 
         chan.bank = bank_num
         chan.bank_pos = row
