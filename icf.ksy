@@ -193,7 +193,7 @@ types:
 
       - id: unknown2
         type: b2
-      - id: ctone
+      - id: tsql_freq
         type: b6
 
       - id: polarity

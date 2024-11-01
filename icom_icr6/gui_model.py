@@ -82,7 +82,7 @@ class ChannelModel:
         self.duplex = tk.StringVar()
         self.offset = tk.IntVar()
         self.tone_mode = tk.StringVar()
-        self.ctone = tk.StringVar()
+        self.tsql_freq = tk.StringVar()
         self.dtsc = tk.StringVar()
         self.polarity = tk.StringVar()
 
@@ -101,7 +101,7 @@ class ChannelModel:
         self.duplex.set("")
         self.offset.set(0)
         self.tone_mode.set("")
-        self.ctone.set("")
+        self.tsql_freq.set("")
         self.dtsc.set("")
         self.polarity.set("")
         self.bank.set("")
@@ -131,9 +131,9 @@ class ChannelModel:
         except IndexError:
             self.tone_mode.set("")
         try:
-            self.ctone.set(consts.CTCSS_TONES[chan.ctone])
+            self.tsql_freq.set(consts.CTCSS_TONES[chan.tsql_freq])
         except IndexError:
-            self.ctone.set("")
+            self.tsql_freq.set("")
         try:
             self.dtsc.set(consts.DTCS_CODES[chan.dtsc])
         except IndexError:
@@ -180,8 +180,8 @@ class ChannelModel:
         chan.duplex = consts.DUPLEX_DIRS.index(self.duplex.get())
         chan.offset = self.offset.get() * 1000
         chan.tone_mode = consts.TONE_MODES.index(self.tone_mode.get())
-        chan.ctone = get_index_or_default(
-            consts.CTCSS_TONES, self.ctone.get(), 63
+        chan.tsql_freq = get_index_or_default(
+            consts.CTCSS_TONES, self.tsql_freq.get(), 63
         )
         chan.dtsc = get_index_or_default(
             consts.DTCS_CODES, self.dtsc.get(), 127
@@ -429,7 +429,7 @@ class ChannelsListModel(TableViewModel[model.Channel | None]):
                 )
 
             case "tsql":
-                chan.ctone = get_index_or_default(
+                chan.tsql_freq = get_index_or_default(
                     consts.CTCSS_TONES, value, 63
                 )
 
@@ -510,7 +510,7 @@ class ChannelsListModel(TableViewModel[model.Channel | None]):
             consts.SKIPS[channel.skip],
             yes_no(channel.vsc),
             consts.TONE_MODES[channel.tone_mode],
-            get_or_default(consts.CTCSS_TONES, channel.ctone)
+            get_or_default(consts.CTCSS_TONES, channel.tsql_freq)
             if channel.tone_mode in (1, 2)
             else "",
             get_or_default(consts.DTCS_CODES, channel.dtsc)

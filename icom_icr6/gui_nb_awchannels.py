@@ -107,7 +107,7 @@ class RWChannelsListModel(gui_model.ChannelsListModel):
             str(channel.offset // 1000) if channel.duplex else "",
             gui_model.yes_no(channel.vsc),
             consts.TONE_MODES[channel.tone_mode],
-            gui_model.get_or_default(consts.CTCSS_TONES, channel.ctone)
+            gui_model.get_or_default(consts.CTCSS_TONES, channel.tsql_freq)
             if channel.tone_mode in (1, 2)
             else "",
             gui_model.get_or_default(consts.DTCS_CODES, channel.dtsc)

@@ -76,7 +76,7 @@ class Channel:
     # tone
     tone_mode: int
     # tsql freq
-    ctone: int
+    tsql_freq: int
     # dtsc code
     dtsc: int
     # dtsc polarity
@@ -123,7 +123,7 @@ class Channel:
             f"duplex={consts.DUPLEX_DIRS[self.duplex]}, "
             f"tone_mode={consts.TONE_MODES[self.tone_mode]}, "
             f"offset={self.offset}, "
-            f"ctone={_try_get(consts.CTCSS_TONES, self.ctone)}, "
+            f"tsql_freq={_try_get(consts.CTCSS_TONES, self.tsql_freq)}, "
             f"dtsc={_try_get(consts.DTCS_CODES, self.dtsc)}, "
             f"cf={self.canceller_freq}, "
             f"vsc={self.vsc}, "
@@ -196,7 +196,7 @@ class Channel:
             duplex=(data[4] & 0b00110000) >> 4,
             tone_mode=data[4] & 0b00000111,
             offset=offset_real,
-            ctone=data[7] & 0b00111111,
+            tsql_freq=data[7] & 0b00111111,
             polarity=(data[8] & 0b10000000) >> 7,
             dtsc=(data[8] & 0b01111111),
             canceller_freq=(data[9] << 1) | ((data[10] & 0b10000000) >> 7),
@@ -239,8 +239,8 @@ class Channel:
         # offset
         data[5] = offset_l
         data[6] = offset_h
-        # ctone
-        data_set(data, 7, 0b00111111, self.ctone)
+        # tsql_freq
+        data_set(data, 7, 0b00111111, self.tsql_freq)
         # polarity, dtsc
         data[8] = bool2bit(self.polarity, 0b10000000) | (
             self.dtsc & 0b01111111
