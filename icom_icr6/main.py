@@ -88,7 +88,7 @@ def main_print_banks() -> None:
         print(idx, mem.get_bank(idx))
 
 
-def main_print_scan_programms() -> None:
+def main_print_scan_programs() -> None:
     if len(sys.argv) < 3:
         print("file name required")
         return
@@ -158,7 +158,7 @@ def main() -> None:
         case "banks":
             main_print_banks()
         case "scan":
-            main_print_scan_programms()
+            main_print_scan_programs()
         case "write_mem":
             main_write_mem_raw()
         case "clone_from_radio":

@@ -155,16 +155,20 @@ types:
     seq:
       - id: freq0
         type: u1
+        doc: lsb
+
       - id: freq1
         type: u1
 
       - id: flags
         type: b4
         doc: 2 bits for offset and 2 bits for freq
-      - id: flag_unknonw
+      - id: flag_unknown
         type: b2
+        doc: probably always 0 - mayby 2 bits freq2
       - id: freq2
-        type: b2le
+        type: b2
+        doc: msb
 
       - id: af
         type: b1

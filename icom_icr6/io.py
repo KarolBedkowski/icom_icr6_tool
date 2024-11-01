@@ -49,17 +49,17 @@ class OutOfSyncError(ValueError): ...
 
 class Radio:
     def __init__(self) -> None:
-        self.ser = serial.Serial("/dev/ttyUSB0", 9600)
+        self._serial = serial.Serial("/dev/ttyUSB0", 9600)
 
     def _write(self, payload: bytes) -> None:
         _LOG.debug("write: %s", binascii.hexlify(payload))
-        self.ser.write(payload)
+        self._serial.write(payload)
 
     def read_frame(self) -> Frame | None:
         buf: list[bytes] = []
 
         while True:
-            if d := self.ser.read(1):
+            if d := self._serial.read(1):
                 buf.append(d)
                 if d != b"\xfd":
                     continue

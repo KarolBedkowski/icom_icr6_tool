@@ -73,13 +73,13 @@ class ScanLinksPage(tk.Frame):
         frame.columnconfigure(0, weight=0)
         frame.columnconfigure(1, weight=1)
 
-        self._btn_deselct = ttk.Button(
+        self._btn_deselect = ttk.Button(
             frame,
             text="Select/Deselect all",
             command=self.__on_de_select,
             state="disabled",
         )
-        self._btn_deselct.grid(row=3, column=0, sticky=tk.E)
+        self._btn_deselect.grid(row=3, column=0, sticky=tk.E)
         self._btn_update = ttk.Button(
             frame,
             text="Update",
@@ -142,7 +142,7 @@ class ScanLinksPage(tk.Frame):
             cb["state"] = "normal"
             var.set(1 if sl[idx] else 0)
 
-        self._btn_deselct["state"] = "normal"
+        self._btn_deselect["state"] = "normal"
         self._btn_update["state"] = "normal"
         self._entry_sl_name["state"] = "normal"
 
@@ -177,7 +177,7 @@ class ScanLinksPage(tk.Frame):
             cb["state"] = "disabled"
             var.set(0)
 
-        self._btn_deselct["state"] = "disabled"
+        self._btn_deselect["state"] = "disabled"
         self._btn_update["state"] = "disabled"
         self._entry_sl_name["state"] = "disabled"
         self._sl_name.set("")
