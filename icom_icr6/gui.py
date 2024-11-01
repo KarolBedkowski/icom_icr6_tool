@@ -28,6 +28,7 @@ _LOG = logging.getLogger(__name__)
 class App(tk.Frame):
     def __init__(self, master: tk.Tk, file: Path | None) -> None:
         super().__init__(master)
+        self.master = master
 
         self._last_file: Path | None = None
         self._radio_memory = model.RadioMemory()
@@ -130,7 +131,7 @@ class App(tk.Frame):
 
     def load_icf(self, file: Path) -> None:
         self._radio_memory.update_from(io.load_icf_file(file))
-        self._last_file = file
+        self.__set_loaded_filename(file)
         self.__update_widgets()
 
     def __on_file_save(self, _event: tk.Event | None = None) -> None:  # type: ignore
@@ -151,7 +152,8 @@ class App(tk.Frame):
         )
 
         if fname:
-            self._last_file = Path(fname)
+            self.__set_loaded_filename(Path(fname))
+            assert self._last_file
             io.save_icf_file(self._last_file, self._radio_memory)
 
         self.focus_set()
@@ -178,11 +180,17 @@ class App(tk.Frame):
         selected_tab = self._ntb.tabs().index(self._ntb.select())  # type: ignore
         self.__update_widgets(selected_tab)
 
+    def __set_loaded_filename(self, fname: Path | None) -> None:
+        self._last_file = fname
+        title = f" [{fname.name}]" if fname else ""
+        self.master.title(f"ICOM IC-R6 Tool{title}")  # type: ignore
+
 
 def start_gui() -> None:
     file = Path(sys.argv[1]) if len(sys.argv) > 1 else None
 
     root = tk.Tk()
+    root.title("ICOM IC-R6 Tool")
     style = ttk.Style()
     style.theme_use("clam")
     style.configure("pad.TEntry", padding="1 1 1 1")
