@@ -46,6 +46,9 @@ class AutoWriteChannelsPage(tk.Frame):
             column=0,
             sticky=tk.N + tk.S + tk.E + tk.W,
         )
+        self._channels_content.bind(
+            "<<TreeviewSelect>>", self.__on_channel_select, add="+"
+        )
 
     def __fill_channels(self, event: tk.Event | None) -> None:  # type: ignore
         data = sorted(self._radio_memory.get_autowrite_channels())
@@ -58,6 +61,15 @@ class AutoWriteChannelsPage(tk.Frame):
         if event is not None:
             self._channels_content.yview(0)
             self._channels_content.xview(0)
+
+    def __on_channel_select(self, _event: tk.Event) -> None:  # type: ignore
+        sel = self._channels_content.selection()
+        if not sel:
+            return
+
+        chan_num = int(sel[0])
+        chan = self._radio_memory.get_channel(chan_num)
+        _LOG.debug("chan: %r", chan)
 
 
 class RWChannelsListModel(gui_model.ChannelsListModel):

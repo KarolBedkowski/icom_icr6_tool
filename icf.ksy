@@ -157,10 +157,15 @@ types:
         type: u1
       - id: freq1
         type: u1
+
       - id: flags
-        type: b6
+        type: b4
+        doc: 2 bits for offset and 2 bits for freq
+      - id: flag_unknonw
+        type: b2
       - id: freq2
         type: b2le
+
       - id: af
         type: b1
       - id: attn

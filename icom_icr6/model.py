@@ -324,6 +324,8 @@ class Channel:
     bank_pos: int
 
     raw: bytes
+    raw_freq: int = 0
+    raw_flags: int = 0
 
     def delete(self) -> None:
         self.freq = 0
@@ -361,7 +363,9 @@ class Channel:
             f"polarity={POLARITY[self.polarity]}, "
             f"bank={bank}, "
             f"unknowns={self.unknowns}, "
-            f"raws={binascii.hexlify(self.raw)!r}"
+            f"raws={binascii.hexlify(self.raw)!r}, "
+            f"raw_freq={self.raw_freq}, "
+            f"raw_flags={self.raw_flags:0000b}"
         )
 
     def __lt__(self, other: object) -> bool:
@@ -376,7 +380,26 @@ class Channel:
         cflags: bytes | list[int] | None,
     ) -> Channel:
         freq = ((data[2] & 0b00000011) << 16) | (data[1] << 8) | data[0]
-        freq_flags = (data[2] & 0b11111100) >> 2
+        freq_flags = (data[2] & 0b11110000) >> 4
+        offset = (data[6] << 8) | data[5]
+
+        freq_real = offset_real = 0
+        try:
+            freq_real = decode_freq(freq, freq_flags & 0b11)
+            offset_real = decode_freq(offset, freq_flags >> 2)
+        except ValueError as err:
+            _LOG.error(
+                "decode freq error: %r, idx=%d, data=%r, cdata=%r, "
+                "freq=%r, offset=%r, flags=%r",
+                err,
+                idx,
+                data,
+                cflags,
+                freq,
+                offset,
+                data[2],
+            )
+
         unknowns = [
             data[4] & 0b11000000,
             data[4] & 0b00001000,  # TODO: flag "is channel valid"?
@@ -394,7 +417,7 @@ class Channel:
 
         return Channel(
             number=idx,
-            freq=decode_freq(freq, freq_flags),
+            freq=freq_real,
             freq_flags=freq_flags,
             af_filter=bool(data[3] & 0b10000000),
             attenuator=bool(data[3] & 0b01000000),
@@ -402,7 +425,7 @@ class Channel:
             tuning_step=data[3] & 0b00001111,
             duplex=(data[4] & 0b00110000) >> 4,
             tmode=data[4] & 0b00000111,
-            offset=decode_freq((data[6] << 8) | data[5], freq_flags),
+            offset=offset_real,
             ctone=data[7] & 0b00111111,
             polarity=(data[8] & 0b10000000) >> 7,
             dtsc=(data[8] & 0b01111111),
@@ -416,6 +439,8 @@ class Channel:
             bank_pos=bank_pos,
             unknowns=unknowns,
             raw=bytes(data),
+            raw_freq=freq,
+            raw_flags=(data[2] & 0b11110000) >> 4,
         )
 
     def to_data(self, data: list[int], cflags: list[int]) -> None:
@@ -427,7 +452,10 @@ class Channel:
         data[0] = freq0
         data[1] = freq1
         # flags & freq2
-        data[2] = (enc_freq.flags << 2) | freq2
+        print(repr(enc_freq), bin(data[2]))
+        data_set(data, 2, 0b11110000, enc_freq.flags << 4)
+        data_set(data, 2, 0b00001111, freq2 & 0b1111)
+        print(repr(enc_freq), bin(data[2]))
         # af_filter, attenuator, mode, tuning_step
         data[3] = (
             bool2bit(self.af_filter, 0b10000000)
@@ -983,18 +1011,26 @@ def encode_name(inp: str) -> list[int]:
 
 
 def decode_freq(freq: int, flags: int) -> int:
+    """
+    flags are probably only 2 bits:
+        00 -> 5000
+        01 -> 6250
+        10 -> 8333.3333
+        11 -> 9000
+    """
+    # TODO: check:
     match flags:
-        case 0:
+        case 0b00:
             return 5000 * freq
-        case 20:
-            return 6250 * freq  # unused
-        case 40:
+        case 0b01:
+            return 6250 * freq
+        case 0b10:
             return (25000 * freq) // 3  # unused?
-        case 60:
+        case 0b11:
             return 9000 * freq
 
     _LOG.error("unknown flag %r for freq %r", flags, freq)
-    return 0
+    raise ValueError
 
 
 class EncodedFreq(ty.NamedTuple):
@@ -1022,29 +1058,32 @@ class InvalidFlagError(ValueError):
 def encode_freq(freq: int, offset: int) -> EncodedFreq:
     # freq min 0.1MHz
     # offset max 159.995 MHz
+    # flag is <offset_flag:2b><freq_flag:2b>
     flags = 0
     if freq % 5000 == freq % 9000 == 0:
-        flags = 0 if offset else 60  # 9k step or 50 step
+        flags = 0b0 if offset else 0b1111  # 9k step or 50 step
     elif freq % 9000 == 0:
-        flags = 60
+        flags = 0b1111
     elif freq % 5000 == 0:
         flags = 0
     elif freq % 6250 == 0:
-        flags = 20
+        flags = 0b0101
     elif (freq * 3) % 25000 == 0:  # not used?
-        flags = 40
+        flags = 0b1010
     else:
         raise InvalidFlagError
 
-    match flags:
-        case 60:  # 9k
-            return EncodedFreq(60, freq // 9000, offset // 9000)
-        case 40:
-            return EncodedFreq(40, freq // 8330, offset // 8330)
-        case 20:
-            return EncodedFreq(20, freq // 6250, offset // 6250)
-        case 0:  # 5k
-            return EncodedFreq(0, freq // 5000, offset // 5000)
+    match flags & 0b11:
+        case 0b11:  # 9k
+            return EncodedFreq(flags, freq // 9000, offset // 9000)
+        case 0b10:  # 8333.333
+            return EncodedFreq(
+                flags, (freq * 3) // 25000, (offset * 3) // 25000
+            )
+        case 0b01:  # 6250
+            return EncodedFreq(flags, freq // 6250, offset // 6250)
+        case 0b00:  # 5k
+            return EncodedFreq(flags, freq // 5000, offset // 5000)
 
     raise ValueError
 
