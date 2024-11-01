@@ -41,6 +41,10 @@ CHANNEL_RANGES = [
 _LOG = logging.getLogger(__name__)
 
 
+def format_freq(freq: int) -> str:
+    return f"{freq:_}".replace("_", " ")
+
+
 def get_index_or_default(
     values: list[str] | tuple[str, ...],
     value: str | None,
@@ -338,6 +342,7 @@ class ChannelsListModel(TableViewModel[model.Channel | None]):
                 if not chan.duplex:
                     return None
 
+                value = value.replace(" ", "")
                 return NumEntryPopup(
                     parent, iid, column, value, min_val=0, max_val=159995
                 )
@@ -359,6 +364,7 @@ class ChannelsListModel(TableViewModel[model.Channel | None]):
                 return NumEntryPopup(parent, iid, column, value, max_val=99)
 
             case "freq":
+                value = value.replace(" ", "")
                 return NumEntryPopup(
                     parent,
                     iid,
@@ -393,7 +399,9 @@ class ChannelsListModel(TableViewModel[model.Channel | None]):
 
             case "freq":
                 chan.freq = (
-                    model.fix_frequency(int(value) * 1000) if value else 0
+                    model.fix_frequency(int(value.replace(" ", "")) * 1000)
+                    if value
+                    else 0
                 )
                 if chan.freq and chan.hide_channel:
                     chan.hide_channel = False
@@ -418,7 +426,7 @@ class ChannelsListModel(TableViewModel[model.Channel | None]):
                 chan.duplex = consts.DUPLEX_DIRS.index(value) if value else 0
 
             case "offset":
-                chan.offset = int(value or 0) * 1000
+                chan.offset = int((value or "").replace(" ", "")) * 1000
 
             case "skip":
                 chan.skip = consts.SKIPS.index(value) if value else 0
@@ -499,14 +507,14 @@ class ChannelsListModel(TableViewModel[model.Channel | None]):
 
         return (
             str(channel.number),
-            str(channel.freq // 1000),
+            format_freq(channel.freq // 1000),
             consts.MODES[channel.mode],
             channel.name.rstrip(),
             yes_no(channel.af_filter),
             yes_no(channel.attenuator),
             consts.STEPS[channel.tuning_step],
             consts.DUPLEX_DIRS[channel.duplex],
-            str(channel.offset // 1000) if channel.duplex else "",
+            format_freq(channel.offset // 1000) if channel.duplex else "",
             consts.SKIPS[channel.skip],
             yes_no(channel.vsc),
             consts.TONE_MODES[channel.tone_mode],

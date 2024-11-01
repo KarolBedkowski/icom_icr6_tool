@@ -241,14 +241,16 @@ class BankChannelsListModel(gui_model.ChannelsListModel):
         return (
             str(channel.bank_pos),
             str(channel.number),
-            str(channel.freq // 1000),
+            gui_model.format_freq(channel.freq // 1000),
             consts.MODES[channel.mode],
             channel.name.rstrip(),
             gui_model.yes_no(channel.af_filter),
             gui_model.yes_no(channel.attenuator),
             consts.STEPS[channel.tuning_step],
             consts.DUPLEX_DIRS[channel.duplex],
-            str(channel.offset // 1000) if channel.duplex else "",
+            gui_model.format_freq(channel.offset // 1000)
+            if channel.duplex
+            else "",
             consts.SKIPS[channel.skip],
             gui_model.yes_no(channel.vsc),
             consts.TONE_MODES[channel.tone_mode],

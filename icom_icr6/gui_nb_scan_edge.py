@@ -157,7 +157,7 @@ class ScanEdgeListModel(TableViewModel[model.ScanEdge]):
                     parent,
                     iid,
                     column,
-                    value,
+                    value.replace(" ", ""),
                     max_val=consts.MAX_FREQUENCY // 1000,
                 )
 
@@ -187,14 +187,22 @@ class ScanEdgeListModel(TableViewModel[model.ScanEdge]):
                 return UpdateCellResult.NOOP, None
 
             case "start":
-                freq = model.fix_frequency(int(value) * 1000) if value else 0
+                freq = (
+                    model.fix_frequency(int(value.replace(" ", "")) * 1000)
+                    if value
+                    else 0
+                )
                 if not se.start and freq:
                     se.mode = model.default_mode_for_freq(freq)
 
                 se.start = freq
 
             case "end":
-                se.end = model.fix_frequency(int(value) * 1000) if value else 0
+                se.end = (
+                    model.fix_frequency(int(value.replace(" ", "")) * 1000)
+                    if value
+                    else 0
+                )
 
             case "mode":
                 se.mode = consts.MODES.index(value) if value else 0
@@ -224,15 +232,15 @@ class ScanEdgeListModel(TableViewModel[model.ScanEdge]):
             return (
                 str(se.idx),
                 se.name.rstrip(),
-                str(se.start // 1000),
-                str(se.end // 1000),
+                gui_model.format_freq(se.start // 1000),
+                gui_model.format_freq(se.end // 1000),
             )
 
         return (
             str(se.idx),
             se.name.rstrip(),
-            str(se.start // 1000),
-            str(se.end // 1000),
+            gui_model.format_freq(se.start // 1000),
+            gui_model.format_freq(se.end // 1000),
             consts.STEPS[se.tuning_step] if se.start and se.end else "",
             consts.MODES[se.mode] if se.start and se.end else "",
             se.human_attn(),  # TODOL: fix

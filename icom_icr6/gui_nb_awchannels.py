@@ -98,13 +98,15 @@ class RWChannelsListModel(gui_model.ChannelsListModel):
         assert channel
         return (
             str(channel.number),
-            str(channel.freq // 1000),
+            gui_model.format_freq(channel.freq // 1000),
             consts.MODES[channel.mode],
             gui_model.yes_no(channel.af_filter),
             gui_model.yes_no(channel.attenuator),
             consts.STEPS[channel.tuning_step],
             consts.DUPLEX_DIRS[channel.duplex],
-            str(channel.offset // 1000) if channel.duplex else "",
+            gui_model.format_freq(channel.offset // 1000)
+            if channel.duplex
+            else "",
             gui_model.yes_no(channel.vsc),
             consts.TONE_MODES[channel.tone_mode],
             gui_model.get_or_default(consts.CTCSS_TONES, channel.tsql_freq)
