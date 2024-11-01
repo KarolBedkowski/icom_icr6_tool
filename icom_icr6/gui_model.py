@@ -9,7 +9,7 @@ import logging
 import tkinter as tk
 import typing as ty
 
-from . import model
+from . import consts, model
 from .gui_widgets import (
     CheckboxPopup,
     ComboboxPopup,
@@ -115,35 +115,35 @@ class ChannelModel:
 
         self.name.set(chan.name.rstrip())
         self.freq.set(chan.freq // 1000)
-        self.mode.set(model.MODES[chan.mode])
-        self.ts.set(model.STEPS[chan.tuning_step])
+        self.mode.set(consts.MODES[chan.mode])
+        self.ts.set(consts.STEPS[chan.tuning_step])
         self.af.set(1 if chan.af_filter else 0)
         self.attn.set(1 if chan.attenuator else 0)
         self.vsc.set(1 if chan.vsc else 0)
-        self.skip.set(model.SKIPS[chan.skip])
+        self.skip.set(consts.SKIPS[chan.skip])
         try:
-            self.duplex.set(model.DUPLEX_DIRS[chan.duplex])
+            self.duplex.set(consts.DUPLEX_DIRS[chan.duplex])
         except IndexError:
             self.duplex.set("")
         self.offset.set(chan.offset // 1000)
         try:
-            self.tmode.set(model.TONE_MODES[chan.tmode])
+            self.tmode.set(consts.TONE_MODES[chan.tmode])
         except IndexError:
             self.tmode.set("")
         try:
-            self.ctone.set(model.CTCSS_TONES[chan.ctone])
+            self.ctone.set(consts.CTCSS_TONES[chan.ctone])
         except IndexError:
             self.ctone.set("")
         try:
-            self.dtsc.set(model.DTCS_CODES[chan.dtsc])
+            self.dtsc.set(consts.DTCS_CODES[chan.dtsc])
         except IndexError:
             self.dtsc.set("")
         try:
-            self.polarity.set(model.POLARITY[chan.polarity])
+            self.polarity.set(consts.POLARITY[chan.polarity])
         except IndexError:
             self.polarity.set("")
         try:
-            self.bank.set(model.BANK_NAMES[chan.bank])
+            self.bank.set(consts.BANK_NAMES[chan.bank])
             self.bank_pos.set(chan.bank_pos)
         except IndexError:
             self.bank.set("")
@@ -158,7 +158,7 @@ class ChannelModel:
         chan.name = self.name.get().rstrip()[:6]
         # TODO: better default settings for freq?
         if mode := self.mode.get():
-            chan.mode = model.MODES.index(mode)
+            chan.mode = consts.MODES.index(mode)
         elif chan.freq > 110:  # TODO: check
             chan.mode = 0
         elif chan.freq > 68:
@@ -169,31 +169,31 @@ class ChannelModel:
             chan.mode = 2
 
         if ts := self.ts.get():
-            chan.tuning_step = model.STEPS.index(ts)
+            chan.tuning_step = consts.STEPS.index(ts)
         else:
             chan.tuning_step = 0
 
         chan.af_filter = self.af.get() == 1
         chan.attenuator = self.attn.get() == 1
         chan.vsc = self.vsc.get() == 1
-        chan.skip = model.SKIPS.index(self.skip.get())
-        chan.duplex = model.DUPLEX_DIRS.index(self.duplex.get())
+        chan.skip = consts.SKIPS.index(self.skip.get())
+        chan.duplex = consts.DUPLEX_DIRS.index(self.duplex.get())
         chan.offset = self.offset.get() * 1000
-        chan.tmode = model.TONE_MODES.index(self.tmode.get())
+        chan.tmode = consts.TONE_MODES.index(self.tmode.get())
         chan.ctone = get_index_or_default(
-            model.CTCSS_TONES, self.ctone.get(), 63
+            consts.CTCSS_TONES, self.ctone.get(), 63
         )
         chan.dtsc = get_index_or_default(
-            model.DTCS_CODES, self.dtsc.get(), 127
+            consts.DTCS_CODES, self.dtsc.get(), 127
         )
         chan.polarity = get_index_or_default(
-            model.POLARITY, self.polarity.get(), 0
+            consts.POLARITY, self.polarity.get(), 0
         )
         if (bank := self.bank.get()) == "":
             chan.bank = 31
             chan.bank_pos = 0
         else:
-            chan.bank = model.BANK_NAMES.index(bank)
+            chan.bank = consts.BANK_NAMES.index(bank)
             chan.bank_pos = self.bank_pos.get()
 
     def validate(self) -> list[str]:
@@ -218,7 +218,7 @@ def name_validator(char: str, value: str) -> bool:
     if not value:
         return True
 
-    if char.upper() not in model.VALID_CHAR:
+    if char.upper() not in consts.VALID_CHAR:
         return False
 
     try:
@@ -293,22 +293,22 @@ class ChannelsListModel(TableViewModel[model.Channel | None]):
                 return CheckboxPopup(parent, iid, column, value)
 
             case "mode":
-                return ComboboxPopup(parent, iid, column, value, model.MODES)
+                return ComboboxPopup(parent, iid, column, value, consts.MODES)
 
             case "ts":
-                return ComboboxPopup(parent, iid, column, value, model.STEPS)
+                return ComboboxPopup(parent, iid, column, value, consts.STEPS)
 
             case "duplex":
                 return ComboboxPopup(
-                    parent, iid, column, value, model.DUPLEX_DIRS
+                    parent, iid, column, value, consts.DUPLEX_DIRS
                 )
 
             case "skip":
-                return ComboboxPopup(parent, iid, column, value, model.SKIPS)
+                return ComboboxPopup(parent, iid, column, value, consts.SKIPS)
 
             case "tone":
                 return ComboboxPopup(
-                    parent, iid, column, value, model.TONE_MODES
+                    parent, iid, column, value, consts.TONE_MODES
                 )
 
             case "tsql":
@@ -316,7 +316,7 @@ class ChannelsListModel(TableViewModel[model.Channel | None]):
                     return None
 
                 return ComboboxPopup(
-                    parent, iid, column, value, model.CTCSS_TONES
+                    parent, iid, column, value, consts.CTCSS_TONES
                 )
 
             case "dtsc":
@@ -324,7 +324,7 @@ class ChannelsListModel(TableViewModel[model.Channel | None]):
                     return None
 
                 return ComboboxPopup(
-                    parent, iid, column, value, model.DTCS_CODES
+                    parent, iid, column, value, consts.DTCS_CODES
                 )
 
             case "polarity":
@@ -332,7 +332,7 @@ class ChannelsListModel(TableViewModel[model.Channel | None]):
                     return None
 
                 return ComboboxPopup(
-                    parent, iid, column, value, model.POLARITY
+                    parent, iid, column, value, consts.POLARITY
                 )
             case "offset":
                 if not chan.duplex:
@@ -349,11 +349,11 @@ class ChannelsListModel(TableViewModel[model.Channel | None]):
 
             case "bank":
                 return ComboboxPopup(
-                    parent, iid, column, value, list(model.BANK_NAMES)
+                    parent, iid, column, value, list(consts.BANK_NAMES)
                 )
 
             case "bank_pos":
-                if chan.bank == model.BANK_NOT_SET:
+                if chan.bank == consts.BANK_NOT_SET:
                     return None
 
                 return NumEntryPopup(parent, iid, column, value, max_val=99)
@@ -364,7 +364,7 @@ class ChannelsListModel(TableViewModel[model.Channel | None]):
                     iid,
                     column,
                     value,
-                    max_val=model.MAX_FREQUENCY // 1000,
+                    max_val=consts.MAX_FREQUENCY // 1000,
                 )
 
         return None
@@ -400,7 +400,7 @@ class ChannelsListModel(TableViewModel[model.Channel | None]):
                     chan.mode = model.default_mode_for_freq(chan.freq)
 
             case "mode":
-                chan.mode = model.MODES.index(value) if value else 0
+                chan.mode = consts.MODES.index(value) if value else 0
 
             case "name":
                 chan.name = model.fix_name(value or "")
@@ -412,28 +412,30 @@ class ChannelsListModel(TableViewModel[model.Channel | None]):
                 chan.attenuator = value == "yes"
 
             case "ts":
-                chan.tuning_step = model.STEPS.index(value) if value else 0
+                chan.tuning_step = consts.STEPS.index(value) if value else 0
 
             case "duplex":
-                chan.duplex = model.DUPLEX_DIRS.index(value) if value else 0
+                chan.duplex = consts.DUPLEX_DIRS.index(value) if value else 0
 
             case "offset":
                 chan.offset = int(value or 0) * 1000
 
             case "skip":
-                chan.skip = model.SKIPS.index(value) if value else 0
+                chan.skip = consts.SKIPS.index(value) if value else 0
 
             case "tone":
-                chan.tmode = get_index_or_default(model.TONE_MODES, value, 0)
+                chan.tmode = get_index_or_default(consts.TONE_MODES, value, 0)
 
             case "tsql":
-                chan.ctone = get_index_or_default(model.CTCSS_TONES, value, 63)
+                chan.ctone = get_index_or_default(
+                    consts.CTCSS_TONES, value, 63
+                )
 
             case "dtsc":
-                chan.dtsc = get_index_or_default(model.DTCS_CODES, value, 127)
+                chan.dtsc = get_index_or_default(consts.DTCS_CODES, value, 127)
 
             case "polarity":
-                chan.polarity = get_index_or_default(model.POLARITY, value, 0)
+                chan.polarity = get_index_or_default(consts.POLARITY, value, 0)
 
             case "vsc":
                 chan.vsc = value == "yes"
@@ -441,16 +443,16 @@ class ChannelsListModel(TableViewModel[model.Channel | None]):
             case "bank":
                 prev_bank = chan.bank
                 chan.bank = get_index_or_default(
-                    list(model.BANK_NAMES), value, model.BANK_NOT_SET
+                    list(consts.BANK_NAMES), value, consts.BANK_NOT_SET
                 )
-                if chan.bank not in (prev_bank, model.BANK_NOT_SET):
+                if chan.bank not in (prev_bank, consts.BANK_NOT_SET):
                     bank = self._radio_memory.get_bank(chan.bank)
                     pos = bank.find_free_slot()
                     chan.bank_pos = pos if pos is not None else 99
 
             case "bank_pos":
                 bank_pos = 0
-                if chan.bank != model.BANK_NOT_SET:
+                if chan.bank != consts.BANK_NOT_SET:
                     bank_pos = int(value or 0)
                     bank = self._radio_memory.get_bank(chan.bank)
                     if bank.channels[bank_pos] != chan.number:
@@ -488,7 +490,7 @@ class ChannelsListModel(TableViewModel[model.Channel | None]):
             return (str(channel.number),)
 
         try:
-            bank = model.BANK_NAMES[channel.bank]
+            bank = consts.BANK_NAMES[channel.bank]
             bank_pos = str(channel.bank_pos)
         except IndexError:
             bank = bank_pos = ""
@@ -496,23 +498,23 @@ class ChannelsListModel(TableViewModel[model.Channel | None]):
         return (
             str(channel.number),
             str(channel.freq // 1000),
-            model.MODES[channel.mode],
+            consts.MODES[channel.mode],
             channel.name.rstrip(),
             yes_no(channel.af_filter),
             yes_no(channel.attenuator),
-            model.STEPS[channel.tuning_step],
-            model.DUPLEX_DIRS[channel.duplex],
+            consts.STEPS[channel.tuning_step],
+            consts.DUPLEX_DIRS[channel.duplex],
             str(channel.offset // 1000) if channel.duplex else "",
-            model.SKIPS[channel.skip],
+            consts.SKIPS[channel.skip],
             yes_no(channel.vsc),
-            model.TONE_MODES[channel.tmode],
-            get_or_default(model.CTCSS_TONES, channel.ctone)
+            consts.TONE_MODES[channel.tmode],
+            get_or_default(consts.CTCSS_TONES, channel.ctone)
             if channel.tmode in (1, 2)
             else "",
-            get_or_default(model.DTCS_CODES, channel.dtsc)
+            get_or_default(consts.DTCS_CODES, channel.dtsc)
             if channel.tmode in (3, 4)
             else "",
-            model.POLARITY[channel.polarity]
+            consts.POLARITY[channel.polarity]
             if channel.tmode in (3, 4)
             else "",
             bank,

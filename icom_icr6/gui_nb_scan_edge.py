@@ -9,7 +9,7 @@ import tkinter as tk
 import typing as ty
 from tkinter import messagebox
 
-from . import gui_model, model
+from . import consts, gui_model, model
 from .gui_widgets import (
     ComboboxPopup,
     EntryPopup,
@@ -81,7 +81,7 @@ class ScanEdgePage(tk.Frame):
     def __update_scan_edges_list(self) -> None:
         self._tb_model.data = [
             self._radio_memory.get_scan_edge(idx)
-            for idx in range(model.NUM_SCAN_EDGES)
+            for idx in range(consts.NUM_SCAN_EDGES)
         ]
         self._se_content.update_all()
 
@@ -142,10 +142,10 @@ class ScanEdgeListModel(TableViewModel[model.ScanEdge]):
                 )
 
             case "mode":
-                res = ComboboxPopup(parent, iid, column, value, model.MODES)
+                res = ComboboxPopup(parent, iid, column, value, consts.MODES)
 
             case "ts":
-                res = ComboboxPopup(parent, iid, column, value, model.STEPS)
+                res = ComboboxPopup(parent, iid, column, value, consts.STEPS)
 
             case "name":
                 res = EntryPopup(parent, iid, column, value).with_validator(
@@ -158,7 +158,7 @@ class ScanEdgeListModel(TableViewModel[model.ScanEdge]):
                     iid,
                     column,
                     value,
-                    max_val=model.MAX_FREQUENCY // 1000,
+                    max_val=consts.MAX_FREQUENCY // 1000,
                 )
 
         return res
@@ -197,7 +197,7 @@ class ScanEdgeListModel(TableViewModel[model.ScanEdge]):
                 se.end = model.fix_frequency(int(value) * 1000) if value else 0
 
             case "mode":
-                se.mode = model.MODES.index(value) if value else 0
+                se.mode = consts.MODES.index(value) if value else 0
 
             case "name":
                 se.name = model.fix_name(value or "")
@@ -206,7 +206,7 @@ class ScanEdgeListModel(TableViewModel[model.ScanEdge]):
                 se.attn = value == "yes"
 
             case "ts":
-                se.ts = model.STEPS.index(value) if value else 0
+                se.ts = consts.STEPS.index(value) if value else 0
 
             case _:
                 return UpdateCellResult.NOOP, None
@@ -233,7 +233,7 @@ class ScanEdgeListModel(TableViewModel[model.ScanEdge]):
             se.name.rstrip(),
             str(se.start // 1000),
             str(se.end // 1000),
-            model.STEPS[se.ts] if se.start and se.end else "",
-            model.MODES[se.mode] if se.start and se.end else "",
+            consts.STEPS[se.ts] if se.start and se.end else "",
+            consts.MODES[se.mode] if se.start and se.end else "",
             se.human_attn(),  # TODOL: fix
         )

@@ -9,7 +9,7 @@ import tkinter as tk
 import typing as ty
 from tkinter import messagebox, ttk
 
-from . import gui_model, model
+from . import consts, gui_model, model
 from .gui_widgets import (
     NumEntryPopup,
     TableView2,
@@ -101,10 +101,9 @@ class BanksPage(tk.Frame):
     def __update_banks_list(self) -> None:
         banks = self._banks_list
         sel = banks.curselection()  # type: ignore
-        ic(sel)
 
         banks.delete(0, banks.size())
-        for idx, bname in enumerate(model.BANK_NAMES):
+        for idx, bname in enumerate(consts.BANK_NAMES):
             bank = self._radio_memory.get_bank(idx)
             name = f"{bname}: {bank.name}" if bank.name else bname
             banks.insert(tk.END, name)
@@ -243,23 +242,23 @@ class BankChannelsListModel(gui_model.ChannelsListModel):
             str(channel.bank_pos),
             str(channel.number),
             str(channel.freq // 1000),
-            model.MODES[channel.mode],
+            consts.MODES[channel.mode],
             channel.name.rstrip(),
             gui_model.yes_no(channel.af_filter),
             gui_model.yes_no(channel.attenuator),
-            model.STEPS[channel.tuning_step],
-            model.DUPLEX_DIRS[channel.duplex],
+            consts.STEPS[channel.tuning_step],
+            consts.DUPLEX_DIRS[channel.duplex],
             str(channel.offset // 1000) if channel.duplex else "",
-            model.SKIPS[channel.skip],
+            consts.SKIPS[channel.skip],
             gui_model.yes_no(channel.vsc),
-            model.TONE_MODES[channel.tmode],
-            gui_model.get_or_default(model.CTCSS_TONES, channel.ctone)
+            consts.TONE_MODES[channel.tmode],
+            gui_model.get_or_default(consts.CTCSS_TONES, channel.ctone)
             if channel.tmode in (1, 2)
             else "",
-            gui_model.get_or_default(model.DTCS_CODES, channel.dtsc)
+            gui_model.get_or_default(consts.DTCS_CODES, channel.dtsc)
             if channel.tmode in (3, 4)
             else "",
-            model.POLARITY[channel.polarity]
+            consts.POLARITY[channel.polarity]
             if channel.tmode in (3, 4)
             else "",
         )
@@ -281,7 +280,7 @@ class BankChannelsListModel(gui_model.ChannelsListModel):
             str(row),
             column,
             value,
-            max_val=model.NUM_CHANNELS,
+            max_val=consts.NUM_CHANNELS,
         )
 
     def update_cell(
@@ -313,7 +312,7 @@ class BankChannelsListModel(gui_model.ChannelsListModel):
             return UpdateCellResult.NOOP, None
 
         channum = int(value)
-        assert 0 <= channum < model.NUM_CHANNELS
+        assert 0 <= channum < consts.NUM_CHANNELS
         # new channel to set
         chan = self._radio_memory.get_channel(channum)
 

@@ -12,6 +12,8 @@ import typing as ty
 import unicodedata
 from dataclasses import dataclass
 
+from . import consts
+
 _LOG = logging.getLogger(__name__)
 
 
@@ -19,236 +21,6 @@ _LOG = logging.getLogger(__name__)
 class RadioModel:
     rev: int
     comment: bytes
-
-
-MEM_SIZE = 0x6E60
-MEM_FOOTER = "IcomCloneFormat3"
-
-NUM_CHANNELS: ty.Final[int] = 1300
-NUM_BANKS: ty.Final[int] = 22
-NUM_SCAN_EDGES: ty.Final[int] = 25
-NUM_SCAN_LINKS: ty.Final[int] = 10
-NUM_AUTOWRITE_CHANNELS: ty.Final[int] = 200
-NAME_LEN: ty.Final[int] = 6
-
-MIN_FREQUENCY: ty.Final[int] = 100_000
-MAX_FREQUENCY: ty.Final[int] = 1_309_995_000
-
-TONE_MODES = ["", "TSQL", "TSQL-R", "DTCS", "DTCS-R", "", "", ""]
-DUPLEX_DIRS = ["", "-", "+", ""]
-MODES = ["FM", "WFM", "AM", "Auto", "-"]
-STEPS = [
-    "5",
-    "6.25",
-    "8.333333",
-    "9",
-    "10",
-    "12.5",
-    "15",
-    "20",
-    "25",
-    "30",
-    "50",
-    "100",
-    "125",
-    "200",
-    "Auto",
-    "",
-]
-SKIPS = ["", "S", "", "P"]
-# 31 = not set
-BANK_NAMES = "ABCDEFGHIJKLMNOPQRTUWY"
-BANK_NOT_SET = 31
-POLARITY = ["Reverse", "Normal"]
-
-# https://pl.wikipedia.org/wiki/CTCSS
-CTCSS_TONES = (
-    "67,0 ",
-    "69,3",
-    "71,9",
-    "74,4",
-    "77,0",
-    "79,7",
-    "82,5",
-    "85,4",
-    "88,5",
-    "91,5",
-    "94,8",
-    "97,4",
-    "100,03",
-    "103,54",
-    "107,25",
-    "110,96",
-    "114,87",
-    "118,88",
-    "123,09",
-    "127,30",
-    "131,81",
-    "136,52",
-    "141,33",
-    "146,24",
-    "151,45",
-    "156,76",
-    "159,87",
-    "162,28",
-    "165,59",
-    "167,90",
-    "171,31",
-    "173,82",
-    "177,33",
-    "179,94",
-    "183,55",
-    "186,26",
-    "189,97",
-    "192,88",
-    "196,69",
-    "199,50",
-    "203,51",
-    "206,52",
-    "210,73",
-    "218,14",
-    "225,75",
-    "229,16",
-    "233,67",
-    "241,88",
-    "250,39",
-    "254,10",
-    "",
-)
-
-DTCS_CODES = [
-    "023",
-    "025",
-    "026",
-    "031",
-    "032",
-    "043",
-    "047",
-    "051",
-    "053",
-    "054",
-    "065",
-    "071",
-    "072",
-    "073",
-    "074",
-    "114",
-    "115",
-    "116",
-    "122",
-    "125",
-    "131",
-    "132",
-    "134",
-    "143",
-    "152",
-    "155",
-    "156",
-    "162",
-    "165",
-    "172",
-    "174",
-    "205",
-    "212",
-    "223",
-    "225",
-    "226",
-    "243",
-    "244",
-    "245",
-    "246",
-    "251",
-    "252",
-    "261",
-    "263",
-    "265",
-    "266",
-    "271",
-    "306",
-    "311",
-    "315",
-    "325",
-    "331",
-    "343",
-    "346",
-    "351",
-    "364",
-    "365",
-    "371",
-    "411",
-    "412",
-    "413",
-    "423",
-    "425",
-    "431",
-    "432",
-    "445",
-    "446",
-    "452",
-    "455",
-    "464",
-    "465",
-    "466",
-    "503",
-    "506",
-    "516",
-    "521",
-    "525",
-    "532",
-    "546",
-    "552",
-    "564",
-    "565",
-    "606",
-    "612",
-    "624",
-    "627",
-    "631",
-    "632",
-    "645",
-    "652",
-    "654",
-    "662",
-    "664",
-    "703",
-    "712",
-    "723",
-    "725",
-    "726",
-    "731",
-    "732",
-    "734",
-    "743",
-    "754",
-    "",
-]
-
-SETT_FUNC_DIAL_STEP = ["100kHz", "1MHz", "10MHz"]
-SETT_DIAL_FUNCTION = ["Tuning", "Volume"]
-SETT_BEEP_LEVEL = [str(x) for x in range(40)] + ["Volume"]
-SETT_BACKLIGHT = ["Off", "On", "Auto 1", "Auto 2"]
-SETT_MEM_DISPLAY_TYPE = [
-    "Frequency",
-    "Bank name",
-    "Memory name",
-    "Channel number",
-]
-SETT_AM_ANT = ["External", "Bar"]
-SETT_FM_ANT = ["External", "Earphone"]
-SETT_LCD_CONTRAST = list("12345")
-SETT_KEY_LOCK = ["Normal", "No SQL", "No Vol", "ALL"]
-SETT_MONITOR = ["Push", "Hold"]
-SETT_CHARGE_TYPE = ["Type 1", "Type 2"]
-SETT_PAUSE_TIMER = [f"{x}sec" for x in range(2, 22, 2)] + ["Hold"]
-SETT_RESUME_TIMER = [f"{x}sec" for x in range(6)] + ["Hold"]
-SETT_CIV_BAUD_RATE = [
-    "300bps",
-    "1200bps",
-    "4800bps",
-    "9600bps",
-    "19200bps",
-    "Auto",
-]
 
 
 def _try_get(inlist: list[str] | tuple[str, ...], idx: int) -> str:
@@ -331,12 +103,12 @@ class Channel:
         self.hide_channel = True
 
     def clear_bank(self) -> None:
-        self.bank = BANK_NOT_SET
+        self.bank = consts.BANK_NOT_SET
         self.bank_pos = 0
 
     def __str__(self) -> str:
         try:
-            bank = f"{BANK_NAMES[self.bank]}/{self.bank_pos}"
+            bank = f"{consts.BANK_NAMES[self.bank]}/{self.bank_pos}"
         except IndexError:
             bank = f"{self.bank}/{self.bank_pos}"
 
@@ -346,20 +118,20 @@ class Channel:
             f"ff={self.freq_flags}, "
             f"af={self.af_filter}, "
             f"att={self.attenuator}, "
-            f"mode={MODES[self.mode]}, "
+            f"mode={consts.MODES[self.mode]}, "
             f"ts={self.tuning_step}, "
-            f"duplex={DUPLEX_DIRS[self.duplex]}, "
-            f"tmode={TONE_MODES[self.tmode]}, "
+            f"duplex={consts.DUPLEX_DIRS[self.duplex]}, "
+            f"tmode={consts.TONE_MODES[self.tmode]}, "
             f"offset={self.offset}, "
-            f"ctone={_try_get(CTCSS_TONES, self.ctone)}, "
-            f"dtsc={_try_get(DTCS_CODES, self.dtsc)}, "
+            f"ctone={_try_get(consts.CTCSS_TONES, self.ctone)}, "
+            f"dtsc={_try_get(consts.DTCS_CODES, self.dtsc)}, "
             f"cf={self.canceller_freq}, "
             f"vsc={self.vsc}, "
             f"c={self.canceller}, "
             f"name={self.name!r}, "
             f"hide={self.hide_channel}, "
-            f"skip={SKIPS[self.skip]}, "
-            f"polarity={POLARITY[self.polarity]}, "
+            f"skip={consts.SKIPS[self.skip]}, "
+            f"polarity={consts.POLARITY[self.polarity]}, "
             f"bank={bank}, "
             f"unknowns={self.unknowns}, "
             f"raws={binascii.hexlify(self.raw)!r}, "
@@ -527,13 +299,13 @@ class ScanLink:
     edges: int
 
     def __getitem__(self, idx: int) -> bool:
-        if idx < 0 or idx >= NUM_SCAN_EDGES:
+        if idx < 0 or idx >= consts.NUM_SCAN_EDGES:
             raise IndexError
 
         return bool(self.edges & (1 << idx))
 
     def __setitem__(self, idx: int, value: object) -> None:
-        if idx < 0 or idx >= NUM_SCAN_EDGES:
+        if idx < 0 or idx >= consts.NUM_SCAN_EDGES:
             raise IndexError
 
         bit = 1 << idx
@@ -744,7 +516,7 @@ class BankLinks:
         self.banks = (self.banks & (~bit)) | (bit if value else 0)
 
     def bits(self) -> ty.Iterable[bool]:
-        return (bool(self.banks & (1 << i)) for i in range(NUM_BANKS))
+        return (bool(self.banks & (1 << i)) for i in range(consts.NUM_BANKS))
 
     @classmethod
     def from_data(cls: type[BankLinks], data: bytes | list[int]) -> BankLinks:
@@ -762,13 +534,13 @@ class BankLinks:
     def human(self) -> str:
         return "".join(
             bn if self.banks & (1 << idx) else " "
-            for idx, bn in enumerate(BANK_NAMES)
+            for idx, bn in enumerate(consts.BANK_NAMES)
         )
 
 
 class RadioMemory:
     def __init__(self) -> None:
-        self.mem = [0] * MEM_SIZE
+        self.mem = [0] * consts.MEM_SIZE
         self._cache_channels: dict[int, Channel] = {}
         self._cache_banks: dict[int, Bank] = {}
 
@@ -803,17 +575,19 @@ class RadioMemory:
         self.mem[addr : addr + size] = data
 
     def validate(self) -> None:
-        if (memlen := len(self.mem)) != MEM_SIZE:
+        if (memlen := len(self.mem)) != consts.MEM_SIZE:
             err = f"invalid memory size: {memlen}"
             raise ValueError(err)
 
-        mem_footer = bytes(self.mem[MEM_SIZE - len(MEM_FOOTER) :]).decode()
-        if mem_footer != MEM_FOOTER:
+        mem_footer = bytes(
+            self.mem[consts.MEM_SIZE - len(consts.MEM_FOOTER) :]
+        ).decode()
+        if mem_footer != consts.MEM_FOOTER:
             err = f"invalid memory footer: {mem_footer}"
             raise ValueError(err)
 
     def get_channel(self, idx: int) -> Channel:
-        if idx < 0 or idx > NUM_CHANNELS - 1:
+        if idx < 0 or idx > consts.NUM_CHANNELS - 1:
             raise IndexError
 
         if chan := self._cache_channels.get(idx):
@@ -848,19 +622,19 @@ class RadioMemory:
         self.mem[cflags_start : cflags_start + 2] = cflags
 
     def get_autowrite_channels(self) -> ty.Iterable[Channel]:
-        for idx in range(NUM_AUTOWRITE_CHANNELS):
+        for idx in range(consts.NUM_AUTOWRITE_CHANNELS):
             start = idx * 16 + 0x5140
             data = self.mem[start : start + 16]
             chan = Channel.from_data(idx, data, None)
 
             # chan pos
             # TODO: CHECK !!!!
-            if (pos := self.mem[idx + 0x6A30]) < NUM_AUTOWRITE_CHANNELS:
+            if (pos := self.mem[idx + 0x6A30]) < consts.NUM_AUTOWRITE_CHANNELS:
                 chan.number = pos
                 yield chan
 
     def get_scan_edge(self, idx: int) -> ScanEdge:
-        if idx < 0 or idx > NUM_SCAN_EDGES - 1:
+        if idx < 0 or idx > consts.NUM_SCAN_EDGES - 1:
             raise IndexError
 
         start = 0x5DC0 + idx * 16
@@ -878,13 +652,13 @@ class RadioMemory:
         self.mem[start : start + 16] = data
 
     def _get_active_channels(self) -> ty.Iterable[Channel]:
-        for cidx in range(NUM_CHANNELS):
+        for cidx in range(consts.NUM_CHANNELS):
             chan = self.get_channel(cidx)
             if not chan.hide_channel and chan.freq:
                 yield chan
 
     def get_bank(self, idx: int) -> Bank:
-        if idx < 0 or idx > NUM_BANKS - 1:
+        if idx < 0 or idx > consts.NUM_BANKS - 1:
             raise IndexError
 
         if bank := self._cache_banks.get(idx):
@@ -915,7 +689,7 @@ class RadioMemory:
         self.mem[start : start + 8] = data
 
     def get_scan_link(self, idx: int) -> ScanLink:
-        if idx < 0 or idx > NUM_SCAN_LINKS - 1:
+        if idx < 0 or idx > consts.NUM_SCAN_LINKS - 1:
             raise IndexError
 
         start = 0x6DC0 + idx * 8
@@ -959,14 +733,6 @@ class RadioMemory:
         self.mem[0x6C28 : 0x6C28 + 3] = data
 
 
-# list of valid characters
-VALID_CHAR = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789()*+-./:= "
-# list of coded characters; ^ is invalid character
-CODED_CHRS: ty.Final[str] = (
-    " ^^^^^^^()*+^-./0123456789:^^=^^^ABCDEFGHIJKLMNOPQRSTUVWXYZ^^^^^"
-)
-ENCODED_NAME_LEN: ty.Final[int] = 5
-
 
 def decode_name(inp: list[int] | bytes) -> str:
     """Decode name from 5-bytes that contains 6 - 6bits coded characters with
@@ -979,7 +745,7 @@ def decode_name(inp: list[int] | bytes) -> str:
        3  33334444
        4  44555555
     """
-    if len(inp) != ENCODED_NAME_LEN:
+    if len(inp) != consts.ENCODED_NAME_LEN:
         raise ValueError
 
     chars = (
@@ -991,13 +757,13 @@ def decode_name(inp: list[int] | bytes) -> str:
         (inp[4] & 0b00111111),
     )
 
-    return "".join(CODED_CHRS[x] for x in chars)
+    return "".join(consts.CODED_CHRS[x] for x in chars)
 
 
 def encode_name(inp: str) -> list[int]:
-    inp = inp[:NAME_LEN].upper().ljust(NAME_LEN)
+    inp = inp[: consts.NAME_LEN].upper().ljust(consts.NAME_LEN)
 
-    iic = [0 if x == "^" else CODED_CHRS.index(x) for x in inp]
+    iic = [0 if x == "^" else consts.CODED_CHRS.index(x) for x in inp]
     return [
         (iic[0] & 0b00111100) >> 2,  # padding
         ((iic[0] & 0b00000011) << 6) | (iic[1] & 0b00111111),
@@ -1094,7 +860,7 @@ def validate_frequency(inp: str | int) -> bool:
     else:
         freq = inp
 
-    if MAX_FREQUENCY < freq < 0:
+    if consts.MAX_FREQUENCY < freq < 0:
         return False
 
     try:
@@ -1109,13 +875,13 @@ def validate_name(name: str) -> None:
     if len(name) > 6:
         raise ValueError
 
-    if any(i not in VALID_CHAR for i in name.upper()):
+    if any(i not in consts.VALID_CHAR for i in name.upper()):
         raise ValueError
 
 
 def fix_frequency(freq: int) -> int:
-    freq = max(freq, MIN_FREQUENCY)
-    freq = min(freq, MAX_FREQUENCY)
+    freq = max(freq, consts.MIN_FREQUENCY)
+    freq = min(freq, consts.MAX_FREQUENCY)
 
     div = (5000, 9000, 6250, 8333.333)
     nfreqs = (int((freq // f) * f) for f in div)
@@ -1148,5 +914,5 @@ def fix_name(name: str) -> str:
     name = (
         unicodedata.normalize("NFKD", name).encode("ascii", "replace").decode()
     )
-    name = "".join(c for c in name if c in VALID_CHAR)
+    name = "".join(c for c in name if c in consts.VALID_CHAR)
     return name[:6]

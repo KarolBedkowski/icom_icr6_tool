@@ -8,7 +8,7 @@ import logging
 import tkinter as tk
 from tkinter import ttk
 
-from . import gui_model, model
+from . import consts, gui_model, model
 from .gui_widgets import new_checkbox, new_combo, new_entry
 
 _LOG = logging.getLogger(__name__)
@@ -35,34 +35,36 @@ class SettingsPage(tk.Frame):
         self.__update()
 
     def _create_vars(self) -> None:
-        self._var_func_dial_step = gui_model.ListVar(model.SETT_FUNC_DIAL_STEP)
+        self._var_func_dial_step = gui_model.ListVar(
+            consts.SETT_FUNC_DIAL_STEP
+        )
         self._var_key_beep = gui_model.BoolVar()
-        self._var_beep_level = gui_model.ListVar(model.SETT_BEEP_LEVEL)
-        self._var_backlight = gui_model.ListVar(model.SETT_BACKLIGHT)
+        self._var_beep_level = gui_model.ListVar(consts.SETT_BEEP_LEVEL)
+        self._var_backlight = gui_model.ListVar(consts.SETT_BACKLIGHT)
         self._var_power_save = gui_model.BoolVar()
-        self._var_am_ant = gui_model.ListVar(model.SETT_AM_ANT)
-        self._var_fm_ant = gui_model.ListVar(model.SETT_FM_ANT)
+        self._var_am_ant = gui_model.ListVar(consts.SETT_AM_ANT)
+        self._var_fm_ant = gui_model.ListVar(consts.SETT_FM_ANT)
         self._var_civ_address = tk.StringVar()
-        self._var_civ_baud_rate = gui_model.ListVar(model.SETT_CIV_BAUD_RATE)
+        self._var_civ_baud_rate = gui_model.ListVar(consts.SETT_CIV_BAUD_RATE)
         self._var_civ_transceive = gui_model.BoolVar()
-        self._var_dial_function = gui_model.ListVar(model.SETT_DIAL_FUNCTION)
+        self._var_dial_function = gui_model.ListVar(consts.SETT_DIAL_FUNCTION)
         self._var_mem_display_type = gui_model.ListVar(
-            model.SETT_MEM_DISPLAY_TYPE
+            consts.SETT_MEM_DISPLAY_TYPE
         )
         self._var_program_skip_scan = gui_model.BoolVar()
-        self._var_pause_timer = gui_model.ListVar(model.SETT_PAUSE_TIMER)
-        self._var_resume_timer = gui_model.ListVar(model.SETT_RESUME_TIMER)
+        self._var_pause_timer = gui_model.ListVar(consts.SETT_PAUSE_TIMER)
+        self._var_resume_timer = gui_model.ListVar(consts.SETT_RESUME_TIMER)
         self._var_stop_beep = gui_model.BoolVar()
         self._var_set_expand = gui_model.BoolVar()
-        self._var_key_lock = gui_model.ListVar(model.SETT_KEY_LOCK)
+        self._var_key_lock = gui_model.ListVar(consts.SETT_KEY_LOCK)
         self._var_dial_speed_up = gui_model.BoolVar()
-        self._var_monitor = gui_model.ListVar(model.SETT_MONITOR)
+        self._var_monitor = gui_model.ListVar(consts.SETT_MONITOR)
         self._var_auto_power_off = gui_model.BoolVar()
-        self._var_lcd_contrast = gui_model.ListVar(model.SETT_LCD_CONTRAST)
+        self._var_lcd_contrast = gui_model.ListVar(consts.SETT_LCD_CONTRAST)
         self._var_af_filer_fm = gui_model.BoolVar()
         self._var_af_filer_wfm = gui_model.BoolVar()
         self._var_af_filer_am = gui_model.BoolVar()
-        self._var_charging_type = gui_model.ListVar(model.SETT_CHARGE_TYPE)
+        self._var_charging_type = gui_model.ListVar(consts.SETT_CHARGE_TYPE)
 
     def _create_fields(self) -> None:
         new_combo(
@@ -71,7 +73,7 @@ class SettingsPage(tk.Frame):
             0,
             "Func + Down/Up",
             self._var_func_dial_step,
-            model.SETT_FUNC_DIAL_STEP,
+            consts.SETT_FUNC_DIAL_STEP,
         )
         new_combo(
             self,
@@ -79,7 +81,7 @@ class SettingsPage(tk.Frame):
             2,
             "Dial function",
             self._var_dial_function,
-            model.SETT_DIAL_FUNCTION,
+            consts.SETT_DIAL_FUNCTION,
         )
         new_checkbox(self, 0, 4, "Dial speed up", self._var_dial_speed_up)
 
@@ -93,16 +95,18 @@ class SettingsPage(tk.Frame):
             2,
             "Beep level",
             self._var_beep_level,
-            model.SETT_BEEP_LEVEL,
+            consts.SETT_BEEP_LEVEL,
         )
 
         new_combo(
-            self, 3, 0, "Key lock", self._var_key_lock, model.SETT_KEY_LOCK
+            self, 3, 0, "Key lock", self._var_key_lock, consts.SETT_KEY_LOCK
         )
-        new_combo(self, 3, 2, "Monitor", self._var_monitor, model.SETT_MONITOR)
+        new_combo(
+            self, 3, 2, "Monitor", self._var_monitor, consts.SETT_MONITOR
+        )
 
         new_combo(
-            self, 4, 0, "Backlight", self._var_backlight, model.SETT_BACKLIGHT
+            self, 4, 0, "Backlight", self._var_backlight, consts.SETT_BACKLIGHT
         )
         new_combo(
             self,
@@ -110,7 +114,7 @@ class SettingsPage(tk.Frame):
             2,
             "Memory display type",
             self._var_mem_display_type,
-            model.SETT_MEM_DISPLAY_TYPE,
+            consts.SETT_MEM_DISPLAY_TYPE,
         )
         new_combo(
             self,
@@ -118,14 +122,14 @@ class SettingsPage(tk.Frame):
             4,
             "LCD contrast",
             self._var_lcd_contrast,
-            model.SETT_LCD_CONTRAST,
+            consts.SETT_LCD_CONTRAST,
         )
 
         new_combo(
-            self, 5, 0, "AM Antenna", self._var_am_ant, model.SETT_AM_ANT
+            self, 5, 0, "AM Antenna", self._var_am_ant, consts.SETT_AM_ANT
         )
         new_combo(
-            self, 5, 2, "FM Antenna", self._var_fm_ant, model.SETT_FM_ANT
+            self, 5, 2, "FM Antenna", self._var_fm_ant, consts.SETT_FM_ANT
         )
 
         new_checkbox(self, 6, 0, "AM AF filter", self._var_af_filer_am)
@@ -138,7 +142,7 @@ class SettingsPage(tk.Frame):
             0,
             "Charge type",
             self._var_charging_type,
-            model.SETT_CHARGE_TYPE,
+            consts.SETT_CHARGE_TYPE,
         )
 
         new_checkbox(self, 8, 0, "Set expand", self._var_set_expand)
@@ -152,7 +156,7 @@ class SettingsPage(tk.Frame):
             2,
             "Scan pause timer",
             self._var_pause_timer,
-            model.SETT_PAUSE_TIMER,
+            consts.SETT_PAUSE_TIMER,
         )
         new_combo(
             self,
@@ -160,7 +164,7 @@ class SettingsPage(tk.Frame):
             4,
             "Scan resume timer",
             self._var_resume_timer,
-            model.SETT_RESUME_TIMER,
+            consts.SETT_RESUME_TIMER,
         )
         new_checkbox(self, 10, 0, "Scan stop beep", self._var_stop_beep)
 
@@ -170,7 +174,7 @@ class SettingsPage(tk.Frame):
             0,
             "CIV baud rate",
             self._var_civ_baud_rate,
-            model.SETT_CIV_BAUD_RATE,
+            consts.SETT_CIV_BAUD_RATE,
         )
         new_entry(self, 11, 2, "CIV address", self._var_civ_address)
         new_checkbox(self, 11, 4, "CIV transceive", self._var_civ_transceive)

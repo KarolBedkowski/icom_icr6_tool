@@ -8,10 +8,8 @@ import logging
 import tkinter as tk
 from tkinter import ttk
 
-from . import model
-from .gui_widgets import (
-    new_entry,
-)
+from . import consts, model
+from .gui_widgets import new_entry
 
 _LOG = logging.getLogger(__name__)
 
@@ -95,7 +93,7 @@ class ScanLinksPage(tk.Frame):
     def _create_scan_edges_list(self, parent: tk.Frame) -> None:
         slf = tk.Frame(parent, borderwidth=6)
         self._scan_links_edges = []
-        for idx in range(model.NUM_SCAN_EDGES):
+        for idx in range(consts.NUM_SCAN_EDGES):
             var = tk.IntVar()
             cb = tk.Checkbutton(
                 slf,
