@@ -74,7 +74,7 @@ class Channel:
     # duplex offset
     offset: int
     # tone
-    tmode: int
+    tone_mode: int
     # tsql freq
     ctone: int
     # dtsc code
@@ -121,7 +121,7 @@ class Channel:
             f"mode={consts.MODES[self.mode]}, "
             f"ts={self.tuning_step}, "
             f"duplex={consts.DUPLEX_DIRS[self.duplex]}, "
-            f"tmode={consts.TONE_MODES[self.tmode]}, "
+            f"tone_mode={consts.TONE_MODES[self.tone_mode]}, "
             f"offset={self.offset}, "
             f"ctone={_try_get(consts.CTCSS_TONES, self.ctone)}, "
             f"dtsc={_try_get(consts.DTCS_CODES, self.dtsc)}, "
@@ -194,7 +194,7 @@ class Channel:
             mode=(data[3] & 0b00110000) >> 4,
             tuning_step=data[3] & 0b00001111,
             duplex=(data[4] & 0b00110000) >> 4,
-            tmode=data[4] & 0b00000111,
+            tone_mode=data[4] & 0b00000111,
             offset=offset_real,
             ctone=data[7] & 0b00111111,
             polarity=(data[8] & 0b10000000) >> 7,
@@ -234,8 +234,8 @@ class Channel:
         )
         # duplex
         data_set(data, 4, 0b00110000, self.duplex << 4)
-        # tmode
-        data_set(data, 4, 0b00000111, self.tmode)
+        # tone_mode
+        data_set(data, 4, 0b00000111, self.tone_mode)
         # offset
         data[5] = offset_l
         data[6] = offset_h
@@ -731,7 +731,6 @@ class RadioMemory:
         data = self.mem[0x6C28 : 0x6C28 + 3]
         bl.to_data(data)
         self.mem[0x6C28 : 0x6C28 + 3] = data
-
 
 
 def decode_name(inp: list[int] | bytes) -> str:

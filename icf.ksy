@@ -185,7 +185,7 @@ types:
         type: b2
       - id: unknown3
         type: b1
-      - id: tmode
+      - id: tone_mode
         type: b3
 
       - id: offset

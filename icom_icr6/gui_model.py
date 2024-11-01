@@ -81,7 +81,7 @@ class ChannelModel:
 
         self.duplex = tk.StringVar()
         self.offset = tk.IntVar()
-        self.tmode = tk.StringVar()
+        self.tone_mode = tk.StringVar()
         self.ctone = tk.StringVar()
         self.dtsc = tk.StringVar()
         self.polarity = tk.StringVar()
@@ -100,7 +100,7 @@ class ChannelModel:
         self.skip.set("")
         self.duplex.set("")
         self.offset.set(0)
-        self.tmode.set("")
+        self.tone_mode.set("")
         self.ctone.set("")
         self.dtsc.set("")
         self.polarity.set("")
@@ -127,9 +127,9 @@ class ChannelModel:
             self.duplex.set("")
         self.offset.set(chan.offset // 1000)
         try:
-            self.tmode.set(consts.TONE_MODES[chan.tmode])
+            self.tone_mode.set(consts.TONE_MODES[chan.tone_mode])
         except IndexError:
-            self.tmode.set("")
+            self.tone_mode.set("")
         try:
             self.ctone.set(consts.CTCSS_TONES[chan.ctone])
         except IndexError:
@@ -179,7 +179,7 @@ class ChannelModel:
         chan.skip = consts.SKIPS.index(self.skip.get())
         chan.duplex = consts.DUPLEX_DIRS.index(self.duplex.get())
         chan.offset = self.offset.get() * 1000
-        chan.tmode = consts.TONE_MODES.index(self.tmode.get())
+        chan.tone_mode = consts.TONE_MODES.index(self.tone_mode.get())
         chan.ctone = get_index_or_default(
             consts.CTCSS_TONES, self.ctone.get(), 63
         )
@@ -312,7 +312,7 @@ class ChannelsListModel(TableViewModel[model.Channel | None]):
                 )
 
             case "tsql":
-                if chan.tmode not in (1, 2):
+                if chan.tone_mode not in (1, 2):
                     return None
 
                 return ComboboxPopup(
@@ -320,7 +320,7 @@ class ChannelsListModel(TableViewModel[model.Channel | None]):
                 )
 
             case "dtsc":
-                if chan.tmode not in (3, 4):
+                if chan.tone_mode not in (3, 4):
                     return None
 
                 return ComboboxPopup(
@@ -328,7 +328,7 @@ class ChannelsListModel(TableViewModel[model.Channel | None]):
                 )
 
             case "polarity":
-                if chan.tmode not in (3, 4):
+                if chan.tone_mode not in (3, 4):
                     return None
 
                 return ComboboxPopup(
@@ -424,7 +424,9 @@ class ChannelsListModel(TableViewModel[model.Channel | None]):
                 chan.skip = consts.SKIPS.index(value) if value else 0
 
             case "tone":
-                chan.tmode = get_index_or_default(consts.TONE_MODES, value, 0)
+                chan.tone_mode = get_index_or_default(
+                    consts.TONE_MODES, value, 0
+                )
 
             case "tsql":
                 chan.ctone = get_index_or_default(
@@ -507,15 +509,15 @@ class ChannelsListModel(TableViewModel[model.Channel | None]):
             str(channel.offset // 1000) if channel.duplex else "",
             consts.SKIPS[channel.skip],
             yes_no(channel.vsc),
-            consts.TONE_MODES[channel.tmode],
+            consts.TONE_MODES[channel.tone_mode],
             get_or_default(consts.CTCSS_TONES, channel.ctone)
-            if channel.tmode in (1, 2)
+            if channel.tone_mode in (1, 2)
             else "",
             get_or_default(consts.DTCS_CODES, channel.dtsc)
-            if channel.tmode in (3, 4)
+            if channel.tone_mode in (3, 4)
             else "",
             consts.POLARITY[channel.polarity]
-            if channel.tmode in (3, 4)
+            if channel.tone_mode in (3, 4)
             else "",
             bank,
             bank_pos,

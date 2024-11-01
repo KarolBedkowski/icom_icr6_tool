@@ -251,15 +251,15 @@ class BankChannelsListModel(gui_model.ChannelsListModel):
             str(channel.offset // 1000) if channel.duplex else "",
             consts.SKIPS[channel.skip],
             gui_model.yes_no(channel.vsc),
-            consts.TONE_MODES[channel.tmode],
+            consts.TONE_MODES[channel.tone_mode],
             gui_model.get_or_default(consts.CTCSS_TONES, channel.ctone)
-            if channel.tmode in (1, 2)
+            if channel.tone_mode in (1, 2)
             else "",
             gui_model.get_or_default(consts.DTCS_CODES, channel.dtsc)
-            if channel.tmode in (3, 4)
+            if channel.tone_mode in (3, 4)
             else "",
             consts.POLARITY[channel.polarity]
-            if channel.tmode in (3, 4)
+            if channel.tone_mode in (3, 4)
             else "",
         )
 

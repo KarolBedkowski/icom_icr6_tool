@@ -236,7 +236,6 @@ SETT_CIV_BAUD_RATE = [
 ]
 
 
-
 # list of valid characters
 VALID_CHAR = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789()*+-./:= "
 # list of coded characters; ^ is invalid character
