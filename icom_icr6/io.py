@@ -67,7 +67,7 @@ class Radio:
                 _LOG.error("no data")
                 break
 
-            if not buf:
+            if not buf or buf == [b"\xfd"]:
                 return None
 
             data = b"".join(buf)
@@ -142,7 +142,8 @@ class Radio:
                     case _:
                         _LOG.error(
                             "unknown cmd=%r idx=%d frame=%s",
-                            frame.cmd, idx,
+                            frame.cmd,
+                            idx,
                             binascii.hexlify(data),
                         )
                         raise ValueError
