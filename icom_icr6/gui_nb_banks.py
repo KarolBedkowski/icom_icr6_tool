@@ -7,7 +7,6 @@
 import logging
 import tkinter as tk
 import typing as ty
-from contextlib import suppress
 from tkinter import messagebox, ttk
 
 from . import gui_model, model
@@ -125,7 +124,7 @@ class BanksPage(tk.Frame):
             self._radio_memory.get_channel(channum)
             if channum is not None
             else None
-            for idx, channum in enumerate(bank.channels)
+            for channum in bank.channels
         ]
         bcont.update_all()
 
@@ -251,7 +250,7 @@ class BankChannelsListModel(gui_model.ChannelsListModel):
         row: int,
         column: int,
         value: str,
-        parent: TableView2[model.Channel],
+        parent: TableView2[model.Channel|None],
     ) -> tk.Widget | None:
         coldef = self.columns[column]
 

@@ -133,28 +133,31 @@ class ScanEdgeListModel(TableViewModel[model.ScanEdge]):
             value,
             chan,
         )
+
+        res : tk.Widget | None = None
+
         match coldef.colid:
             case "num":  # num
-                return None
+                res = None
 
             case "att":
-                return ComboboxPopup(
+                res = ComboboxPopup(
                     parent, iid, column, value, ["Off", "On", "-"]
                 )
 
             case "mode":
-                return ComboboxPopup(parent, iid, column, value, model.MODES)
+                res = ComboboxPopup(parent, iid, column, value, model.MODES)
 
             case "ts":
-                return ComboboxPopup(parent, iid, column, value, model.STEPS)
+                res = ComboboxPopup(parent, iid, column, value, model.STEPS)
 
             case "name":
-                return EntryPopup(parent, iid, column, value).with_validator(
+                res = EntryPopup(parent, iid, column, value).with_validator(
                     gui_model.name_validator
                 )
 
             case "start" | "end":
-                return NumEntryPopup(
+                res = NumEntryPopup(
                     parent,
                     iid,
                     column,
@@ -162,9 +165,9 @@ class ScanEdgeListModel(TableViewModel[model.ScanEdge]):
                     max_val=model.MAX_FREQUENCY // 1000,
                 )
 
-        return None
+        return res
 
-    def update_cell(
+    def update_cell(  # noqa: C901
         self,
         row: int,  # row
         column: int,

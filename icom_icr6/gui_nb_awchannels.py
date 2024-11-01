@@ -7,17 +7,14 @@
 import logging
 import tkinter as tk
 import typing as ty
-from tkinter import messagebox, ttk
 
 from . import gui_model, model
 from .gui_widgets import (
-    NumEntryPopup,
     TableView2,
     TableViewColumn,
     TableViewModelRow,
     UpdateCellResult,
     build_list_model,
-    new_entry,
 )
 
 _LOG = logging.getLogger(__name__)
@@ -86,8 +83,9 @@ class RWChannelsListModel(gui_model.ChannelsListModel):
         return str(chan.number)
 
     def data2row(self, channel: model.Channel | None) -> TableViewModelRow:
+        assert channel
         return (
-            str(channel.number),
+            str(channel.number or ""),
             str(channel.freq // 1000),
             model.MODES[channel.mode],
             gui_model.yes_no(channel.af_filter),
@@ -110,17 +108,17 @@ class RWChannelsListModel(gui_model.ChannelsListModel):
 
     def get_editor(
         self,
-        row: int,
-        column: int,
-        value: str,
-        parent: TableView2[model.Channel],
+        row: int,  # noqa: ARG002
+        column: int, # noqa: ARG002
+        value: str, # noqa: ARG002
+        parent: TableView2[model.Channel], # noqa: ARG002
     ) -> tk.Widget | None:
         return None
 
     def update_cell(
         self,
-        row: int,  # row
-        column: int,
-        value: str | None,  # new value
+        row: int,  # row # noqa: ARG002
+        column: int, # noqa: ARG002
+        value: str | None,  # new value # noqa: ARG002
     ) -> tuple[UpdateCellResult, model.Channel | None]:
         return UpdateCellResult.NOOP, None

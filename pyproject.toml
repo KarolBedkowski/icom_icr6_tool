@@ -125,7 +125,7 @@ lint.extend-select = [
   "TCH",
   "ARG",
   "PTH",
-  "FIX",
+#  "FIX",
   "PL",
   "R",
   "TRY",

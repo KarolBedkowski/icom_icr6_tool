@@ -1,6 +1,9 @@
 # Copyright © 2024 Karol Będkowski <Karol Będkowski@kkomp>
 #
 # Distributed under terms of the GPLv3 license.
+# pylint: disable=protected-access,unspecified-encoding,consider-using-with
+# mypy: allow-untyped-defs, allow-untyped-calls
+# ruff: noqa: SLF001
 
 """ """
 
@@ -65,12 +68,12 @@ def test_encode_decode_channel(inp):
     data = list(binascii.unhexlify(inp))
     cflags = [0, 0]
 
-    chan = model.channel_from_data(0, data, cflags)
+    chan = model.Channel.from_data(0, data, cflags)
 
     new_data = list(binascii.unhexlify(b"c706f020000000080072000a73ca196c"))
     new_cflags = [1, 1]
 
-    model.channel_to_data(chan, new_data, new_cflags)
+    chan.to_data(new_data, new_cflags)
 
     assert data == new_data
     assert cflags == new_cflags

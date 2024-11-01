@@ -1,6 +1,7 @@
 # Copyright © 2024 Karol Będkowski <Karol Będkowski@kkomp>
 #
 # Distributed under terms of the GPLv3 license.
+# ruff: noqa: PLR2004,PLR0911,C901,PLR0912,PLR0915
 
 """ """
 
@@ -228,7 +229,7 @@ def name_validator(char: str, value: str) -> bool:
     return True
 
 
-class ChannelsListModel(TableViewModel[model.Channel]):
+class ChannelsListModel(TableViewModel[model.Channel|None]):
     def __init__(self, radio_memory: model.RadioMemory) -> None:
         super().__init__(self._columns())
         self._radio_memory = radio_memory
@@ -263,7 +264,7 @@ class ChannelsListModel(TableViewModel[model.Channel]):
         row: int,
         column: int,
         value: str,
-        parent: TableView2[model.Channel],
+        parent: TableView2[model.Channel|None],
     ) -> tk.Widget | None:
         coldef = self.columns[column]
         data_row = self.data[row]
@@ -272,6 +273,9 @@ class ChannelsListModel(TableViewModel[model.Channel]):
 
         iid = self._data2iid(data_row)
         chan = self.data[row]
+        if chan is None:
+            return None
+
         _LOG.debug(
             "get_editor: row=%d[%r], col=%d[%s], value=%r, chan=%r",
             row,
@@ -372,6 +376,9 @@ class ChannelsListModel(TableViewModel[model.Channel]):
         value: str | None,  # new value
     ) -> tuple[UpdateCellResult, model.Channel | None]:
         chan = self.data[row]
+        if chan is None:
+            return UpdateCellResult.NOOP, None
+
         _LOG.debug("update chan: %r", chan)
 
         coldef = self.columns[column]
@@ -473,7 +480,10 @@ class ChannelsListModel(TableViewModel[model.Channel]):
         self.data[row] = chan
         return res, chan
 
-    def data2row(self, channel: model.Channel) -> TableViewModelRow:
+    def data2row(self, channel: model.Channel|None) -> TableViewModelRow:
+        if channel is None:
+            return ("", )
+
         if channel.hide_channel or not channel.freq:
             return (str(channel.number),)
 

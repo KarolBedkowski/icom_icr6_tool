@@ -7,7 +7,6 @@
 import binascii
 import logging
 import struct
-import typing as ty
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -44,6 +43,10 @@ class Frame:
         )
 
 
+class OutOfSyncError(ValueError):
+    ...
+
+
 class Radio:
     def __init__(self) -> None:
         self.ser = serial.Serial("/dev/ttyUSB0", 9600)
@@ -71,9 +74,9 @@ class Radio:
 
             if not data.startswith(b"\xfe\xfe"):
                 LOG.error("frame out of sync: %r", data)
-                raise ValueError("out of sync")
+                raise OutOfSyncError
 
-            if len(data) < 5:
+            if len(data) < 5:  # noqa: PLR2004
                 continue
 
             # ic(data, len(data))
@@ -81,7 +84,7 @@ class Radio:
                 LOG.debug("remove prefix")
                 data = data[1:]
 
-            if len(data) < 5:
+            if len(data) < 5:# noqa: PLR2004
                 continue
 
             if data[2] == ADDR_PC and data[3] == ADDR_RADIO:

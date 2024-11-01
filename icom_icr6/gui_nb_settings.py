@@ -6,7 +6,6 @@
 
 import logging
 import tkinter as tk
-import typing as ty
 from tkinter import ttk
 
 from . import gui_model, model

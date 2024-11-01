@@ -1,7 +1,7 @@
 # Copyright © 2024 Karol Będkowski <Karol Będkowski@kkomp>
 #
 # Distributed under terms of the GPLv3 license.
-
+# ruff: noqa: PLR2004
 """ """
 
 from __future__ import annotations
@@ -255,6 +255,35 @@ def _try_get(inlist: list[str] | tuple[str, ...], idx: int) -> str:
         return f"<[{idx}]>"
 
 
+def bool2bit(val: bool | int, mask: int) -> int:
+    return mask if val else 0
+
+
+def set_bits(value: int, newval: int, mask: int) -> int:
+    return (value & (~mask)) | (newval & mask)
+
+
+def set_bit(value: int, newval: object, bit: int) -> int:
+    mask = 1 << bit
+    if newval:
+        return value | mask
+
+    return value & (~mask)
+
+
+def data_set_bit(
+    data: list[int], offset: int, bit: int, value: object
+) -> None:
+    if value:
+        data[offset] = data[offset] | (1 << bit)
+    else:
+        data[offset] = data[offset] & (~(1 << bit))
+
+
+def data_set(data: list[int], offset: int, mask: int, value: int) -> None:
+    data[offset] = (data[offset] & (~mask)) | (value & mask)
+
+
 @dataclass
 class Channel:
     number: int
@@ -332,132 +361,108 @@ class Channel:
             f"raws={binascii.hexlify(self.raw)!r}"
         )
 
-    def __lt__(self, other):
+    def __lt__(self, other: object) -> bool:
+        assert isinstance(other, Channel)
         return self.number < other.number
 
+    @classmethod
+    def from_data(
+        cls: type[Channel],
+        idx: int,
+        data: bytes | list[int],
+        cflags: bytes | list[int] | None,
+    ) -> Channel:
+        freq = ((data[2] & 0b00000011) << 16) | (data[1] << 8) | data[0]
+        freq_flags = (data[2] & 0b11111100) >> 2
+        unknowns = [
+            data[4] & 0b11000000,
+            data[4] & 0b00001000,  # TODO: flag "is channel valid"?
+            data[7] & 0b11111110,
+            data[10] & 0b01111000,
+        ]
 
-def channel_from_data(
-    idx: int, data: bytes | list[int], cflags: bytes | list[int] | None
-) -> Channel:
-    freq = ((data[2] & 0b00000011) << 16) | (data[1] << 8) | data[0]
-    freq_flags = (data[2] & 0b11111100) >> 2
-    unknowns = [
-        data[4] & 0b11000000,
-        data[4] & 0b00001000,  # TODO: flag "is channel valid"?
-        data[7] & 0b11111110,
-        data[10] & 0b01111000,
-    ]
+        if cflags:
+            hide_channel = cflags[0] & 0b10000000
+            skip = (cflags[0] & 0b01100000) >> 5
+            bank = cflags[0] & 0b00011111  # TODO: verify
+            bank_pos = cflags[1]  # TODO: verify
+        else:
+            hide_channel = skip = bank = bank_pos = 0
 
-    if cflags:
-        hide_channel = cflags[0] & 0b10000000
-        skip = (cflags[0] & 0b01100000) >> 5
-        bank = cflags[0] & 0b00011111  # TODO: verify
-        bank_pos = cflags[1]  # TODO: verify
-    else:
-        hide_channel = skip = bank = bank_pos = 0
+        return Channel(
+            number=idx,
+            freq=decode_freq(freq, freq_flags),
+            freq_flags=freq_flags,
+            af_filter=bool(data[3] & 0b10000000),
+            attenuator=bool(data[3] & 0b01000000),
+            mode=(data[3] & 0b00110000) >> 4,
+            tuning_step=data[3] & 0b00001111,
+            duplex=(data[4] & 0b00110000) >> 4,
+            tmode=data[4] & 0b00000111,
+            offset=decode_freq((data[6] << 8) | data[5], freq_flags),
+            ctone=data[7] & 0b00111111,
+            polarity=(data[8] & 0b10000000) >> 7,
+            dtsc=(data[8] & 0b01111111),
+            canceller_freq=(data[9] << 1) | ((data[10] & 0b10000000) >> 7),
+            vsc=bool(data[10] & 0b00000100),
+            canceller=bool(data[10] & 0b00000011),
+            name=decode_name(data[11:16]),
+            hide_channel=bool(hide_channel),
+            skip=skip,
+            bank=bank,
+            bank_pos=bank_pos,
+            unknowns=unknowns,
+            raw=bytes(data),
+        )
 
-    return Channel(
-        number=idx,
-        freq=decode_freq(freq, freq_flags),
-        freq_flags=freq_flags,
-        af_filter=bool(data[3] & 0b10000000),
-        attenuator=bool(data[3] & 0b01000000),
-        mode=(data[3] & 0b00110000) >> 4,
-        tuning_step=data[3] & 0b00001111,
-        duplex=(data[4] & 0b00110000) >> 4,
-        tmode=data[4] & 0b00000111,
-        offset=decode_freq((data[6] << 8) | data[5], freq_flags),
-        ctone=data[7] & 0b00111111,
-        polarity=(data[8] & 0b10000000) >> 7,
-        dtsc=(data[8] & 0b01111111),
-        canceller_freq=(data[9] << 1) | ((data[10] & 0b10000000) >> 7),
-        vsc=bool(data[10] & 0b00000100),
-        canceller=bool(data[10] & 0b00000011),
-        name=decode_name(data[11:16]),
-        hide_channel=bool(hide_channel),
-        skip=skip,
-        bank=bank,
-        bank_pos=bank_pos,
-        unknowns=unknowns,
-        raw=bytes(data),
-    )
+    def to_data(self, data: list[int], cflags: list[int]) -> None:
+        enc_freq = encode_freq(self.freq, self.offset)
+        freq0, freq1, freq2 = enc_freq.freq_bytes()
+        offset_l, offset_h = enc_freq.offset_bytes()
 
+        # freq
+        data[0] = freq0
+        data[1] = freq1
+        # flags & freq2
+        data[2] = (enc_freq.flags << 2) | freq2
+        # af_filter, attenuator, mode, tuning_step
+        data[3] = (
+            bool2bit(self.af_filter, 0b10000000)
+            | bool2bit(self.attenuator, 0b01000000)
+            | (self.mode & 0b11) << 4
+            | (self.tuning_step & 0b1111)
+        )
+        # duplex
+        data_set(data, 4, 0b00110000, self.duplex << 4)
+        # tmode
+        data_set(data, 4, 0b00000111, self.tmode)
+        # offset
+        data[5] = offset_l
+        data[6] = offset_h
+        # ctone
+        data_set(data, 7, 0b00111111, self.ctone)
+        # polarity, dtsc
+        data[8] = bool2bit(self.polarity, 0b10000000) | (
+            self.dtsc & 0b01111111
+        )
+        # canceller freq
+        data[9] = (self.canceller_freq & 0b111111110) >> 1
+        data_set(data, 10, 0b10000000, (self.canceller_freq & 1) << 7)
+        # vsc
+        data_set(data, 10, 0b00000100, self.vsc << 3)
+        # canceller
+        data_set(data, 10, 0b11, self.canceller)
+        # name
+        data[11:16] = encode_name(self.name)
 
-def bool2bit(val: bool | int, mask: int) -> int:
-    return mask if val else 0
-
-
-def set_bits(value: int, newval: int, mask: int) -> int:
-    return (value & (~mask)) | (newval & mask)
-
-
-def set_bit(value: int, newval: object, bit: int) -> int:
-    mask = 1 << bit
-    if newval:
-        return value | mask
-
-    return value & (~mask)
-
-
-def data_set_bit(
-    data: list[int], offset: int, bit: int, value: object
-) -> None:
-    if value:
-        data[offset] = data[offset] | (1 << bit)
-    else:
-        data[offset] = data[offset] & (~(1 << bit))
-
-
-def data_set(data: list[int], offset: int, mask: int, value: int) -> None:
-    data[offset] = (data[offset] & (~mask)) | (value & mask)
-
-
-def channel_to_data(chan: Channel, data: list[int], cflags: list[int]) -> None:
-    enc_freq = encode_freq(chan.freq, chan.offset)
-    freq0, freq1, freq2 = enc_freq.freq_bytes()
-    offset_l, offset_h = enc_freq.offset_bytes()
-
-    # freq
-    data[0] = freq0
-    data[1] = freq1
-    # flags & freq2
-    data[2] = (enc_freq.flags << 2) | freq2
-    # af_filter, attenuator, mode, tuning_step
-    data[3] = (
-        bool2bit(chan.af_filter, 0b10000000)
-        | bool2bit(chan.attenuator, 0b01000000)
-        | (chan.mode & 0b11) << 4
-        | (chan.tuning_step & 0b1111)
-    )
-    # duplex
-    data[4] = set_bits(data[4], chan.duplex << 4, 0b00110000)
-    # tmode
-    data[4] = set_bits(data[4], chan.tmode, 0b00000111)
-    # offset
-    data[5] = offset_l
-    data[6] = offset_h
-    # ctone
-    data[7] = set_bits(data[7], chan.ctone, 0b00111111)
-    # polarity, dtsc
-    data[8] = bool2bit(chan.polarity, 0b10000000) | (chan.dtsc & 0b01111111)
-    # canceller freq
-    data[9] = (chan.canceller_freq & 0b111111110) >> 1
-    data[10] = set_bits(data[10], (chan.canceller_freq & 1) << 7, 0b10000000)
-    # vsc
-    data[10] = set_bits(data[10], chan.vsc << 3, 0b00000100)
-    # canceller
-    data[10] = set_bits(data[10], chan.canceller, 0b11)
-    # name
-    data[11:16] = encode_name(chan.name)
-
-    # hide_channel, bank
-    cflags[0] = (
-        bool2bit(chan.hide_channel, 0b10000000)
-        | ((chan.skip & 0b11) << 5)
-        | (chan.bank & 0b00011111)
-    )
-    # bank_pos
-    cflags[1] = chan.bank_pos
+        # hide_channel, bank
+        cflags[0] = (
+            bool2bit(self.hide_channel, 0b10000000)
+            | ((self.skip & 0b11) << 5)
+            | (self.bank & 0b00011111)
+        )
+        # bank_pos
+        cflags[1] = self.bank_pos
 
 
 @dataclass
@@ -465,6 +470,7 @@ class Bank:
     idx: int
     # 6 characters
     name: str
+    # list of channels in bank; update via channel
     channels: list[int | None]
 
     def find_free_slot(self, start: int = 0) -> int | None:
@@ -474,17 +480,16 @@ class Bank:
 
         return None
 
+    @classmethod
+    def from_data(cls: type[Bank], idx: int, data: bytes | list[int]) -> Bank:
+        return Bank(
+            idx,
+            name=bytes(data[0:6]).decode() if data[0] else "",
+            channels=[None] * 100,
+        )
 
-def bank_from_data(idx: int, data: bytes | list[int]) -> Bank:
-    return Bank(
-        idx,
-        name=bytes(data[0:6]).decode() if data[0] else "",
-        channels=[None] * 100,
-    )
-
-
-def bank_to_data(bank: Bank, data: list[int]) -> None:
-    data[0:6] = bank.name[:6].ljust(6).encode()
+    def to_data(self, data: list[int]) -> None:
+        data[0:6] = self.name[:6].ljust(6).encode()
 
 
 @dataclass
@@ -494,34 +499,43 @@ class ScanLink:
     edges: int
 
     def __getitem__(self, idx: int) -> bool:
+        if idx < 0 or idx >= NUM_SCAN_EDGES:
+            raise IndexError
+
         return bool(self.edges & (1 << idx))
 
     def __setitem__(self, idx: int, value: object) -> None:
+        if idx < 0 or idx >= NUM_SCAN_EDGES:
+            raise IndexError
+
         bit = 1 << idx
         self.edges = (self.edges & (~bit)) | (bit if value else 0)
 
     @classmethod
-    def from_data(cls: type[ScanLink], idx: int, data: list[int]) -> ScanLink:
+    def from_data(
+        cls: type[ScanLink], idx: int, data: list[int], edata: list[int]
+    ) -> ScanLink:
+        # 4 bytes, with 7bite padding = 25 bits
+        edges = (
+            ((edata[3] & 0b1) << 24)
+            | (edata[2] << 16)
+            | (edata[1] << 8)
+            | edata[0]
+        )
         return ScanLink(
             idx=idx,
             name=bytes(data[0:6]).decode() if data[0] else "",
-            edges=0,
+            edges=edges,
         )
 
-    def to_data(self, data: list[int]) -> None:
+    def to_data(self, data: list[int], edata: list[int]) -> None:
         data[0:6] = self.name[:6].ljust(6).encode()
 
-
-def scan_link_edges_from_data(data: list[int]) -> int:
-    # 4 bytes, with 7bite padding
-    return (data[3] << 24) | (data[2] << 16) | (data[1] << 8) | data[0]
-
-
-def scan_link_edges_to_data(edges: int, data: list[int]) -> None:
-    data[0] = edges & 0xFF
-    data[1] = (edges >> 8) & 0xFF
-    data[2] = (edges >> 16) & 0xFF
-    data[3] = (edges >> 24) & 0xFF
+        edges = self.edges
+        edata[0] = edges & 0xFF
+        edata[1] = (edges >> 8) & 0xFF
+        edata[2] = (edges >> 16) & 0xFF
+        edata[3] = (edges >> 24) & 0xFF
 
 
 @dataclass
@@ -772,7 +786,7 @@ class RadioMemory:
         cflags_start = idx * 2 + 0x5F80
         cflags = self.mem[cflags_start : cflags_start + 2]
 
-        chan = channel_from_data(idx, data, cflags)
+        chan = Channel.from_data(idx, data, cflags)
         self._cache_channels[idx] = chan
 
         return chan
@@ -790,7 +804,7 @@ class RadioMemory:
         cflags_start = idx * 2 + 0x5F80
         cflags = self.mem[cflags_start : cflags_start + 2]
 
-        channel_to_data(chan, data, cflags)
+        chan.to_data(data, cflags)
         self.mem[start : start + 16] = data
         self.mem[cflags_start : cflags_start + 2] = cflags
 
@@ -798,7 +812,7 @@ class RadioMemory:
         for idx in range(NUM_AUTOWRITE_CHANNELS):
             start = idx * 16 + 0x5140
             data = self.mem[start : start + 16]
-            chan = channel_from_data(idx, data, None)
+            chan = Channel.from_data(idx, data, None)
 
             # chan pos
             # TODO: CHECK !!!!
@@ -840,7 +854,7 @@ class RadioMemory:
         start = 0x6D10 + idx * 8
         data = self.mem[start : start + 8]
 
-        bank = bank_from_data(idx, data)
+        bank = Bank.from_data(idx, data)
 
         # TODO: confilicts / doubles
         for chan in self._get_active_channels():
@@ -856,7 +870,10 @@ class RadioMemory:
 
         start = 0x6D10 + idx * 8
         data = self.mem[start : start + 8]
-        bank_to_data(bank, data)
+
+        bank.to_data(data)
+
+        self.mem[start : start + 8] = data
 
     def get_scan_link(self, idx: int) -> ScanLink:
         if idx < 0 or idx > NUM_SCAN_LINKS - 1:
@@ -864,26 +881,25 @@ class RadioMemory:
 
         start = 0x6DC0 + idx * 8
         data = self.mem[start : start + 8]
-        sl = ScanLink.from_data(idx, data)
 
-        # mapping
-        start = 0x6C2C + 4 * idx
-        mdata = self.mem[start : start + 4]
-        sl.edges = scan_link_edges_from_data(mdata)
+        # edges
+        estart = 0x6C2C + 4 * idx
+        edata = self.mem[estart : estart + 4]
 
-        return sl
+        return ScanLink.from_data(idx, data, edata)
 
     def set_scan_link(self, sl: ScanLink) -> None:
         start = 0x6DC0 + sl.idx * 8
         data = self.mem[start : start + 8]
-        sl.to_data(data)
-        self.mem[start : start + 8] = data
 
-        # mapping
-        start = 0x6C2C + 4 * sl.idx
-        mdata = self.mem[start : start + 4]
-        scan_link_edges_to_data(sl.edges, mdata)
-        self.mem[start : start + 4] = mdata
+        # edges mapping
+        estart = 0x6C2C + 4 * sl.idx
+        edata = self.mem[estart : estart + 4]
+
+        sl.to_data(data, edata)
+
+        self.mem[start : start + 8] = data
+        self.mem[estart : estart + 4] = edata
 
     def get_settings(self) -> RadioSettings:
         data = self.mem[0x6BD0 : 0x6BD0 + 64]

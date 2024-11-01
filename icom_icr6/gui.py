@@ -21,7 +21,6 @@ from . import (
     io,
     model,
 )
-from .gui_widgets import build_list
 
 _ty = ty
 

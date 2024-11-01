@@ -6,10 +6,9 @@
 
 import logging
 import tkinter as tk
-import typing as ty
 from tkinter import ttk
 
-from . import gui_model, model
+from . import model
 from .gui_widgets import (
     new_entry,
 )
@@ -100,13 +99,13 @@ class ScanLinksPage(tk.Frame):
         if sel_sl:
             self._scan_links.selection_set(sel_sl[0])
 
-    def __on_select_scan_link(self, _event: tk.Event) -> None:
+    def __on_select_scan_link(self, _event: tk.Event) -> None:  # type: ignore
         sel_sl = self._scan_links.curselection()  # type: ignore
         if not sel_sl:
             return
 
         sl = self._radio_memory.get_scan_link(sel_sl[0])
-        self._sl_name.set(sl.name.rstrip() or "")
+        self._sl_name.set(sl.name.rstrip())
 
         for idx, (var, cb) in enumerate(self._scan_links_edges):
             se = self._radio_memory.get_scan_edge(idx)

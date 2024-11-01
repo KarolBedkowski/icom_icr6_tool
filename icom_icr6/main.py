@@ -4,6 +4,7 @@
 # Copyright © 2024 Karol Będkowski <Karol Będkowski@kkomp>
 #
 # Distributed under terms of the GPLv3 license.
+# ruff: noqa: PLR2004
 
 """ """
 
@@ -13,7 +14,7 @@ from pathlib import Path
 
 import icecream
 
-from . import gui, io, model
+from . import gui, io
 
 icecream.install()
 
