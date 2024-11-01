@@ -86,8 +86,6 @@ class Channel:
     canceller: int
     canceller_freq: int
 
-    unknowns: list[int]
-
     # control flags
     hide_channel: bool
     skip: int
@@ -95,8 +93,7 @@ class Channel:
     bank: int
     bank_pos: int
 
-    raw: bytes
-    raw_freqs: tuple[int, int, int]
+    debug_info: dict[str, object] | None = None
 
     def delete(self) -> None:
         self.freq = 0
@@ -133,9 +130,7 @@ class Channel:
             f"skip={consts.SKIPS[self.skip]}, "
             f"polarity={consts.POLARITY[self.polarity]}, "
             f"bank={bank}, "
-            f"unknowns={self.unknowns}, "
-            f"raws={binascii.hexlify(self.raw)!r}, "
-            f"raw_freqs={self.raw_freqs}, "
+            f"debug_info={self.debug_info} "
         )
 
     def __lt__(self, other: object) -> bool:
@@ -170,12 +165,18 @@ class Channel:
                 data[2],
             )
 
-        unknowns = [
-            data[4] & 0b11000000,
-            data[4] & 0b00001000,  # TODO: flag "is channel valid"?
-            data[7] & 0b11111110,
-            data[10] & 0b01111000,
-        ]
+        debug_info = {
+            "unknowns": [
+                data[4] & 0b11000000,
+                data[4] & 0b00001000,  # TODO: flag "is channel valid"?
+                data[7] & 0b11111110,
+                data[10] & 0b01111000,
+            ],
+            "raw": binascii.hexlify(bytes(data)),
+            "freq": freq,
+            "offset": offset,
+            "flags": (data[2] & 0b11110000) >> 4,
+        }
 
         if cflags:
             hide_channel = cflags[0] & 0b10000000
@@ -207,9 +208,7 @@ class Channel:
             skip=skip,
             bank=bank,
             bank_pos=bank_pos,
-            unknowns=unknowns,
-            raw=bytes(data),
-            raw_freqs=(freq, offset, (data[2] & 0b11110000) >> 4),
+            debug_info=debug_info,
         )
 
     def to_data(self, data: list[int], cflags: list[int]) -> None:
