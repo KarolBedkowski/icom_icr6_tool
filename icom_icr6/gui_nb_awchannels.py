@@ -52,7 +52,7 @@ class AutoWriteChannelsPage(tk.Frame):
         for idx, ch in enumerate(data):
             ch.number = idx
 
-        self._tb_model.data = data
+        self._tb_model.data = data  # type: ignore
         self._channels_content.update_all()
 
         if event is not None:
@@ -85,7 +85,7 @@ class RWChannelsListModel(gui_model.ChannelsListModel):
     def data2row(self, channel: model.Channel | None) -> TableViewModelRow:
         assert channel
         return (
-            str(channel.number or ""),
+            str(channel.number),
             str(channel.freq // 1000),
             model.MODES[channel.mode],
             gui_model.yes_no(channel.af_filter),
@@ -109,16 +109,16 @@ class RWChannelsListModel(gui_model.ChannelsListModel):
     def get_editor(
         self,
         row: int,  # noqa: ARG002
-        column: int, # noqa: ARG002
-        value: str, # noqa: ARG002
-        parent: TableView2[model.Channel], # noqa: ARG002
+        column: int,  # noqa: ARG002
+        value: str,  # noqa: ARG002
+        parent: TableView2[model.Channel | None],  # noqa: ARG002
     ) -> tk.Widget | None:
         return None
 
     def update_cell(
         self,
         row: int,  # row # noqa: ARG002
-        column: int, # noqa: ARG002
+        column: int,  # noqa: ARG002
         value: str | None,  # new value # noqa: ARG002
     ) -> tuple[UpdateCellResult, model.Channel | None]:
         return UpdateCellResult.NOOP, None
