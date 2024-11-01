@@ -324,8 +324,7 @@ class Channel:
     bank_pos: int
 
     raw: bytes
-    raw_freq: int = 0
-    raw_flags: int = 0
+    raw_freqs: tuple[int, int, int]
 
     def delete(self) -> None:
         self.freq = 0
@@ -364,8 +363,7 @@ class Channel:
             f"bank={bank}, "
             f"unknowns={self.unknowns}, "
             f"raws={binascii.hexlify(self.raw)!r}, "
-            f"raw_freq={self.raw_freq}, "
-            f"raw_flags={self.raw_flags:0000b}"
+            f"raw_freqs={self.raw_freqs}, "
         )
 
     def __lt__(self, other: object) -> bool:
@@ -439,8 +437,7 @@ class Channel:
             bank_pos=bank_pos,
             unknowns=unknowns,
             raw=bytes(data),
-            raw_freq=freq,
-            raw_flags=(data[2] & 0b11110000) >> 4,
+            raw_freqs=(freq, offset, (data[2] & 0b11110000) >> 4),
         )
 
     def to_data(self, data: list[int], cflags: list[int]) -> None:
