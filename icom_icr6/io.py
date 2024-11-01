@@ -5,6 +5,7 @@
 """ """
 
 import binascii
+import itertools
 import logging
 import struct
 from dataclasses import dataclass
@@ -17,7 +18,7 @@ from . import model
 ADDR_PC = 0xEE
 ADDR_RADIO = 0x7E
 
-LOG = logging.getLogger(__name__)
+_LOG = logging.getLogger(__name__)
 
 
 @dataclass
@@ -43,8 +44,7 @@ class Frame:
         )
 
 
-class OutOfSyncError(ValueError):
-    ...
+class OutOfSyncError(ValueError): ...
 
 
 class Radio:
@@ -52,7 +52,7 @@ class Radio:
         self.ser = serial.Serial("/dev/ttyUSB0", 9600)
 
     def _write(self, payload: bytes) -> None:
-        LOG.debug("write: %s", binascii.hexlify(payload))
+        _LOG.debug("write: %s", binascii.hexlify(payload))
         self.ser.write(payload)
 
     def read_frame(self) -> Frame | None:
@@ -64,7 +64,7 @@ class Radio:
                 if d != b"\xfd":
                     continue
             else:
-                LOG.error("no data")
+                _LOG.error("no data")
                 break
 
             data = b"".join(buf)
@@ -73,7 +73,7 @@ class Radio:
                 return None
 
             if not data.startswith(b"\xfe\xfe"):
-                LOG.error("frame out of sync: %r", data)
+                _LOG.error("frame out of sync: %r", data)
                 raise OutOfSyncError
 
             if len(data) < 5:  # noqa: PLR2004
@@ -81,14 +81,14 @@ class Radio:
 
             # ic(data, len(data))
             while data.startswith(b"\xfe\xfe\xfe"):
-                LOG.debug("remove prefix")
+                _LOG.debug("remove prefix")
                 data = data[1:]
 
-            if len(data) < 5:# noqa: PLR2004
+            if len(data) < 5:  # noqa: PLR2004
                 continue
 
             if data[2] == ADDR_PC and data[3] == ADDR_RADIO:
-                LOG.debug("got echo")
+                _LOG.debug("got echo")
                 buf.clear()
                 continue
 
@@ -100,7 +100,7 @@ class Radio:
     def get_model(self) -> model.RadioModel | None:
         self._write(Frame(0xE0, b"\x00\x00\x00\x00").pack())
         if frame := self.read_frame():
-            LOG.debug("%d: %r", len(frame.payload), frame)
+            _LOG.debug("%d: %r", len(frame.payload), frame)
             pl = frame.payload
             return model.RadioModel(pl[5], pl[6:22])
 
@@ -109,26 +109,52 @@ class Radio:
     def clone_from(self) -> model.RadioMemory:
         self._write(Frame(0xE2, b"\x32\x50\x00\x01").pack())
         mem = model.RadioMemory()
-        while True:
+        for idx in itertools.count():
             if frame := self.read_frame():
-                LOG.debug("read: %r", frame)
+                _LOG.debug("read: %d: %r", idx, frame)
                 match int(frame.cmd):
                     case 0xE5:  # clone_end
                         break
 
                     case 0xE4:  # clone_dat
-                        data = frame.decode_payload()
-                        # LOG.debug("decoded: %s", binascii.hexlify(data))
-                        (daddr,) = struct.unpack(">H", data[0:2])
-                        (length,) = struct.unpack("B", data[2:3])
-                        # TODO: checksum?
-                        mem.update(daddr, length, data[3 : 3 + length])
+                        rawdata = frame.decode_payload()
+                        # _LOG.debug("decoded: %s", binascii.hexlify(data))
+                        addr1, addr2, daddr, length = struct.unpack(
+                            "BB>HB", rawdata[0:3]
+                        )
+                        data = rawdata[3 : 3 + length]
+                        # checksum?
+                        (checksum,) = struct.unpack("B", rawdata[3 + length :])
+                        calc_checksum = addr1 + addr2 + length + sum(data)
+                        calc_checksum = ((checksum ^ 0xFFFF) + 1) & 0xFF
+
+                        if checksum != calc_checksum:
+                            _LOG.error(
+                                "invalid checksum: idx=%d, exp=%d, rec=%d, "
+                                "frame=%s",
+                                idx,
+                                calc_checksum,
+                                checksum,
+                                binascii.hexlify(data),
+                            )
+                            raise ChecksumError
+
+                        mem.update(daddr, length, data)
                         # out.write(f"{frame.payload[:-2].decode()}\n")
 
                     case _:
+                        _LOG.error(
+                            "unknown cmd=%r idx=%d frame=%s",
+                            frame.cmd, idx,
+                            binascii.hexlify(data),
+                        )
                         raise ValueError
 
         return mem
+
+
+class ChecksumError(Exception):
+    pass
 
 
 class InvalidFileError(Exception):
