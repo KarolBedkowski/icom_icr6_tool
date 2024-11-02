@@ -1,8 +1,8 @@
 meta:
   id: icf
   title: icf file
-  endian: be
-  bit-endian: be
+  endian: le
+  bit-endian: le
 seq:
   - id: channels
     type: channel
@@ -95,29 +95,39 @@ types:
         type: b1
       - id: skip
         type: b2
+        doc: skips - none, S, none, P
       - id: bank
         type: b4
+        doc: bank number (0-22); 31 when bank is not set
 
       - id: bank_pos
         type: u1
+        doc: position channel in bank
+        valid:
+          min: 0
+          max: 99
 
   scan_edge:
     seq:
       - id: start
         type: u4
+        doc: freq * 3
       - id: end
         type: u4
+        doc: freq * 3
 
       - id: disabled
         type: b1
       - id: mode
         type: b3
-      - id: ts
+        enum: mode
+      - id: tuning_step
         type: b4
+        enum: steps
 
       - id: unknown1
         type: b2
-      - id: attn
+      - id: attenuator
         type: b2
       - id: unknown2
         type: b4
@@ -150,6 +160,7 @@ types:
     seq:
       - id: map
         type: u4
+        doc: bitmap for banks Y->A
 
   channel:
     seq:
@@ -160,9 +171,14 @@ types:
       - id: freq1
         type: u1
 
-      - id: flags
-        type: b4
-        doc: 2 bits for offset and 2 bits for freq
+      - id: flags_offset
+        type: b2
+        doc: 2 bits for offset
+        enum: freq_mul
+      - id: flags_freq
+        type: b2
+        doc: 2 bits for offset
+        enum: freq_mul
       - id: flag_unknown
         type: b2
         doc: probably always 0 - mayby 2 bits freq2
@@ -172,21 +188,25 @@ types:
 
       - id: af
         type: b1
-      - id: attn
+      - id: attenuator
         type: b1
       - id: mode
         type: b2
-      - id: ts
+        enum: mode
+      - id: tuning_step
         type: b4
+        enum: steps
 
       - id: unknown1
         type: b2
       - id: duplex
         type: b2
+        enum: duplex
       - id: unknown3
         type: b1
       - id: tone_mode
         type: b3
+        enum: tone_mode
 
       - id: offset
         type: u2
@@ -198,7 +218,7 @@ types:
 
       - id: polarity
         type: b1
-      - id: dsc
+      - id: dscs_code
         type: b7
 
       - id: canceller_freq
@@ -216,10 +236,6 @@ types:
         type: b6
         repeat: expr
         repeat-expr: 6
-
-    instances:
-      freq:
-        value: ((freq2 << 16) | (freq1 << 8) | freq0) * ((flags == 0) ? 5000 : (flags == 20 ? 6550 : (flags == 40 ? 8333.333 : 9000)))
 
 
   settings:
@@ -412,3 +428,46 @@ types:
         type: b2
       - id: bank_link_3
         type: b6
+
+enums:
+  mode:
+    0: fm
+    1: wfm
+    2: am
+    3: auto
+    4: not_set
+
+  steps:
+    0: step_5
+    1: step_6_25
+    2: step_8_333333
+    3: step_9
+    4: step_10
+    5: step_12_5
+    6: step_15
+    7: step_20
+    8: step_25
+    9: step_30
+    10: step_50
+    11: step_100
+    12: step_125
+    13: step_200
+    14: step_auto
+
+  freq_mul:
+    0: freq_mul_5000
+    1: freq_mul_6250
+    2: freq_mul_8333
+    4: freq_mul_9000
+
+  duplex:
+    0: none
+    1: minus
+    2: plus
+
+  tone_mode:
+    0: none
+    1: tsql
+    2: tsql_r
+    3: dtcs
+    4: dtcs_r
