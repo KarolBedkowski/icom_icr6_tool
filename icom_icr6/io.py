@@ -14,7 +14,7 @@ from pathlib import Path
 
 import serial
 
-from . import model
+from . import consts, model
 
 ADDR_PC = 0xEE
 ADDR_RADIO = 0x7E
@@ -39,8 +39,8 @@ class Frame:
 
     def decode_payload(self) -> bytes:
         # print("in", repr(self.payload))
-        return b"".join(
-            struct.pack("B", int(self.payload[i : i + 2], 16))
+        return bytes(
+            int(self.payload[i : i + 2], 16)
             for i in range(0, len(self.payload) - 1, 2)
         )
 
@@ -70,14 +70,17 @@ class Radio:
                 _LOG.error("no data")
                 raise NoDataError
 
-            if not buf or buf == [b"\xfd"]:
-                return None
-
             data = b"".join(buf)
+            # self._logger.write(f">{binascii.hexlify(data)!r}")
+            if not data or data == b"\xfd":
+                return None
 
             if not data.startswith(b"\xfe\xfe"):
                 _LOG.error("frame out of sync: %r", data)
                 raise OutOfSyncError
+
+            if len(data) < 5:  # noqa: PLR2004
+                continue
 
             # ic(data, len(data))
             while data.startswith(b"\xfe\xfe\xfe"):
@@ -121,14 +124,13 @@ class Radio:
                     case 0xE4:  # clone_dat
                         rawdata = frame.decode_payload()
                         # _LOG.debug("decoded: %s", binascii.hexlify(data))
-                        addr1, addr2, daddr, length = struct.unpack(
-                            "BB>HB", rawdata[0:3]
-                        )
+                        daddr = (rawdata[0] << 8) | rawdata[1]
+                        length = rawdata[2]
                         data = rawdata[3 : 3 + length]
                         # checksum?
-                        (checksum,) = struct.unpack("B", rawdata[3 + length :])
-                        calc_checksum = addr1 + addr2 + length + sum(data)
-                        calc_checksum = ((checksum ^ 0xFFFF) + 1) & 0xFF
+                        checksum = rawdata[3 + length]
+                        calc_checksum = sum(rawdata[: length + 3])
+                        calc_checksum = ((calc_checksum ^ 0xFFFF) + 1) & 0xFF
 
                         if checksum != calc_checksum:
                             _LOG.error(
@@ -137,7 +139,7 @@ class Radio:
                                 idx,
                                 calc_checksum,
                                 checksum,
-                                binascii.hexlify(data),
+                                binascii.hexlify(rawdata),
                             )
                             raise ChecksumError
 
