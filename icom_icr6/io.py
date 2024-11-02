@@ -7,8 +7,8 @@
 import binascii
 import itertools
 import logging
-import struct
 import typing as ty
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -16,30 +16,40 @@ import serial
 
 from . import consts, model
 
-ADDR_PC = 0xEE
-ADDR_RADIO = 0x7E
+ADDR_PC: ty.Final = 0xEE
+# TODO: configurable
+ADDR_RADIO: ty.Final = 0x7E
+CMD_MODEL: ty.Final = 0xE0  # todo: check - 0xE1?
+CMD_CLONE_OUT: ty.Final = 0xE2
+CMD_CLONE_IN: ty.Final = 0xE3
+CMD_CLONE_DAT: ty.Final = 0xE4
+CMD_END: ty.Final = 0xE5
+CMD_OK: ty.Final = 0xE6
+
 
 _LOG = logging.getLogger(__name__)
+
+# log input/output data
+_ENABLE_LOGGER = False
 
 
 @dataclass
 class Frame:
     cmd: int = 0
     payload: bytes = b""
-    src: int = 0
-    dst: int = 0
+    src: int = ADDR_PC
+    dst: int = ADDR_RADIO
 
     def pack(self) -> bytes:
         return b"".join(
             (
-                bytes([0xFE, 0xFE, ADDR_PC, ADDR_RADIO, self.cmd]),
+                bytes([0xFE, 0xFE, self.src, self.dst, self.cmd]),
                 self.payload,
                 b"\xfd",
             )
         )
 
     def decode_payload(self) -> bytes:
-        # print("in", repr(self.payload))
         return bytes(
             int(self.payload[i : i + 2], 16)
             for i in range(0, len(self.payload) - 1, 2)
@@ -49,35 +59,60 @@ class Frame:
 class OutOfSyncError(ValueError): ...
 
 
-class RealSerial:
+@ty.runtime_checkable
+class SerialImpl(ty.Protocol):
+    def write(self, data: bytes) -> None: ...
+
+    def read(self, length: int) -> bytes: ...
+
+    def close(self) -> None: ...
+
+
+class Serial:
     def __init__(self, port: str = "") -> None:
         self.port = port
 
-    def open(self, _stream: str = "") -> None:
+    @contextmanager
+    def open(self, stream: str) -> ty.Iterator[SerialImpl]:
+        impl = RealSerial(self.port) if self.port else FakeSerial()
+        impl.open(stream)
+        try:
+            yield impl
+        finally:
+            impl.close()
+
+
+class RealSerial:
+    def __init__(self, port: str) -> None:
+        self.port = port
+
+    def open(self, _stream: str) -> None:
+        _LOG.info("opening serial %r", self.port)
         self._serial = serial.Serial(self.port or "/dev/ttyUSB0", 9600)
         self._serial.timeout = 5
         self._serial.write_timeout = 5
 
     def close(self) -> None:
+        _LOG.info("closing serial")
         self._serial.close()
 
     def write(self, data: bytes) -> None:
+        assert self._serial
         self._serial.write(data)
 
     def read(self, length: int) -> bytes:
+        assert self._serial
         return self._serial.read(length)  # type: ignore
 
 
 class FakeSerial:
-    def __init__(self, _port: str = "") -> None:
-        self._file_in = None
-        self._file_out = None
-
-    def open(self, stream: str = "") -> None:
-        self._file_in = Path(f"{stream}-in.bin").open("rb")  # noqa: SIM115
-        self._file_out = Path(f"{stream}-out.bin").open("wb")  # noqa: SIM115
+    def open(self, stream: str) -> None:
+        _LOG.info("opening files %s", stream)
+        self._file_in = Path(f"{stream}-in.bin").open("rb")  # noqa:SIM115
+        self._file_out = Path(f"{stream}-out.bin").open("wb")  # noqa:SIM115
 
     def close(self) -> None:
+        _LOG.info("closing files")
         if self._file_in:
             self._file_in.close()
 
@@ -99,24 +134,24 @@ def calc_checksum(data: bytes) -> int:
 
 class Radio:
     def __init__(self, port: str = "") -> None:
-        # self._serial = FakeSerial(port)
-        self._serial = RealSerial(port)
+        self._serial = Serial(port)
         self._logger = None
-        self._stream_logger = None
-        self._stream_logger = Path("data.log").open("wt")
+        self._stream_logger = (
+            Path("data.log").open("wt") if _ENABLE_LOGGER else None  # noqa: SIM115
+        )
 
-    def _write(self, payload: bytes) -> None:
+    def _write(self, s: SerialImpl, payload: bytes) -> None:
         pl = binascii.hexlify(payload)
         _LOG.debug("write: %s", pl)
-        self._serial.write(payload)
+        s.write(payload)
         if self._stream_logger:
             self._stream_logger.write(f"<{pl!r}\n")
 
-    def read_frame(self) -> Frame | None:
+    def read_frame(self, s: SerialImpl) -> Frame | None:
         buf: list[bytes] = []
 
         while True:
-            if d := self._serial.read(1):
+            if d := s.read(1):
                 buf.append(d)
                 if d != b"\xfd":
                     continue
@@ -152,11 +187,12 @@ class Radio:
         return None
 
     def get_model(self) -> model.RadioModel | None:
-        self._write(Frame(0xE0, b"\x00\x00\x00\x00").pack())
-        if frame := self.read_frame():
-            _LOG.debug("%d: %r", len(frame.payload), frame)
-            pl = frame.payload
-            return model.RadioModel(pl[5], pl[6:22])
+        with self._serial.open("get_model") as s:
+            self._write(s, Frame(CMD_MODEL, b"\x00\x00\x00\x00").pack())
+            if frame := self.read_frame(s):
+                _LOG.debug("%d: %r", len(frame.payload), frame)
+                pl = frame.payload
+                return model.RadioModel(pl[5], pl[6:22])
 
         return None
 
@@ -168,10 +204,10 @@ class Radio:
             return True
 
         match int(frame.cmd):
-            case 0xE5:  # clone_end
+            case 0xE5:  # CMD_END
                 return False
 
-            case 0xE4:  # clone_dat
+            case 0xE4:  # CMD_CLONE_DAT:
                 rawdata = frame.decode_payload()
                 # _LOG.debug("decoded: %s", binascii.hexlify(data))
                 daddr = (rawdata[0] << 8) | rawdata[1]
@@ -190,7 +226,6 @@ class Radio:
                         checksum,
                         binascii.hexlify(rawdata),
                     )
-                    self._serial.close()
                     raise ChecksumError
 
                 mem.update(daddr, length, data)
@@ -202,7 +237,6 @@ class Radio:
                     idx,
                     binascii.hexlify(frame.payload),
                 )
-                self._serial.close()
                 raise ValueError
 
         return True
@@ -210,74 +244,68 @@ class Radio:
     def clone_from(
         self, cb: ty.Callable[[int], bool] | None = None
     ) -> model.RadioMemory:
-        self._serial.open("clone_from")
-        # clone out
-        self._write(Frame(0xE2, b"\x32\x50\x00\x01").pack())
-        mem = model.RadioMemory()
-        for idx in itertools.count():
-            if frame := self.read_frame():
-                _LOG.debug("read: %d: %r", idx, frame)
+        with self._serial.open("clone_from") as s:
+            # clone out
+            self._write(s, Frame(CMD_CLONE_OUT, b"\x32\x50\x00\x01").pack())
+            mem = model.RadioMemory()
+            for idx in itertools.count():
+                if frame := self.read_frame(s):
+                    _LOG.debug("read: %d: %r", idx, frame)
 
-                if not self._process_clone_from_frame(idx, frame, mem):
-                    break
+                    if not self._process_clone_from_frame(idx, frame, mem):
+                        break
 
-                if cb and not cb(idx):
-                    self._serial.close()
-                    raise AbortError
+                    if cb and not cb(idx):
+                        raise AbortError
 
-        # self._logger.close()
-        self._serial.close()
-        return mem
+            return mem
 
     def clone_to(
         self,
         mem: model.RadioMemory,
         cb: ty.Callable[[int], bool] | None = None,
     ) -> bool:
-        self._serial.open("clone_to")
-        # clone in
-        self._write(Frame(0xE3, b"\x32\x50\x00\x01").pack())
-        # send in 32bytes chunks
-        for addr in range(0, consts.MEM_SIZE, 32):
-            _LOG.debug("write: %d", addr)
-            chunk = bytes(
-                [(addr >> 8), addr & 0xFF, 32, *mem.mem[addr : addr + 32]]
-            )
-            # add checksum
-            chunk += bytes([calc_checksum(chunk)])
-            # encode paload
-            payload = "".join(f"{d:02X}" for d in chunk)
-            frame = Frame(0xE4, payload.encode())
-            self._write(frame.pack())
+        with self._serial.open("clone_to") as s:
+            # clone in
+            self._write(s, Frame(CMD_CLONE_IN, b"\x32\x50\x00\x01").pack())
+            # send in 32bytes chunks
+            for addr in range(0, consts.MEM_SIZE, 32):
+                _LOG.debug("write: %d", addr)
+                chunk = bytes(
+                    [(addr >> 8), addr & 0xFF, 32, *mem.mem[addr : addr + 32]]
+                )
+                # add checksum
+                chunk += bytes([calc_checksum(chunk)])
+                # encode paload
+                payload = "".join(f"{d:02X}" for d in chunk)
+                frame = Frame(CMD_CLONE_DAT, payload.encode())
+                self._write(s, frame.pack())
 
-            # TODO: check - get echo
-            fr = self.read_frame()
-            _LOG.debug("rec: %r", fr)
+                # TODO: check - get echo
+                fr = self.read_frame(s)
+                _LOG.debug("rec: %r", fr)
 
-            if cb and not cb(addr):
-                self._serial.close()
-                raise AbortError
+                if cb and not cb(addr):
+                    raise AbortError
 
-        _LOG.debug("send clone end")
-        # clone end
-        self._write(Frame(0xE5, b"Icom Inc\x2e73").pack())
-        # one more packet?
+            _LOG.debug("send clone end")
+            # clone end
+            self._write(s, Frame(CMD_END, b"Icom Inc\x2e73").pack())
+            # one more packet?
 
-        result_frame = None
-        for i in range(10):
-            _LOG.debug("wait for result (%d)", i)
-            if result_frame := self.read_frame():
-                _LOG.info("got frame: %r", result_frame)
-                if result_frame.cmd == 0xE6:
-                    # clone ok
-                    break
+            result_frame = None
+            for i in range(10):
+                _LOG.debug("wait for result (%d)", i)
+                if result_frame := self.read_frame(s):
+                    _LOG.info("got frame: %r", result_frame)
+                    if result_frame.cmd == CMD_OK:
+                        # clone ok
+                        break
 
-        self._serial.close()
+            if not result_frame:
+                raise NoDataError
 
-        if not result_frame:
-            raise NoDataError
-
-        return result_frame.payload[0] == b"\x00"
+            return result_frame.payload[0] == 0
 
 
 class NoDataError(Exception):
