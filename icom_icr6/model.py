@@ -34,21 +34,10 @@ def bool2bit(val: bool | int, mask: int) -> int:
     return mask if val else 0
 
 
-def set_bits(value: int, newval: int, mask: int) -> int:
-    return (value & (~mask)) | (newval & mask)
-
-
-def set_bit(value: int, newval: object, bit: int) -> int:
-    mask = 1 << bit
-    if newval:
-        return value | mask
-
-    return value & (~mask)
-
-
 def data_set_bit(
     data: list[int], offset: int, bit: int, value: object
 ) -> None:
+    """ Set one `bit` in byte `data[offset]` to `value`. """
     if value:
         data[offset] = data[offset] | (1 << bit)
     else:
@@ -56,6 +45,7 @@ def data_set_bit(
 
 
 def data_set(data: list[int], offset: int, mask: int, value: int) -> None:
+    """ Set bits indicated by `mask` in byte `data[offset]` to `value`. """
     data[offset] = (data[offset] & (~mask)) | (value & mask)
 
 
