@@ -56,14 +56,15 @@ class Frame:
         )
 
 
-class OutOfSyncError(ValueError): ...
-
-
 @ty.runtime_checkable
 class SerialImpl(ty.Protocol):
     def write(self, data: bytes) -> None: ...
 
     def read(self, length: int) -> bytes: ...
+
+    def read_frame(self) -> bytes: ...
+
+    def open(self, stream: str) -> None: ...
 
     def close(self) -> None: ...
 
@@ -74,12 +75,48 @@ class Serial:
 
     @contextmanager
     def open(self, stream: str) -> ty.Iterator[SerialImpl]:
-        impl = RealSerial(self.port) if self.port else FakeSerial()
+        impl: SerialImpl = RealSerial(self.port) if self.port else FakeSerial()
+
+        if _ENABLE_LOGGER:
+            impl = StreamLogger(impl)
+
         impl.open(stream)
+
         try:
             yield impl
         finally:
             impl.close()
+
+
+class StreamLogger:
+    """
+    StreamLogger wrape SerialImpl and append output/input to data.log file.
+    """
+
+    def __init__(self, impl: SerialImpl) -> None:
+        self._impl = impl
+        self._log = Path("data.log").open("at")  # noqa: SIM115
+
+    def open(self, stream: str) -> None:
+        self._impl.open(stream)
+
+    def close(self) -> None:
+        self._impl.close()
+        self._log.close()
+
+    def write(self, data: bytes) -> None:
+        self._log.write(f"<{binascii.hexlify(data)!r}\n")
+        self._impl.write(data)
+
+    def read(self, length: int) -> bytes:
+        data = self._impl.read(length)
+        self._log.write(f">{binascii.hexlify(data)!r}\n")
+        return data
+
+    def read_frame(self) -> bytes:
+        data = self._impl.read_frame()
+        self._log.write(f">{binascii.hexlify(data)!r}\n")
+        return data
 
 
 class RealSerial:
@@ -104,6 +141,15 @@ class RealSerial:
         assert self._serial
         return self._serial.read(length)  # type: ignore
 
+    def read_frame(self) -> bytes:
+        buf: list[bytes] = []
+        while d := self._serial.read(1):
+            buf.append(d)
+            if d == b"\xfd":
+                break
+
+        return b"".join(buf)
+
 
 class FakeSerial:
     def open(self, stream: str) -> None:
@@ -127,6 +173,16 @@ class FakeSerial:
         assert self._file_in
         return self._file_in.read(length)
 
+    def read_frame(self) -> bytes:
+        assert self._file_in
+        buf: list[bytes] = []
+        while d := self._file_in.read(1):
+            buf.append(d)
+            if d == b"\xfd":
+                break
+
+        return b"".join(buf)
+
 
 def calc_checksum(data: bytes) -> int:
     return ((sum(data) ^ 0xFFFF) + 1) & 0xFF
@@ -136,61 +192,48 @@ class Radio:
     def __init__(self, port: str = "") -> None:
         self._serial = Serial(port)
         self._logger = None
-        self._stream_logger = (
-            Path("data.log").open("wt") if _ENABLE_LOGGER else None  # noqa: SIM115
-        )
 
     def _write(self, s: SerialImpl, payload: bytes) -> None:
-        pl = binascii.hexlify(payload)
-        _LOG.debug("write: %s", pl)
+        if _LOG.isEnabledFor(logging.DEBUG):
+            _LOG.debug("write: %s", binascii.hexlify(payload))
+
         s.write(payload)
-        if self._stream_logger:
-            self._stream_logger.write(f"<{pl!r}\n")
 
     def read_frame(self, s: SerialImpl) -> Frame | None:
-        buf: list[bytes] = []
+        data = s.read_frame()
 
-        while True:
-            if d := s.read(1):
-                buf.append(d)
-                if d != b"\xfd":
-                    continue
-            else:
-                _LOG.error("no data")
-                raise NoDataError
+        if _LOG.isEnabledFor(logging.DEBUG):
+            _LOG.debug("read: %s", binascii.hexlify(data))
 
-            data = b"".join(buf)
-            if self._stream_logger:
-                self._stream_logger.write(f">{binascii.hexlify(data)!r}\n")
+        if not data:
+            _LOG.error("no data")
+            raise NoDataError
 
-            if not data or data == b"\xfd":
-                return None
+        if not data or data == b"\xfd":
+            return None
 
-            if not data.startswith(b"\xfe\xfe"):
-                _LOG.error("frame out of sync: %r", data)
-                raise OutOfSyncError
+        if not data.startswith(b"\xfe\xfe"):
+            _LOG.error("frame out of sync: %r", data)
+            raise OutOfSyncError
 
-            if len(data) < 5:  # noqa: PLR2004
-                continue
+        if len(data) < 5:  # noqa: PLR2004
+            return None
 
-            # ic(data, len(data))
-            while data.startswith(b"\xfe\xfe\xfe"):
-                _LOG.debug("remove prefix")
-                data = data[1:]
+        # ic(data, len(data))
+        while data.startswith(b"\xfe\xfe\xfe"):
+            _LOG.debug("remove prefix")
+            data = data[1:]
 
-            if len(data) < 5:  # noqa: PLR2004
-                continue
+        if len(data) < 5:  # noqa: PLR2004
+            return None
 
-            # ic(data)
-            return Frame(data[4], data[5:], data[2], data[3])
-
-        return None
+        # ic(data)
+        return Frame(data[4], data[5:], data[2], data[3])
 
     def get_model(self) -> model.RadioModel | None:
         with self._serial.open("get_model") as s:
             self._write(s, Frame(CMD_MODEL, b"\x00\x00\x00\x00").pack())
             if frame := self.read_frame(s):
-                _LOG.debug("%d: %r", len(frame.payload), frame)
                 pl = frame.payload
                 return model.RadioModel(pl[5], pl[6:22])
 
@@ -209,14 +252,12 @@ class Radio:
 
             case 0xE4:  # CMD_CLONE_DAT:
                 rawdata = frame.decode_payload()
-                # _LOG.debug("decoded: %s", binascii.hexlify(data))
                 daddr = (rawdata[0] << 8) | rawdata[1]
                 length = rawdata[2]
                 data = rawdata[3 : 3 + length]
-                # checksum?
+
                 checksum = rawdata[3 + length]
                 my_checksum = calc_checksum(rawdata[: length + 3])
-
                 if checksum != my_checksum:
                     _LOG.error(
                         "invalid checksum: idx=%d, exp=%d, rec=%d, "
@@ -228,8 +269,9 @@ class Radio:
                     )
                     raise ChecksumError
 
+                _LOG.debug("update mem: addr=%d, len=%d", daddr, length)
                 mem.update(daddr, length, data)
-                # out.write(f"{frame.payload[:-2].decode()}\n")
+
             case _:
                 _LOG.error(
                     "unknown cmd=%r idx=%d frame=%s",
@@ -247,6 +289,7 @@ class Radio:
         with self._serial.open("clone_from") as s:
             # clone out
             self._write(s, Frame(CMD_CLONE_OUT, b"\x32\x50\x00\x01").pack())
+
             mem = model.RadioMemory()
             for idx in itertools.count():
                 if frame := self.read_frame(s):
@@ -268,9 +311,11 @@ class Radio:
         with self._serial.open("clone_to") as s:
             # clone in
             self._write(s, Frame(CMD_CLONE_IN, b"\x32\x50\x00\x01").pack())
+
             # send in 32bytes chunks
             for addr in range(0, consts.MEM_SIZE, 32):
-                _LOG.debug("write: %d", addr)
+                _LOG.debug("process addr: %d", addr)
+
                 chunk = bytes(
                     [(addr >> 8), addr & 0xFF, 32, *mem.mem[addr : addr + 32]]
                 )
@@ -279,11 +324,16 @@ class Radio:
                 # encode paload
                 payload = "".join(f"{d:02X}" for d in chunk)
                 frame = Frame(CMD_CLONE_DAT, payload.encode())
-                self._write(s, frame.pack())
+
+                data = frame.pack()
+                if _LOG.isEnabledFor(logging.DEBUG):
+                    _LOG.debug("write: %s", binascii.hexlify(data))
+
+                self._write(s, data)
 
                 # TODO: check - get echo
                 fr = self.read_frame(s)
-                _LOG.debug("rec: %r", fr)
+                _LOG.debug("read: %r", fr)
 
                 if cb and not cb(addr):
                     raise AbortError
@@ -323,6 +373,11 @@ class AbortError(Exception):
         return "Aborted"
 
 
+class OutOfSyncError(ValueError):
+    def __str__(self) -> str:
+        return "Out of sync"
+
+
 class InvalidFileError(Exception):
     pass
 
@@ -335,6 +390,7 @@ def load_icf_file(file: Path) -> model.RadioMemory:
         try:
             if next(inp).strip() != "32500001":
                 raise InvalidFileError
+
         except StopIteration as exc:
             raise InvalidFileError from exc
 
