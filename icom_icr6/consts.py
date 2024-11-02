@@ -19,10 +19,10 @@ NAME_LEN: ty.Final[int] = 6
 MIN_FREQUENCY: ty.Final[int] = 100_000
 MAX_FREQUENCY: ty.Final[int] = 1_309_995_000
 
-TONE_MODES = ["", "TSQL", "TSQL-R", "DTCS", "DTCS-R", "", "", ""]
-DUPLEX_DIRS = ["", "-", "+", ""]
-MODES = ["FM", "WFM", "AM", "Auto", "-"]
-STEPS = [
+TONE_MODES: ty.Final = ["", "TSQL", "TSQL-R", "DTCS", "DTCS-R", "", "", ""]
+DUPLEX_DIRS: ty.Final = ["", "-", "+", ""]
+MODES: ty.Final = ["FM", "WFM", "AM", "Auto", "-"]
+STEPS: ty.Final = [
     "5",
     "6.25",
     "8.333333",
@@ -40,14 +40,15 @@ STEPS = [
     "Auto",
     "",
 ]
-SKIPS = ["", "S", "", "P"]
+SKIPS: ty.Final = ["", "S", "", "P"]
 # 31 = not set
-BANK_NAMES = "ABCDEFGHIJKLMNOPQRTUWY"
-BANK_NOT_SET = 31
-POLARITY = ["Reverse", "Normal"]
+BANK_NAMES: ty.Final = "ABCDEFGHIJKLMNOPQRTUWY"
+# id when bank is not set in channel
+BANK_NOT_SET: ty.Final = 31
+POLARITY: ty.Final = ["Reverse", "Normal"]
 
 # https://pl.wikipedia.org/wiki/CTCSS
-CTCSS_TONES = (
+CTCSS_TONES: ty.Final = [
     "67,0 ",
     "69,3",
     "71,9",
@@ -99,9 +100,9 @@ CTCSS_TONES = (
     "250,39",
     "254,10",
     "",
-)
+]
 
-DTCS_CODES = [
+DTCS_CODES: ty.Final = [
     "023",
     "025",
     "026",
@@ -208,25 +209,25 @@ DTCS_CODES = [
     "",
 ]
 
-SETT_FUNC_DIAL_STEP = ["100kHz", "1MHz", "10MHz"]
-SETT_DIAL_FUNCTION = ["Tuning", "Volume"]
-SETT_BEEP_LEVEL = [str(x) for x in range(40)] + ["Volume"]
-SETT_BACKLIGHT = ["Off", "On", "Auto 1", "Auto 2"]
-SETT_MEM_DISPLAY_TYPE = [
+SETT_FUNC_DIAL_STEP: ty.Final = ["100kHz", "1MHz", "10MHz"]
+SETT_DIAL_FUNCTION: ty.Final = ["Tuning", "Volume"]
+SETT_BEEP_LEVEL: ty.Final = [str(x) for x in range(40)] + ["Volume"]
+SETT_BACKLIGHT: ty.Final = ["Off", "On", "Auto 1", "Auto 2"]
+SETT_MEM_DISPLAY_TYPE: ty.Final = [
     "Frequency",
     "Bank name",
     "Memory name",
     "Channel number",
 ]
-SETT_AM_ANT = ["External", "Bar"]
-SETT_FM_ANT = ["External", "Earphone"]
-SETT_LCD_CONTRAST = list("12345")
-SETT_KEY_LOCK = ["Normal", "No SQL", "No Vol", "ALL"]
-SETT_MONITOR = ["Push", "Hold"]
-SETT_CHARGE_TYPE = ["Type 1", "Type 2"]
-SETT_PAUSE_TIMER = [f"{x}sec" for x in range(2, 22, 2)] + ["Hold"]
-SETT_RESUME_TIMER = [f"{x}sec" for x in range(6)] + ["Hold"]
-SETT_CIV_BAUD_RATE = [
+SETT_AM_ANT: ty.Final = ["External", "Bar"]
+SETT_FM_ANT: ty.Final = ["External", "Earphone"]
+SETT_LCD_CONTRAST: ty.Final = list("12345")
+SETT_KEY_LOCK: ty.Final = ["Normal", "No SQL", "No Vol", "ALL"]
+SETT_MONITOR: ty.Final = ["Push", "Hold"]
+SETT_CHARGE_TYPE: ty.Final = ["Type 1", "Type 2"]
+SETT_PAUSE_TIMER: ty.Final = [f"{x}sec" for x in range(2, 22, 2)] + ["Hold"]
+SETT_RESUME_TIMER: ty.Final = [f"{x}sec" for x in range(6)] + ["Hold"]
+SETT_CIV_BAUD_RATE: ty.Final = [
     "300bps",
     "1200bps",
     "4800bps",
@@ -237,7 +238,7 @@ SETT_CIV_BAUD_RATE = [
 
 
 # list of valid characters
-VALID_CHAR = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789()*+-./:= "
+VALID_CHAR: ty.Final = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789()*+-./:= "
 # list of coded characters; ^ is invalid character
 CODED_CHRS: ty.Final[str] = (
     " ^^^^^^^()*+^-./0123456789:^^=^^^ABCDEFGHIJKLMNOPQRSTUVWXYZ^^^^^"
