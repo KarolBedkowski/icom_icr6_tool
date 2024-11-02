@@ -56,11 +56,12 @@ class _CloneDialog(simpledialog.Dialog):
 
 class CloneFromRadioDialog(_CloneDialog):
     def __init__(self, parent: tk.Widget) -> None:
-        super().__init__(parent, "Clone from radio")
         self.radio_memory: model.RadioMemory | None = None
+        super().__init__(parent, "Clone from radio")
 
     def __progress_cb(self, progress: int) -> bool:
         self._var_progress.set(f"Read: {progress}")
+        self.update_idletasks()
         return True
 
     def ok(self, _event: tk.Event | None = None) -> None:  # type: ignore
@@ -75,6 +76,6 @@ class CloneFromRadioDialog(_CloneDialog):
         except Exception as err:
             self._var_progress.set(f"ERROR: {err}")
             self.radio_memory = None
+            raise
         else:
             super().ok()
-            return
