@@ -22,7 +22,8 @@ class _CloneDialog(simpledialog.Dialog):
         ttys = [
             str(p) for p in Path("/dev/").iterdir() if p.name.startswith("tty")
         ]
-        self._var_port.set(ttys[0])
+        # self._var_port.set(ttys[0])
+        self._var_port.set("/dev/ttyUSB0")
         ttk.Combobox(
             master,
             values=ttys,
@@ -78,4 +79,33 @@ class CloneFromRadioDialog(_CloneDialog):
             self.radio_memory = None
             raise
         else:
+            super().ok()
+
+
+class CloneToRadioDialog(_CloneDialog):
+    def __init__(
+        self, parent: tk.Widget, radio_memory: model.RadioMemory
+    ) -> None:
+        self._radio_memory = radio_memory
+        self.result = False
+        super().__init__(parent, "Clone to radio")
+
+    def __progress_cb(self, progress: int) -> bool:
+        self._var_progress.set(f"Write: {progress}")
+        self.update_idletasks()
+        return True
+
+    def ok(self, _event: tk.Event | None = None) -> None:  # type: ignore
+        self._var_progress.set("Starting...")
+        radio = io.Radio(self._var_port.get())
+        try:
+            radio.clone_to(self._radio_memory, self.__progress_cb)
+            self._var_progress.set("Done")
+        except io.AbortError:
+            self.cancel()
+        except Exception as err:
+            self._var_progress.set(f"ERROR: {err}")
+            raise
+        else:
+            self.result = True
             super().ok()

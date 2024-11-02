@@ -80,6 +80,9 @@ class App(tk.Frame):
         radio_menu.add_command(
             label="Clone from radio...", command=self.__on_clone_from_radio
         )
+        radio_menu.add_command(
+            label="Clone to radio...", command=self.__on_clone_to_radio
+        )
         menu_bar.add_cascade(label="Radio", menu=radio_menu)
 
         help_menu = tk.Menu(menu_bar)
@@ -134,6 +137,7 @@ class App(tk.Frame):
         if fname:
             self.load_icf(Path(fname))
 
+        self.lift()
         self.focus_set()
 
     def load_icf(self, file: Path) -> None:
@@ -164,6 +168,7 @@ class App(tk.Frame):
             io.save_icf_file(self._last_file, self._radio_memory)
 
         self.focus_set()
+        self.grab_set()
 
     def __update_widgets(self, page: int | None = None) -> None:
         _LOG.debug("update page: %r", page)
@@ -199,6 +204,9 @@ class App(tk.Frame):
             self.__set_loaded_filename(None)
             self.__update_widgets()
 
+    def __on_clone_to_radio(self, _event: tk.Event | None = None) -> None:  # type: ignore
+        gui_dlg_clone.CloneToRadioDialog(self, self._radio_memory)
+
 
 def start_gui() -> None:
     file = Path(sys.argv[1]) if len(sys.argv) > 1 else None
@@ -210,6 +218,8 @@ def start_gui() -> None:
     style.configure("pad.TEntry", padding="1 1 1 1")
     myapp = App(root, file)
     root.geometry("1024x768")
+    root.wait_visibility()
+    root.grab_set()
     root.lift()
 
     myapp.mainloop()

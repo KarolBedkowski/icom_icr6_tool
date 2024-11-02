@@ -26,6 +26,8 @@ _LOG = logging.getLogger(__name__)
 class Frame:
     cmd: int = 0
     payload: bytes = b""
+    src: int = 0
+    dst: int = 0
 
     def pack(self) -> bytes:
         return b"".join(
@@ -97,7 +99,8 @@ def calc_checksum(data: bytes) -> int:
 
 class Radio:
     def __init__(self, port: str = "") -> None:
-        self._serial = FakeSerial(port)
+        # self._serial = FakeSerial(port)
+        self._serial = RealSerial(port)
         self._logger = None
         self._stream_logger = None
         self._stream_logger = Path("data.log").open("wt")
@@ -143,13 +146,8 @@ class Radio:
             if len(data) < 5:  # noqa: PLR2004
                 continue
 
-            if data[2] == ADDR_PC and data[3] == ADDR_RADIO:
-                _LOG.debug("got echo")
-                buf.clear()
-                continue
-
             # ic(data)
-            return Frame(data[4], data[5:])
+            return Frame(data[4], data[5:], data[2], data[3])
 
         return None
 
@@ -165,6 +163,10 @@ class Radio:
     def _process_clone_from_frame(
         self, idx: int, frame: Frame, mem: model.RadioMemory
     ) -> bool:
+        if frame.src == ADDR_PC and frame.dst == ADDR_RADIO:
+            # echo, skip
+            return True
+
         match int(frame.cmd):
             case 0xE5:  # clone_end
                 return False
@@ -226,6 +228,56 @@ class Radio:
         # self._logger.close()
         self._serial.close()
         return mem
+
+    def clone_to(
+        self,
+        mem: model.RadioMemory,
+        cb: ty.Callable[[int], bool] | None = None,
+    ) -> bool:
+        self._serial.open("clone_to")
+        # clone in
+        self._write(Frame(0xE3, b"\x32\x50\x00\x01").pack())
+        # send in 32bytes chunks
+        for addr in range(0, consts.MEM_SIZE, 32):
+            _LOG.debug("write: %d", addr)
+            chunk = bytes(
+                [(addr >> 8), addr & 0xFF, 32, *mem.mem[addr : addr + 32]]
+            )
+            # add checksum
+            chunk += bytes([calc_checksum(chunk)])
+            # encode paload
+            payload = "".join(f"{d:02X}" for d in chunk)
+            frame = Frame(0xE4, payload.encode())
+            self._write(frame.pack())
+
+            # TODO: check - get echo
+            fr = self.read_frame()
+            _LOG.debug("rec: %r", fr)
+
+            if cb and not cb(addr):
+                self._serial.close()
+                raise AbortError
+
+        _LOG.debug("send clone end")
+        # clone end
+        self._write(Frame(0xE5, b"Icom Inc\x2e73").pack())
+        # one more packet?
+
+        result_frame = None
+        for i in range(10):
+            _LOG.debug("wait for result (%d)", i)
+            if result_frame := self.read_frame():
+                _LOG.info("got frame: %r", result_frame)
+                if result_frame.cmd == 0xE6:
+                    # clone ok
+                    break
+
+        self._serial.close()
+
+        if not result_frame:
+            raise NoDataError
+
+        return result_frame.payload[0] == b"\x00"
 
 
 class NoDataError(Exception):
