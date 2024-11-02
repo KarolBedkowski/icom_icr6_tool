@@ -755,7 +755,12 @@ def decode_name(inp: list[int] | bytes) -> str:
         (inp[4] & 0b00111111),
     )
 
-    return "".join(consts.CODED_CHRS[x] for x in chars)
+    name = "".join(consts.CODED_CHRS[x] for x in chars)
+    if name and name[0] == "^":
+        # invalid name
+        return ""
+
+    return name
 
 
 def encode_name(inp: str) -> list[int]:
