@@ -11,6 +11,7 @@ from pathlib import Path
 from tkinter import filedialog, ttk
 
 from . import (
+    gui_dlg_clone,
     gui_model,
     gui_nb_awchannels,
     gui_nb_banks,
@@ -74,6 +75,12 @@ class App(tk.Frame):
         file_menu.add_separator()
         file_menu.add_command(label="Exit", command=self.quit)
         menu_bar.add_cascade(label="File", menu=file_menu)
+
+        radio_menu = tk.Menu(menu_bar)
+        radio_menu.add_command(
+            label="Clone from radio...", command=self.__on_clone_from_radio
+        )
+        menu_bar.add_cascade(label="Radio", menu=radio_menu)
 
         help_menu = tk.Menu(menu_bar)
         help_menu.add_command(label="About", command=self.__on_about)
@@ -184,6 +191,13 @@ class App(tk.Frame):
         self._last_file = fname
         title = f" [{fname.name}]" if fname else ""
         self.master.title(f"ICOM IC-R6 Tool{title}")  # type: ignore
+
+    def __on_clone_from_radio(self, _event: tk.Event | None = None) -> None:  # type: ignore
+        dlg = gui_dlg_clone.CloneFromRadioDialog(self)
+        if dlg.radio_memory:
+            self._radio_memory.update_from(dlg.radio_memory)
+            self.__set_loaded_filename(None)
+            self.__update_widgets()
 
 
 def start_gui() -> None:

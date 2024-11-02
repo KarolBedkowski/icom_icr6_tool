@@ -8,6 +8,7 @@ import binascii
 import itertools
 import logging
 import struct
+import typing as ty
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -48,8 +49,10 @@ class OutOfSyncError(ValueError): ...
 
 
 class Radio:
-    def __init__(self) -> None:
-        self._serial = serial.Serial("/dev/ttyUSB0", 9600)
+    def __init__(self, port: str = "") -> None:
+        self._serial = serial.Serial(port or "/dev/ttyUSB0", 9600)
+        self._serial.timeout = 5
+        self._serial.write_timeout = 5
 
     def _write(self, payload: bytes) -> None:
         _LOG.debug("write: %s", binascii.hexlify(payload))
@@ -65,7 +68,7 @@ class Radio:
                     continue
             else:
                 _LOG.error("no data")
-                break
+                raise NoDataError
 
             if not buf or buf == [b"\xfd"]:
                 return None
@@ -103,7 +106,9 @@ class Radio:
 
         return None
 
-    def clone_from(self) -> model.RadioMemory:
+    def clone_from(
+        self, cb: ty.Callable[[int], bool] | None = None
+    ) -> model.RadioMemory:
         self._write(Frame(0xE2, b"\x32\x50\x00\x01").pack())
         mem = model.RadioMemory()
         for idx in itertools.count():
@@ -138,6 +143,8 @@ class Radio:
 
                         mem.update(daddr, length, data)
                         # out.write(f"{frame.payload[:-2].decode()}\n")
+                        if cb and not cb(idx):
+                            raise AbortError
 
                     case _:
                         _LOG.error(
@@ -151,8 +158,19 @@ class Radio:
         return mem
 
 
+class NoDataError(Exception):
+    def __str__(self) -> str:
+        return "Communication error"
+
+
 class ChecksumError(Exception):
-    pass
+    def __str__(self) -> str:
+        return "Checksum error"
+
+
+class AbortError(Exception):
+    def __str__(self) -> str:
+        return "Aborted"
 
 
 class InvalidFileError(Exception):
