@@ -8,7 +8,7 @@ import logging
 import sys
 import tkinter as tk
 from pathlib import Path
-from tkinter import filedialog, ttk
+from tkinter import filedialog, messagebox, ttk
 
 from . import (
     gui_dlg_clone,
@@ -35,6 +35,8 @@ class App(tk.Frame):
         self._radio_memory = model.RadioMemory()
         self._channel_model = gui_model.ChannelModel()
         self._status_value = tk.StringVar()
+        # safe is clone to device when data are loaded or cloned from dev
+        self._safe_for_clone = False
 
         self.pack(fill="both", expand=1)
 
@@ -132,7 +134,13 @@ class App(tk.Frame):
         return self._nb_settings
 
     def __on_about(self) -> None:
-        pass
+        from . import VERSION
+
+        messagebox.showinfo(
+            "About",
+            f"Icom IC-R6 tool\nVersion: {VERSION}\n\n"
+            "Future information in README.rst, COPYING files.",
+        )
 
     def __on_file_open(self, _event: tk.Event | None = None) -> None:  # type: ignore
         fname = filedialog.askopenfilename(
@@ -152,6 +160,7 @@ class App(tk.Frame):
         self.__set_loaded_filename(file)
         self.__update_widgets()
         self.set_status(f"File {file} loaded")
+        self._safe_for_clone = True
 
     def __on_file_save(self, _event: tk.Event | None = None) -> None:  # type: ignore
         if not self._last_file:
@@ -211,10 +220,18 @@ class App(tk.Frame):
         dlg = gui_dlg_clone.CloneFromRadioDialog(self)
         if dlg.radio_memory:
             self._radio_memory.update_from(dlg.radio_memory)
+            self._safe_for_clone = True
             self.__set_loaded_filename(None)
             self.__update_widgets()
 
     def __on_clone_to_radio(self, _event: tk.Event | None = None) -> None:  # type: ignore
+        if not self._safe_for_clone:
+            messagebox.showerror(
+                "Clone to device",
+                "Please open valid icf file or clone data from device.",
+            )
+            return
+
         gui_dlg_clone.CloneToRadioDialog(self, self._radio_memory)
 
 
