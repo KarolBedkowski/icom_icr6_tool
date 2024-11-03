@@ -1,8 +1,8 @@
 meta:
-  id: icf
-  title: icf file
-  endian: le
-  bit-endian: le
+  id: icr6
+  title: icom ic-r6 memory map
+  endian: be
+  bit-endian: be
 seq:
   - id: channels
     type: channel
@@ -110,10 +110,10 @@ types:
   scan_edge:
     seq:
       - id: start
-        type: u4
+        type: u4le
         doc: freq * 3
       - id: end
-        type: u4
+        type: u4le
         doc: freq * 3
 
       - id: disabled
@@ -145,7 +145,7 @@ types:
         size: 6
         encoding: ASCII
       - id: padding
-        type: u2
+        type: u2le
 
   scanlink_name:
     seq:
@@ -154,12 +154,12 @@ types:
         size: 6
         encoding: ASCII
       - id: padding
-        type: u2
+        type: u2le
 
   scanlink:
     seq:
       - id: map
-        type: u4
+        type: u4be
         doc: bitmap for banks Y->A
 
   channel:
@@ -209,7 +209,7 @@ types:
         enum: tone_mode
 
       - id: offset
-        type: u2
+        type: u2le
 
       - id: unknown2
         type: b2
@@ -218,6 +218,7 @@ types:
 
       - id: polarity
         type: b1
+        enum: polarity
       - id: dscs_code
         type: b7
 
@@ -458,7 +459,7 @@ enums:
     0: freq_mul_5000
     1: freq_mul_6250
     2: freq_mul_8333
-    4: freq_mul_9000
+    3: freq_mul_9000
 
   duplex:
     0: none
@@ -471,3 +472,7 @@ enums:
     2: tsql_r
     3: dtcs
     4: dtcs_r
+
+  polarity:
+    0: reverse
+    1: normal
