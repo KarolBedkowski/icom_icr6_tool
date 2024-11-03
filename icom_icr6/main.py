@@ -26,18 +26,26 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 def main_clone_from_radio() -> None:
-    if len(sys.argv) < 3:
-        print("file name required")
+    if len(sys.argv) < 4:
+        print("port and file name required")
         return
 
-    radio = io.Radio()
+    radio = io.Radio(sys.argv[2])
     mem = radio.clone_from()
-    io.save_icf_file(Path(sys.argv[2]), mem)
+    io.save_icf_file(Path(sys.argv[3]), mem)
 
 
 def main_radio_info() -> None:
-    radio = io.Radio()
-    print(f"Model: {radio.get_model()!r}")
+    if len(sys.argv) < 3:
+        print("port required (/dev/ttyUSB0 ie)")
+        return
+
+    radio = io.Radio(sys.argv[2])
+    if model := radio.get_model():
+        print(f"Model: {model!r}")
+        print(f"Is IC-R6: {model.is_icr6()}")
+    else:
+        print("ERROR")
 
 
 def main_print_channels() -> None:
@@ -140,8 +148,8 @@ Command:
    banks <icf file>
    scan <icf file>
    write_mem <icf file> [<raw file>]
-   clone_from_radio <icf file>
-   radio_info
+   clone_from_radio <port> <icf file>
+   radio_info <port>
    autowrite <icf file>
    settings <icf file>
 """)

@@ -233,9 +233,13 @@ class Radio:
     def get_model(self) -> model.RadioModel | None:
         with self._serial.open("get_model") as s:
             self._write(s, Frame(CMD_MODEL, b"\x00\x00\x00\x00").pack())
-            if frame := self.read_frame(s):
+            while frame := self.read_frame(s):
+                if frame.src == ADDR_PC and frame.dst == ADDR_RADIO:
+                    continue
+
                 pl = frame.payload
-                return model.RadioModel(pl[5], pl[6:22])
+                _LOG.debug("payload: %r", pl)
+                return model.RadioModel.from_data(pl)
 
         return None
 

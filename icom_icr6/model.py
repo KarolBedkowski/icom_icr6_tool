@@ -19,8 +19,29 @@ _LOG = logging.getLogger(__name__)
 
 @dataclass
 class RadioModel:
+    model: bytes
     rev: int
-    comment: bytes
+    comment: str
+    serial: str
+
+    @classmethod
+    def from_data(cls: type[RadioModel], data: bytes) -> RadioModel:
+        serial = binascii.unhexlify(data[25 : 25 + 14])
+        serial_decoded = (
+            f"{serial[0]<<8|serial[1]:04d}"
+            f"{serial[2]:02d}{serial[3]:02d}"
+            f"{serial[5]<<8|serial[6]:04d}"
+        )
+
+        return RadioModel(
+            model=bytes(data[0:4]),
+            rev=data[5],
+            comment=data[6:22].decode(),
+            serial=serial_decoded,
+        )
+
+    def is_icr6(self) -> bool:
+        return self.model == b"\x32\x50\x00\x01"
 
 
 def _try_get(inlist: list[str] | tuple[str, ...], idx: int) -> str:
