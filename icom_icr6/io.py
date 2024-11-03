@@ -55,9 +55,12 @@ class Frame:
             for i in range(0, len(self.payload) - 1, 2)
         )
 
+    def is_echo(self) -> bool:
+        return self.src == ADDR_PC and self.dst == ADDR_RADIO
+
 
 @ty.runtime_checkable
-class SerialImpl(ty.Protocol):
+class Serial(ty.Protocol):
     def write(self, data: bytes) -> None: ...
 
     def read(self, length: int) -> bytes: ...
@@ -69,31 +72,12 @@ class SerialImpl(ty.Protocol):
     def close(self) -> None: ...
 
 
-class Serial:
-    def __init__(self, port: str = "") -> None:
-        self.port = port
-
-    @contextmanager
-    def open(self, stream: str) -> ty.Iterator[SerialImpl]:
-        impl: SerialImpl = RealSerial(self.port) if self.port else FakeSerial()
-
-        if _ENABLE_LOGGER:
-            impl = StreamLogger(impl)
-
-        impl.open(stream)
-
-        try:
-            yield impl
-        finally:
-            impl.close()
-
-
 class StreamLogger:
     """
-    StreamLogger wrape SerialImpl and append output/input to data.log file.
+    StreamLogger wrape Serial and append output/input to data.log file.
     """
 
-    def __init__(self, impl: SerialImpl) -> None:
+    def __init__(self, impl: Serial) -> None:
         self._impl = impl
         self._log = Path("data.log").open("at")  # noqa: SIM115
 
@@ -190,16 +174,30 @@ def calc_checksum(data: bytes) -> int:
 
 class Radio:
     def __init__(self, port: str = "") -> None:
-        self._serial = Serial(port)
+        self._port = port
         self._logger = None
 
-    def _write(self, s: SerialImpl, payload: bytes) -> None:
+    @contextmanager
+    def _open_serial(self, stream: str) -> ty.Iterator[Serial]:
+        impl: Serial = RealSerial(self._port) if self._port else FakeSerial()
+
+        if _ENABLE_LOGGER:
+            impl = StreamLogger(impl)
+
+        impl.open(stream)
+
+        try:
+            yield impl
+        finally:
+            impl.close()
+
+    def _write(self, s: Serial, payload: bytes) -> None:
         if _LOG.isEnabledFor(logging.DEBUG):
             _LOG.debug("write: %s", binascii.hexlify(payload))
 
         s.write(payload)
 
-    def read_frame(self, s: SerialImpl) -> Frame | None:
+    def read_frame(self, s: Serial) -> Frame | None:
         data = s.read_frame()
 
         if _LOG.isEnabledFor(logging.DEBUG):
@@ -231,10 +229,10 @@ class Radio:
         return Frame(data[4], data[5:], data[2], data[3])
 
     def get_model(self) -> model.RadioModel | None:
-        with self._serial.open("get_model") as s:
+        with self._open_serial("get_model") as s:
             self._write(s, Frame(CMD_MODEL, b"\x00\x00\x00\x00").pack())
             while frame := self.read_frame(s):
-                if frame.src == ADDR_PC and frame.dst == ADDR_RADIO:
+                if frame.is_echo():
                     continue
 
                 pl = frame.payload
@@ -246,7 +244,7 @@ class Radio:
     def _process_clone_from_frame(
         self, idx: int, frame: Frame, mem: model.RadioMemory
     ) -> bool:
-        if frame.src == ADDR_PC and frame.dst == ADDR_RADIO:
+        if frame.is_echo():
             # echo, skip
             return True
 
@@ -290,7 +288,9 @@ class Radio:
     def clone_from(
         self, cb: ty.Callable[[int], bool] | None = None
     ) -> model.RadioMemory:
-        with self._serial.open("clone_from") as s:
+        self._check_radio()
+
+        with self._open_serial("clone_from") as s:
             # clone out
             self._write(s, Frame(CMD_CLONE_OUT, b"\x32\x50\x00\x01").pack())
 
@@ -312,7 +312,9 @@ class Radio:
         mem: model.RadioMemory,
         cb: ty.Callable[[int], bool] | None = None,
     ) -> bool:
-        with self._serial.open("clone_to") as s:
+        self._check_radio()
+
+        with self._open_serial("clone_to") as s:
             # clone in
             self._write(s, Frame(CMD_CLONE_IN, b"\x32\x50\x00\x01").pack())
 
@@ -361,6 +363,23 @@ class Radio:
 
             return result_frame.payload[0] == 0
 
+    def _check_radio(self) -> None:
+        if not self._port:
+            return
+
+        model = self.get_model()
+        if not model:
+            raise NoDataError
+
+        if not model.is_icr6():
+            _LOG.error("unsupported model: %r", model)
+            raise UnsupportedDeviceError
+
+
+class UnsupportedDeviceError(Exception):
+    def __str__(self) -> str:
+        return "Unsupported device"
+
 
 class NoDataError(Exception):
     def __str__(self) -> str:
@@ -392,6 +411,7 @@ def load_icf_file(file: Path) -> model.RadioMemory:
 
     with file.open("rt") as inp:
         try:
+            # check header == model in hex
             if next(inp).strip() != "32500001":
                 raise InvalidFileError
 
