@@ -15,12 +15,11 @@ _LOG = logging.getLogger(__name__)
 
 
 class ScanLinksPage(tk.Frame):
+    # TODO: scrollable list or other
     def __init__(
         self, parent: tk.Widget, radio_memory: model.RadioMemory
     ) -> None:
         super().__init__(parent)
-        self.rowconfigure(0, weight=1)
-        self.columnconfigure(0, weight=1)
 
         self._radio_memory = radio_memory
         self._sl_name = tk.StringVar()
@@ -35,19 +34,12 @@ class ScanLinksPage(tk.Frame):
         pw.add(self._scan_links_list, weight=0)
 
         frame = tk.Frame(pw)
-        frame.rowconfigure(0, weight=0)
-        frame.rowconfigure(1, weight=1)
-        frame.rowconfigure(2, weight=0)
-        frame.columnconfigure(0, weight=1)
-
         self._create_fields(frame)
         self._create_scan_edges_list(frame)
         self._create_buttons(frame)
         pw.add(frame, weight=1)
 
-        pw.grid(
-            row=0, column=0, sticky=tk.N + tk.S + tk.E + tk.W, padx=6, pady=6
-        )
+        pw.pack(expand=True, fill=tk.BOTH, side=tk.TOP, padx=12, pady=12)
 
     def set(self, radio_memory: model.RadioMemory) -> None:
         self._radio_memory = radio_memory
@@ -66,7 +58,7 @@ class ScanLinksPage(tk.Frame):
             validator=validator,
         )
         self._entry_sl_name["state"] = "disabled"
-        fields.grid(row=0, column=0, sticky=tk.N + tk.E + tk.W, ipady=6)
+        fields.pack(side=tk.TOP, fill=tk.X, ipady=6)
 
     def _create_buttons(self, parent: tk.Frame) -> None:
         frame = tk.Frame(parent, borderwidth=6)
@@ -88,10 +80,10 @@ class ScanLinksPage(tk.Frame):
         )
         self._btn_update.grid(row=3, column=2, sticky=tk.E)
 
-        frame.grid(row=3, column=0, sticky=tk.N + tk.E + tk.W, ipady=6)
+        frame.pack(side=tk.BOTTOM, fill=tk.X, ipady=6)
 
     def _create_scan_edges_list(self, parent: tk.Frame) -> None:
-        slf = tk.Frame(parent, borderwidth=6)
+        slf = tk.Frame(parent)
         self._scan_links_edges = []
         for idx in range(consts.NUM_SCAN_EDGES):
             var = tk.IntVar()
@@ -106,7 +98,7 @@ class ScanLinksPage(tk.Frame):
             cb.grid(row=idx, column=0, sticky=tk.W)
             self._scan_links_edges.append((var, cb))
 
-        slf.grid(row=1, column=0, sticky=tk.N + tk.E + tk.W, ipady=6)
+        slf.pack(side=tk.TOP, expand=True, fill=tk.BOTH, ipady=6)
 
     def __update_scan_links_list(self) -> None:
         sel_sl = self._scan_links_list.curselection()  # type: ignore

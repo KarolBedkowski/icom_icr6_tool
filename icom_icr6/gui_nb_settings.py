@@ -19,12 +19,6 @@ class SettingsPage(tk.Frame):
         self, parent: tk.Widget, radio_memory: model.RadioMemory
     ) -> None:
         super().__init__(parent)
-        self.columnconfigure(0, weight=0)
-        self.columnconfigure(1, weight=1)
-        self.columnconfigure(2, weight=0)
-        self.columnconfigure(3, weight=1)
-        self.columnconfigure(4, weight=0)
-        self.columnconfigure(5, weight=1)
 
         self._radio_memory = radio_memory
         self._create_vars()
@@ -67,8 +61,16 @@ class SettingsPage(tk.Frame):
         self._var_charging_type = gui_model.ListVar(consts.SETT_CHARGE_TYPE)
 
     def _create_fields(self) -> None:
+        frame = tk.Frame(self)
+        frame.columnconfigure(0, weight=0)
+        frame.columnconfigure(1, weight=1)
+        frame.columnconfigure(2, weight=0)
+        frame.columnconfigure(3, weight=1)
+        frame.columnconfigure(4, weight=0)
+        frame.columnconfigure(5, weight=1)
+
         new_combo(
-            self,
+            frame,
             0,
             0,
             "Func + Down/Up",
@@ -76,21 +78,21 @@ class SettingsPage(tk.Frame):
             consts.SETT_FUNC_DIAL_STEP,
         )
         new_combo(
-            self,
+            frame,
             0,
             2,
             "Dial function",
             self._var_dial_function,
             consts.SETT_DIAL_FUNCTION,
         )
-        new_checkbox(self, 0, 4, "Dial speed up", self._var_dial_speed_up)
+        new_checkbox(frame, 0, 4, "Dial speed up", self._var_dial_speed_up)
 
-        new_checkbox(self, 1, 0, "Auto power save", self._var_power_save)
-        new_checkbox(self, 1, 2, "Auto power off", self._var_auto_power_off)
+        new_checkbox(frame, 1, 0, "Auto power save", self._var_power_save)
+        new_checkbox(frame, 1, 2, "Auto power off", self._var_auto_power_off)
 
-        new_checkbox(self, 2, 0, "Key beep", self._var_key_beep)
+        new_checkbox(frame, 2, 0, "Key beep", self._var_key_beep)
         new_combo(
-            self,
+            frame,
             2,
             2,
             "Beep level",
@@ -99,17 +101,22 @@ class SettingsPage(tk.Frame):
         )
 
         new_combo(
-            self, 3, 0, "Key lock", self._var_key_lock, consts.SETT_KEY_LOCK
+            frame, 3, 0, "Key lock", self._var_key_lock, consts.SETT_KEY_LOCK
         )
         new_combo(
-            self, 3, 2, "Monitor", self._var_monitor, consts.SETT_MONITOR
+            frame, 3, 2, "Monitor", self._var_monitor, consts.SETT_MONITOR
         )
 
         new_combo(
-            self, 4, 0, "Backlight", self._var_backlight, consts.SETT_BACKLIGHT
+            frame,
+            4,
+            0,
+            "Backlight",
+            self._var_backlight,
+            consts.SETT_BACKLIGHT,
         )
         new_combo(
-            self,
+            frame,
             4,
             2,
             "Memory display type",
@@ -117,7 +124,7 @@ class SettingsPage(tk.Frame):
             consts.SETT_MEM_DISPLAY_TYPE,
         )
         new_combo(
-            self,
+            frame,
             4,
             4,
             "LCD contrast",
@@ -126,18 +133,18 @@ class SettingsPage(tk.Frame):
         )
 
         new_combo(
-            self, 5, 0, "AM Antenna", self._var_am_ant, consts.SETT_AM_ANT
+            frame, 5, 0, "AM Antenna", self._var_am_ant, consts.SETT_AM_ANT
         )
         new_combo(
-            self, 5, 2, "FM Antenna", self._var_fm_ant, consts.SETT_FM_ANT
+            frame, 5, 2, "FM Antenna", self._var_fm_ant, consts.SETT_FM_ANT
         )
 
-        new_checkbox(self, 6, 0, "AM AF filter", self._var_af_filer_am)
-        new_checkbox(self, 6, 2, "FM AF filter", self._var_af_filer_fm)
-        new_checkbox(self, 6, 4, "WFM AF filter", self._var_af_filer_wfm)
+        new_checkbox(frame, 6, 0, "AM AF filter", self._var_af_filer_am)
+        new_checkbox(frame, 6, 2, "FM AF filter", self._var_af_filer_fm)
+        new_checkbox(frame, 6, 4, "WFM AF filter", self._var_af_filer_wfm)
 
         new_combo(
-            self,
+            frame,
             7,
             0,
             "Charge type",
@@ -145,13 +152,13 @@ class SettingsPage(tk.Frame):
             consts.SETT_CHARGE_TYPE,
         )
 
-        new_checkbox(self, 8, 0, "Set expand", self._var_set_expand)
+        new_checkbox(frame, 8, 0, "Set expand", self._var_set_expand)
 
         new_checkbox(
-            self, 9, 0, "Program skip scan", self._var_program_skip_scan
+            frame, 9, 0, "Program skip scan", self._var_program_skip_scan
         )
         new_combo(
-            self,
+            frame,
             9,
             2,
             "Scan pause timer",
@@ -159,29 +166,31 @@ class SettingsPage(tk.Frame):
             consts.SETT_PAUSE_TIMER,
         )
         new_combo(
-            self,
+            frame,
             9,
             4,
             "Scan resume timer",
             self._var_resume_timer,
             consts.SETT_RESUME_TIMER,
         )
-        new_checkbox(self, 10, 0, "Scan stop beep", self._var_stop_beep)
+        new_checkbox(frame, 10, 0, "Scan stop beep", self._var_stop_beep)
 
         new_combo(
-            self,
+            frame,
             11,
             0,
             "CIV baud rate",
             self._var_civ_baud_rate,
             consts.SETT_CIV_BAUD_RATE,
         )
-        new_entry(self, 11, 2, "CIV address", self._var_civ_address)
-        new_checkbox(self, 11, 4, "CIV transceive", self._var_civ_transceive)
+        new_entry(frame, 11, 2, "CIV address", self._var_civ_address)
+        new_checkbox(frame, 11, 4, "CIV transceive", self._var_civ_transceive)
 
-        ttk.Button(self, text="Update", command=self.__on_update).grid(
+        ttk.Button(frame, text="Update", command=self.__on_update).grid(
             row=12, column=5, sticky=tk.E
         )
+
+        frame.pack(fill=tk.X, side=tk.TOP, padx=12, pady=12)
 
     def __update(self) -> None:
         sett = self._radio_memory.get_settings()

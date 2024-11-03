@@ -77,7 +77,7 @@ def new_checkbox(
         onvalue=1,
         offvalue=0,
     )
-    cbox.grid(row=row, column=col, sticky=tk.N + tk.W + tk.S)
+    cbox.grid(row=row, column=col, sticky=tk.N + tk.W + tk.S, padx=6, pady=6)
     return cbox
 
 

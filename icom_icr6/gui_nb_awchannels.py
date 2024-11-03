@@ -25,8 +25,6 @@ class AutoWriteChannelsPage(tk.Frame):
         self, parent: tk.Widget, radio_memory: model.RadioMemory
     ) -> None:
         super().__init__(parent)
-        self.rowconfigure(0, weight=1)
-        self.columnconfigure(0, weight=1)
 
         self._radio_memory = radio_memory
 
@@ -41,11 +39,8 @@ class AutoWriteChannelsPage(tk.Frame):
         ccframe, self._chan_list = build_list_model(
             frame, self._chan_list_model
         )
-        ccframe.grid(
-            row=0,
-            column=0,
-            sticky=tk.N + tk.S + tk.E + tk.W,
-        )
+        ccframe.pack(expand=True, fill=tk.BOTH, side=tk.TOP, padx=12, pady=12)
+
         self._chan_list.bind(
             "<<TreeviewSelect>>", self.__on_channel_select, add="+"
         )

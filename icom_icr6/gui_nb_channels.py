@@ -21,9 +21,6 @@ class ChannelsPage(tk.Frame):
         self, parent: tk.Widget, radio_memory: model.RadioMemory
     ) -> None:
         super().__init__(parent)
-        self.rowconfigure(0, weight=1)
-        self.columnconfigure(0, weight=1)
-
         self._radio_memory = radio_memory
 
         pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
@@ -35,16 +32,10 @@ class ChannelsPage(tk.Frame):
         pw.add(self._chan_group_list, weight=0)
 
         frame = tk.Frame(pw)
-        frame.rowconfigure(0, weight=1)
-        frame.rowconfigure(1, weight=0)
-        frame.columnconfigure(0, weight=1)
-
         self._create_channel_list(frame)
-
         pw.add(frame, weight=1)
-        pw.grid(
-            row=0, column=0, sticky=tk.N + tk.S + tk.E + tk.W, padx=6, pady=6
-        )
+
+        pw.pack(expand=True, fill=tk.BOTH, side=tk.TOP, padx=12, pady=12)
 
     def set(self, radio_memory: model.RadioMemory) -> None:
         self._radio_memory = radio_memory
@@ -53,7 +44,8 @@ class ChannelsPage(tk.Frame):
     def _create_channel_list(self, frame: tk.Frame) -> None:
         self._tb_model = gui_model.ChannelsListModel(self._radio_memory)
         ccframe, self._channels_list = build_list_model(frame, self._tb_model)
-        ccframe.grid(row=0, column=0, sticky=tk.N + tk.S + tk.E + tk.W)
+        ccframe.pack(side=tk.TOP, expand=True, fill=tk.BOTH, ipady=6)
+
         self._channels_list.bind(
             "<<TreeviewSelect>>", self.__on_channel_select, add="+"
         )
