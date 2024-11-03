@@ -301,6 +301,7 @@ class BankChannelsListModel(gui_model.ChannelsListModel):
         bank = self._radio_memory.get_bank(bank_num)
 
         if not value:
+            # remove channel from bank
             if channum := bank.channels[row]:
                 chan = self._radio_memory.get_channel(channum)
                 _LOG.debug("clean bank in: %r", chan)
@@ -308,7 +309,7 @@ class BankChannelsListModel(gui_model.ChannelsListModel):
                 self._radio_memory.set_channel(chan)
                 self.data[row] = None
 
-                return UpdateCellResult.UPDATE_ROW, chan
+                return UpdateCellResult.UPDATE_ROW, None
 
             _LOG.error("not found channel %d in bank %r", row, bank)
             return UpdateCellResult.NOOP, None

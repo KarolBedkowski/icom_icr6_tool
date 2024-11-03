@@ -226,10 +226,7 @@ class TableView2(ttk.Treeview, ty.Generic[T]):
                 return
             case UpdateCellResult.UPDATE_ALL, _:
                 self.update_all()
-            case UpdateCellResult.UPDATE_ROW, None:
-                return
             case UpdateCellResult.UPDATE_ROW, newval:
-                assert newval is not None
                 self.item(iid, values=self.model.data2row(newval))
 
     def update_all(self) -> None:
