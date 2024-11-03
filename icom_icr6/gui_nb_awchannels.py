@@ -63,7 +63,7 @@ class AutoWriteChannelsPage(tk.Frame):
             return
 
         chan_num = int(sel[0])
-        chan = self._radio_memory.get_channel(chan_num)
+        chan = self._chan_list_model.data[chan_num]
         _LOG.debug("chan: %r", chan)
 
 
