@@ -1,8 +1,39 @@
-Icom ic-r6 Manager
-==================
+Icom IC-R6 Manager  [WIP]
+=========================
 
-Simple application for manage Icom IC-R6 scanner memory.
 
+Simple TK application for manage Icom IC-R6 scanner memory.
+
+Features:
+- load and save ifc file
+- clone data from and to radio
+- edit channels, banks, scan links / edges
+- display autowrite channels
+- change settings
+
+
+WARNING
+-------
+This is software i alfa state. Tested only on EUR version of IR-R6.
+
+Cloning from and to device seems to be quite safe operation. In my test
+sending broken data to radio cause at least memory reset.
+
+But I not responsible if someone damage/brick own device using this software.
+Using at on own risk.
+
+
+Requirements
+-------------
+- Python 3.11+
+- Tkinter
+- pyserial
+
+
+Credits
+-------
+Based on Chirp project (https://chirpmyradio.com) and work
+https://github.com/jbradsha/chirp/
 
 
 Licence

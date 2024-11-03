@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 authors = [{ name = "Karol Będkowski", email = "karol.bedkowski@gmail.com" }]
 classifiers = [
-  "Development Status :: 4 - Beta",
+  "Development Status :: 3 - Alpha",
   "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
   "Programming Language :: Python :: 3 :: Only",
   "Environment :: Console",
@@ -18,12 +18,11 @@ name = "icom_icr6"
 license = { text = "GPL-3.0-or-later" }
 readme = "README.rst"
 requires-python = ">=3.11"
-#dependencies = ["python-dateutil"]
+dependencies = ["tkinter", "pyserial"]
 dynamic = ["version"]
 
 [project.optional-dependencies]
 dev = [
-  "freezegun",
   "icecream>=2.1.0",
   "pip-tools>=6.10.0",
   "pytest-cov>=4.0.0",
