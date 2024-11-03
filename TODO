@@ -1,6 +1,6 @@
-- ctrl-c/ctrl-v opertations
+- ctrl-c/ctrl-v operations
 - optimise memory
-- check connected device - not clone to/from not supported device 
 - device comment
 - export / import data
 - clone in background
+- handle errors
