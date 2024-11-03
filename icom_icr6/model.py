@@ -635,15 +635,18 @@ class RadioMemory:
         self.mem[cflags_start : cflags_start + 2] = cflags
 
     def get_autowrite_channels(self) -> ty.Iterable[Channel]:
+        # load position map
+        chan_pos = [255] * consts.NUM_AUTOWRITE_CHANNELS
         for idx in range(consts.NUM_AUTOWRITE_CHANNELS):
-            start = idx * 16 + 0x5140
-            data = self.mem[start : start + 16]
-            chan = Channel.from_data(idx, data, None)
-
-            # chan pos
-            # TODO: CHECK !!!!
             if (pos := self.mem[idx + 0x6A30]) < consts.NUM_AUTOWRITE_CHANNELS:
-                chan.number = pos
+                chan_pos[pos] = idx
+
+        # load only channels that are in pos map
+        for idx in range(consts.NUM_AUTOWRITE_CHANNELS):
+            if (cpos := chan_pos[idx]) != 255:
+                start = idx * 16 + 0x5140
+                data = self.mem[start : start + 16]
+                chan = Channel.from_data(cpos, data, None)
                 yield chan
 
     def get_scan_edge(self, idx: int) -> ScanEdge:
