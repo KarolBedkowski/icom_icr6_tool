@@ -24,6 +24,7 @@ seq:
 
   - id: unknown1
     size: 48
+    doc: 0xff ?
 
   - id: channels_flag
     type: channel_flag
@@ -32,15 +33,20 @@ seq:
     repeat-expr: 1300
 
   - id: unknown2
-    size: 136
+    size: 121
+    doc: 0x7F  / 0xFF
+
+  - id: unknown2a
+    size: 15
 
   - id: aw_channels_pos
     type: u1
     repeat: expr
     repeat-expr: 200
 
-  - id: unknown2a
+  - id: unknown2b
     size: 216
+    doc: 8x 0xff (pad) ?; device state?
 
   - id: settings
     type: settings
@@ -63,7 +69,11 @@ seq:
     repeat-expr: 10
 
   - id: unknown3a
-    size: 172
+    size: 3
+
+  - id: unknown3aconst
+    size: 169
+    doc: always 0xff?
 
   - id: comment
     type: str
@@ -82,8 +92,9 @@ seq:
     repeat: expr
     repeat-expr: 10
 
-  - id: unknown4
+  - id: unknown4const
     size: 64
+    doc: always 0xff?
 
   - id: footer
     contents: 'IcomCloneFormat3'
@@ -177,11 +188,11 @@ types:
         enum: freq_mul
       - id: flags_freq
         type: b2
-        doc: 2 bits for offset
+        doc: 2 bits for freq
         enum: freq_mul
       - id: flag_unknown
         type: b2
-        doc: probably always 0 - mayby 2 bits freq2
+        doc: always 0?
       - id: freq2
         type: b2
         doc: msb
@@ -199,11 +210,13 @@ types:
 
       - id: unknown1
         type: b2
+        doc: wlawys 0??
       - id: duplex
         type: b2
         enum: duplex
       - id: unknown3
         type: b1
+        doc: 1 for invalid channels?
       - id: tone_mode
         type: b3
         enum: tone_mode
@@ -226,6 +239,7 @@ types:
         type: b9
       - id: unknown4
         type: b4
+        doc: always 0
       - id: vcs
         type: b1
       - id: canceller
@@ -465,6 +479,7 @@ enums:
     0: none
     1: minus
     2: plus
+    3: unk
 
   tone_mode:
     0: none
