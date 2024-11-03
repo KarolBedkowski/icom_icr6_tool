@@ -225,7 +225,10 @@ class ScanEdgeListModel(TableViewModel[model.ScanEdge]):
         self.data[row] = se
         return res, se
 
-    def data2row(self, se: model.ScanEdge) -> TableViewModelRow:
+    def data2row(self, se: model.ScanEdge | None) -> TableViewModelRow:
+        if not se:
+            return ("",)
+
         if not se.start or not se.end:
             return (
                 str(se.idx),
