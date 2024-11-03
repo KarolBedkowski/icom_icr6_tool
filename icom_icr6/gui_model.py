@@ -300,7 +300,8 @@ class ChannelsListModel(TableViewModel[model.Channel | None]):
                 return ComboboxPopup(parent, iid, column, value, consts.MODES)
 
             case "ts":
-                return ComboboxPopup(parent, iid, column, value, consts.STEPS)
+                values = model.tuning_steps_for_freq(data_row.freq)
+                return ComboboxPopup(parent, iid, column, value, values)
 
             case "duplex":
                 return ComboboxPopup(

@@ -909,3 +909,17 @@ def fix_name(name: str) -> str:
     )
     name = "".join(c for c in name if c in consts.VALID_CHAR)
     return name[:6]
+
+
+def tuning_steps_for_freq(freq: int) -> list[str]:
+    """From manual: additional steps become selectable in only the
+    VHF Air band (8.33 kHz) and in the AM broadcast band (9 kHz).
+    """
+
+    if freq < 1_620_000:
+        return consts.AVAIL_STEPS_BROADCAST
+
+    if 118_000_000 <= freq <= 135_995_000:
+        return consts.AVAIL_STEPS_AIR
+
+    return consts.AVAIL_STEPS_NORMAL
