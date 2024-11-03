@@ -34,6 +34,7 @@ class App(tk.Frame):
         self._last_file: Path | None = None
         self._radio_memory = model.RadioMemory()
         self._channel_model = gui_model.ChannelModel()
+        self._status_value = tk.StringVar()
 
         self.pack(fill="both", expand=1)
 
@@ -48,10 +49,17 @@ class App(tk.Frame):
         self._ntb.add(self.__create_nb_settings(), text="Settings")
         self._ntb.bind("<<NotebookTabChanged>>", self.__on_nb_page_changed)
 
-        self._ntb.pack(fill="both", expand=1)
+        self._ntb.pack(fill="both", expand=True)
+
+        tk.Label(self, text="", textvariable=self._status_value).pack(
+            side=tk.BOTTOM, fill=tk.X, expand=True
+        )
 
         if file:
             self.load_icf(file)
+
+    def set_status(self, msg: str) -> None:
+        self._status_value.set(msg)
 
     def __create_menu(self, master: tk.Tk) -> None:
         menu_bar = tk.Menu(master)
@@ -137,13 +145,13 @@ class App(tk.Frame):
         if fname:
             self.load_icf(Path(fname))
 
-        self.lift()
         self.focus_set()
 
     def load_icf(self, file: Path) -> None:
         self._radio_memory.update_from(io.load_icf_file(file))
         self.__set_loaded_filename(file)
         self.__update_widgets()
+        self.set_status(f"File {file} loaded")
 
     def __on_file_save(self, _event: tk.Event | None = None) -> None:  # type: ignore
         if not self._last_file:
@@ -151,6 +159,7 @@ class App(tk.Frame):
             return
 
         io.save_icf_file(self._last_file, self._radio_memory)
+        self.set_status(f"File {self._last_file} saved")
         self.focus_set()
 
     def __on_file_save_as(self, _event: tk.Event | None = None) -> None:  # type: ignore
@@ -166,6 +175,7 @@ class App(tk.Frame):
             self.__set_loaded_filename(Path(fname))
             assert self._last_file
             io.save_icf_file(self._last_file, self._radio_memory)
+            self.set_status(f"File {fname} saved")
 
         self.focus_set()
         self.grab_set()
