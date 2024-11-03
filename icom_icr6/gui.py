@@ -93,6 +93,7 @@ class App(tk.Frame):
         radio_menu.add_command(
             label="Clone to radio...", command=self.__on_clone_to_radio
         )
+        radio_menu.add_command(label="Info...", command=self.__on_radio_info)
         menu_bar.add_cascade(label="Radio", menu=radio_menu)
 
         help_menu = tk.Menu(menu_bar)
@@ -233,6 +234,18 @@ class App(tk.Frame):
             return
 
         gui_dlg_clone.CloneToRadioDialog(self, self._radio_memory)
+
+    def __on_radio_info(self, _event: tk.Event | None = None) -> None:  # type: ignore
+        dlg = gui_dlg_clone.RadioInfoDialog(self)
+        if model := dlg.result:
+            info = (
+                f"Model: {model.human_model()}\n"
+                f"Rev: {model.rev}\n"
+                f"Is IC-R6: {model.is_icr6()}\n"
+                f"Serial: {model.serial}\n"
+                f"Comment: {model.comment}"
+            )
+            messagebox.showinfo("Radio info", info)
 
 
 def start_gui() -> None:

@@ -43,6 +43,9 @@ class RadioModel:
     def is_icr6(self) -> bool:
         return self.model == b"\x32\x50\x00\x01"
 
+    def human_model(self) -> str:
+        return binascii.hexlify(self.model).decode()
+
 
 def _try_get(inlist: list[str] | tuple[str, ...], idx: int) -> str:
     try:

@@ -109,3 +109,20 @@ class CloneToRadioDialog(_CloneDialog):
         else:
             self.result = True
             super().ok()
+
+
+class RadioInfoDialog(_CloneDialog):
+    def __init__(self, parent: tk.Widget) -> None:
+        self.result: model.RadioModel | None = None
+        super().__init__(parent, "Radio info")
+
+    def ok(self, _event: tk.Event | None = None) -> None:  # type: ignore
+        radio = io.Radio(self._var_port.get())
+        try:
+            self.result = radio.get_model()
+        except io.AbortError:
+            self.cancel()
+        except Exception:
+            raise
+        else:
+            super().ok()
