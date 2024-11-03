@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import binascii
+import copy
 import logging
 import typing as ty
 import unicodedata
@@ -61,7 +62,7 @@ def bool2bit(val: bool | int, mask: int) -> int:
 def data_set_bit(
     data: list[int], offset: int, bit: int, value: object
 ) -> None:
-    """ Set one `bit` in byte `data[offset]` to `value`. """
+    """Set one `bit` in byte `data[offset]` to `value`."""
     if value:
         data[offset] = data[offset] | (1 << bit)
     else:
@@ -69,7 +70,7 @@ def data_set_bit(
 
 
 def data_set(data: list[int], offset: int, mask: int, value: int) -> None:
-    """ Set bits indicated by `mask` in byte `data[offset]` to `value`. """
+    """Set bits indicated by `mask` in byte `data[offset]` to `value`."""
     data[offset] = (data[offset] & (~mask)) | (value & mask)
 
 
@@ -276,6 +277,9 @@ class Channel:
         )
         # bank_pos
         cflags[1] = self.bank_pos
+
+    def clone(self) -> Channel:
+        return copy.deepcopy(self)
 
 
 @dataclass

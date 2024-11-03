@@ -50,6 +50,8 @@ class ChannelsPage(tk.Frame):
             "<<TreeviewSelect>>", self.__on_channel_select, add="+"
         )
         self._channels_list.bind("<Delete>", self.__on_channel_delete)
+        self._channels_list.bind("<Control-c>", self.__on_channel_copy)
+        self._channels_list.bind("<Control-v>", self.__on_channel_paste)
 
     def __on_channel_select(self, _event: tk.Event) -> None:  # type: ignore
         sel = self._channels_list.selection()
@@ -97,3 +99,29 @@ class ChannelsPage(tk.Frame):
         if event is not None:
             self._channels_list.yview(0)
             self._channels_list.xview(0)
+
+    def __on_channel_copy(self, event: tk.Event) -> None:
+        sel = self._channels_list.selection()
+        if not sel:
+            return
+
+        chan_num = int(sel[0])
+        chan = self._radio_memory.get_channel(chan_num)
+        clip = gui_model.Clipboard.get()
+        clip.put("channel", chan)
+
+    def __on_channel_paste(self, event: tk.Event) -> None:
+        sel = self._channels_list.selection()
+        if not sel:
+            return
+
+        clip = gui_model.Clipboard.get()
+        if clip.object_type != "channel":
+            return
+
+        chan_num = int(sel[0])
+        chan: model.Channel = clip.content
+        chan = chan.clone()
+        chan.number = chan_num
+        self._radio_memory.set_channel(chan)
+        self.__update_chan_list(None)

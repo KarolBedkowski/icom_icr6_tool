@@ -5,6 +5,8 @@
 
 """ """
 
+from __future__ import annotations
+
 import logging
 import tkinter as tk
 import typing as ty
@@ -554,3 +556,23 @@ class BoolVar(tk.IntVar):
 
     def get_raw(self) -> bool:
         return self.get() == 1
+
+
+class Clipboard:
+    _instance: Clipboard | None
+
+    def __init__(self) -> None:
+        self.object_type: str = ""
+        self.content: object | None = None
+
+    @classmethod
+    def get(cls: type[Clipboard]) -> Clipboard:
+        if not hasattr(cls, "_instance"):
+            cls._instance = Clipboard()
+
+        return cls._instance
+
+    def put(self, object_type: str, content: object | None) -> None:
+        _LOG.debug("Clipboard put: %r, %r", object_type, content)
+        self.object_type = object_type
+        self.content = content
