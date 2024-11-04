@@ -6,12 +6,11 @@
 
 import logging
 import tkinter as tk
+import typing as ty
 from tkinter import messagebox, ttk
 
-from . import gui_model, model
-from .gui_widgets import (
-    build_list_model,
-)
+from . import consts, expimp, gui_model, model
+from .gui_widgets import build_list_model
 
 _LOG = logging.getLogger(__name__)
 
@@ -100,7 +99,7 @@ class ChannelsPage(tk.Frame):
             self._channels_list.yview(0)
             self._channels_list.xview(0)
 
-    def __on_channel_copy(self, event: tk.Event) -> None:
+    def __on_channel_copy(self, _event: tk.Event) -> None:  # type: ignore
         sel = self._channels_list.selection()
         if not sel:
             return
@@ -108,9 +107,9 @@ class ChannelsPage(tk.Frame):
         chan_num = int(sel[0])
         chan = self._radio_memory.get_channel(chan_num)
         clip = gui_model.Clipboard.get()
-        clip.put("channel", chan)
+        clip.put("channel", expimp.export_channel_str(chan))
 
-    def __on_channel_paste(self, event: tk.Event) -> None:
+    def __on_channel_paste(self, _event: tk.Event) -> None:  # type: ignore
         sel = self._channels_list.selection()
         if not sel:
             return
@@ -120,8 +119,17 @@ class ChannelsPage(tk.Frame):
             return
 
         chan_num = int(sel[0])
-        chan: model.Channel = clip.content
-        chan = chan.clone()
-        chan.number = chan_num
+        chan = self._radio_memory.get_channel(chan_num)
+
+        try:
+            expimp.import_channel_str(chan, ty.cast(str, clip.content))
+        except Exception:
+            _LOG.exception("import from clipboard error")
+            return
+
+        chan.hide_channel = False
+        # do not set bank on paste
+        chan.bank = consts.BANK_NOT_SET
+        chan.bank_pos = 0
         self._radio_memory.set_channel(chan)
         self.__update_chan_list(None)

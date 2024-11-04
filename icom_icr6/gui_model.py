@@ -570,6 +570,7 @@ class Clipboard:
         if not hasattr(cls, "_instance"):
             cls._instance = Clipboard()
 
+        assert cls._instance
         return cls._instance
 
     def put(self, object_type: str, content: object | None) -> None:

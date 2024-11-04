@@ -55,6 +55,13 @@ def _try_get(inlist: list[str] | tuple[str, ...], idx: int) -> str:
         return f"<[{idx}]>"
 
 
+def obj2bool(val: object) -> bool:
+    if isinstance(val, str):
+        return val.lower() in ("yes", "y", "true", "t")
+
+    return bool(val)
+
+
 def bool2bit(val: bool | int, mask: int) -> int:
     return mask if val else 0
 
@@ -131,7 +138,7 @@ class Channel:
             f"af={self.af_filter}, "
             f"att={self.attenuator}, "
             f"mode={consts.MODES[self.mode]}, "
-            f"tuning_step={self.tuning_step}, "
+            f"tuning_step={consts.STEPS[self.tuning_step]}, "
             f"duplex={consts.DUPLEX_DIRS[self.duplex]}, "
             f"tone_mode={consts.TONE_MODES[self.tone_mode]}, "
             f"offset={self.offset}, "
@@ -217,7 +224,7 @@ class Channel:
             dtsc=(data[8] & 0b01111111),
             canceller_freq=(data[9] << 1) | ((data[10] & 0b10000000) >> 7),
             vsc=bool(data[10] & 0b00000100),
-            canceller=bool(data[10] & 0b00000011),
+            canceller=data[10] & 0b00000011,
             name=decode_name(data[11:16]),
             hide_channel=bool(hide_channel),
             skip=skip,
@@ -280,6 +287,61 @@ class Channel:
 
     def clone(self) -> Channel:
         return copy.deepcopy(self)
+
+    def to_record(self) -> dict[str, object]:
+        try:
+            bank = consts.BANK_NAMES[self.bank]
+        except IndexError:
+            bank = ""
+
+        return {
+            "channel": self.number,
+            "freq": self.freq,
+            "fflags": self.freq_flags,
+            "af": str(self.af_filter),
+            "att": str(self.attenuator),
+            "mode": consts.MODES[self.mode],
+            "ts": consts.STEPS[self.tuning_step],
+            "dup": consts.DUPLEX_DIRS[self.duplex],
+            "tone_mode": consts.TONE_MODES[self.tone_mode],
+            "offset": self.offset,
+            "tsql_freq": _try_get(consts.CTCSS_TONES, self.tsql_freq),
+            "dtsc": _try_get(consts.DTCS_CODES, self.dtsc),
+            "cf": self.canceller_freq,
+            "vsc": str(self.vsc),
+            "c": self.canceller,
+            "name": self.name,
+            "hide": self.hide_channel,
+            "skip": consts.SKIPS[self.skip],
+            "polarity": consts.POLARITY[self.polarity],
+            "bank": bank,
+            "bank_pos": self.bank_pos if bank else "",
+        }
+
+    def from_record(self, data: dict[str, object]) -> None:
+        _LOG.debug("data: %r", data)
+        self.freq = int(data["freq"])  # type: ignore
+        self.af_filter = obj2bool(data["af"])
+        self.attenuator = obj2bool(data["att"])
+        self.mode = consts.MODES.index(str(data["mode"]))
+        self.tuning_step = consts.STEPS.index(str(data["ts"]))
+        self.duplex = consts.DUPLEX_DIRS.index(str(data["dup"]))
+        self.tone_mode = consts.TONE_MODES.index(str(data["tone_mode"]))
+        self.offset = int(data["offset"])  # type: ignore
+        self.tsql_freq = consts.CTCSS_TONES.index(str(data["tsql_freq"]))
+        self.dtsc = consts.DTCS_CODES.index(str(data["dtsc"]))
+        self.canceller_freq = int(data["cf"])  # type: ignore
+        self.vsc = obj2bool(data["vsc"])
+        self.canceller = int(data["c"])  # type: ignore
+        self.name = str(data["name"])
+        self.skip = consts.SKIPS.index(str(data["skip"]))
+        self.polarity = consts.POLARITY.index(str(data["polarity"]))
+        if bank := data["bank"]:
+            self.bank = consts.BANK_NAMES.index(ty.cast(str, bank))
+            self.bank_pos = int(ty.cast(str, data["bank_pos"]))
+        else:
+            self.bank = consts.BANK_NOT_SET
+            self.bank_pos = 0
 
 
 @dataclass
