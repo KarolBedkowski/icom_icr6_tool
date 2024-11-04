@@ -8,7 +8,7 @@ import logging
 import tkinter as tk
 import typing as ty
 
-from . import consts, gui_model, model
+from . import consts, expimp, gui_model, model
 from .gui_widgets import (
     TableView2,
     TableViewColumn,
@@ -44,6 +44,7 @@ class AutoWriteChannelsPage(tk.Frame):
         self._chan_list.bind(
             "<<TreeviewSelect>>", self.__on_channel_select, add="+"
         )
+        self._chan_list.bind("<Control-c>", self.__on_channel_copy)
 
     def __update_channels_list(self, event: tk.Event | None) -> None:  # type: ignore
         data = sorted(self._radio_memory.get_autowrite_channels())
@@ -65,6 +66,16 @@ class AutoWriteChannelsPage(tk.Frame):
         chan_num = int(sel[0])
         chan = self._chan_list_model.data[chan_num]
         _LOG.debug("chan: %r", chan)
+
+    def __on_channel_copy(self, _event: tk.Event) -> None:  # type: ignore
+        sel = self._chan_list.selection()
+        if not sel:
+            return
+
+        chan_num = int(sel[0])
+        if chan := self._chan_list_model.data[chan_num]:
+            clip = gui_model.Clipboard.get()
+            clip.put("channel", expimp.export_channel_str(chan))
 
 
 class RWChannelsListModel(gui_model.ChannelsListModel):
