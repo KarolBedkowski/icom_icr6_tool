@@ -700,6 +700,14 @@ class RadioMemory:
         self.mem[start : start + 16] = data
         self.mem[cflags_start : cflags_start + 2] = cflags
 
+    def find_first_hidden_channel(self, start: int = 0) -> Channel | None:
+        for idx in range(start, consts.NUM_CHANNELS):
+            chan = self.get_channel(idx)
+            if chan.hide_channel:
+                return chan
+
+        return None
+
     def get_autowrite_channels(self) -> ty.Iterable[Channel]:
         # load position map
         chan_pos = [255] * consts.NUM_AUTOWRITE_CHANNELS

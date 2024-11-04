@@ -9,7 +9,7 @@ import tkinter as tk
 import typing as ty
 from tkinter import messagebox, ttk
 
-from . import consts, gui_model, model
+from . import consts, expimp, gui_model, model
 from .gui_widgets import (
     NumEntryPopup,
     TableView2,
@@ -87,6 +87,8 @@ class BanksPage(tk.Frame):
             "<<TreeviewSelect>>", self.__on_channel_select, add="+"
         )
         self._bank_content.bind("<Delete>", self.__on_channel_delete)
+        self._bank_content.bind("<Control-c>", self.__on_channel_copy)
+        self._bank_content.bind("<Control-v>", self.__on_channel_paste)
 
     def __update_banks_list(self) -> None:
         banks = self._banks_list
@@ -135,6 +137,31 @@ class BanksPage(tk.Frame):
         self._field_bank_link["state"] = "normal"
         self._btn_update["state"] = "normal"
 
+    def _get_selections(self) -> tuple[int | None, int | None]:
+        """selected bank, selected bank pos."""
+        sel_bank = self._banks_list.curselection()  # type: ignore
+        sel_pos = self._bank_content.selection()
+
+        return (
+            (sel_bank[0] if sel_bank else None),
+            (int(sel_pos[0]) if sel_pos else None),
+        )
+
+    def _get_selected_channel(self) -> model.Channel | None:
+        sel = self._bank_content.selection()
+        if not sel:
+            return None
+
+        bank_pos = int(sel[0])
+        selected_bank: int = int(self._banks_list.curselection()[0])  # type: ignore
+        bank = self._radio_memory.get_bank(selected_bank)
+        if channum := bank.channels[bank_pos]:
+            chan = self._radio_memory.get_channel(channum)
+            _LOG.debug("selected: %r", chan)
+            return chan
+
+        return None
+
     def __on_bank_update(self) -> None:
         if sel := self._banks_list.curselection():  # type: ignore
             selected_bank = sel[0]
@@ -152,13 +179,11 @@ class BanksPage(tk.Frame):
         self.__update_banks_list()
 
     def __on_channel_select(self, _event: tk.Event) -> None:  # type: ignore
-        sel = self._bank_content.selection()
-        if not sel:
-            return
+        self._get_selected_channel()
 
     def __on_channel_delete(self, _event: tk.Event) -> None:  # type: ignore
-        sel = self._bank_content.selection()
-        if not sel:
+        chan = self._get_selected_channel()
+        if not chan:
             return
 
         if not messagebox.askyesno(
@@ -168,18 +193,51 @@ class BanksPage(tk.Frame):
         ):
             return
 
-        bank_chan_num = int(sel[0])
-
-        selected_bank: int = int(self._banks_list.curselection()[0])  # type: ignore
-        bank = self._radio_memory.get_bank(selected_bank)
-
-        if channum := bank.channels[bank_chan_num]:
-            chan = self._radio_memory.get_channel(channum)
-            chan.clear_bank()
-            self._radio_memory.set_channel(chan)
+        sel = self._bank_content.selection()
+        chan.clear_bank()
+        self._radio_memory.set_channel(chan)
 
         self.__update_chan_list(None)
-        self._bank_content.selection_set(bank_chan_num)
+        self._bank_content.selection_set(sel[0])
+
+    def __on_channel_copy(self, _event: tk.Event) -> None:  # type: ignore
+        if chan := self._get_selected_channel():
+            clip = gui_model.Clipboard.get()
+            clip.put("channel", expimp.export_channel_str(chan))
+
+    def __on_channel_paste(self, _event: tk.Event) -> None:  # type: ignore
+        selected_bank, bank_pos = self._get_selections()
+        if selected_bank is None or bank_pos is None:
+            return
+
+        clip = gui_model.Clipboard.get()
+        if clip.object_type != "channel":
+            return
+
+        chan = self._get_selected_channel()
+        if chan:
+            # replace
+            _LOG.debug("replacing channel: %r", chan)
+        else:
+            # insert, find first hidden channel
+            # TODO: insert, find next after pasted?
+            chan = self._radio_memory.find_first_hidden_channel()
+            if not chan:
+                _LOG.warn("no hidden channel found")
+                return
+
+        try:
+            expimp.import_channel_str(chan, ty.cast(str, clip.content))
+        except Exception:
+            _LOG.exception("import from clipboard error")
+            return
+
+        chan.bank = selected_bank
+        chan.bank_pos = bank_pos
+        chan.hide_channel = False
+
+        self._radio_memory.set_channel(chan)
+        self.__update_chan_list(None)
 
 
 class BankChannelsListModel(gui_model.ChannelsListModel):
