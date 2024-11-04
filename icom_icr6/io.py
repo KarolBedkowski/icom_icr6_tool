@@ -248,7 +248,7 @@ class Radio:
             # echo, skip
             return True
 
-        match int(frame.cmd):
+        match frame.cmd:
             case 0xE5:  # CMD_END
                 return False
 

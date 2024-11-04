@@ -35,7 +35,7 @@ class RadioModel:
         )
 
         return RadioModel(
-            model=bytes(data[0:4]),
+            model=data[0:4],
             rev=data[5],
             comment=data[6:22].decode(),
             serial=serial_decoded,
