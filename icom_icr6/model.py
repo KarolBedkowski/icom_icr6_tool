@@ -778,7 +778,7 @@ class RadioMemory:
         mv = memoryview(self.mem)
         se.to_data(mv[start : start + 16])
 
-    def _get_active_channels(self) -> ty.Iterable[Channel]:
+    def get_active_channels(self) -> ty.Iterable[Channel]:
         for cidx in range(consts.NUM_CHANNELS):
             chan = self.get_channel(cidx)
             if not chan.hide_channel and chan.freq:
@@ -795,7 +795,7 @@ class RadioMemory:
         bank = Bank.from_data(idx, self.mem[start : start + 8])
 
         # TODO: confilicts / doubles
-        for chan in self._get_active_channels():
+        for chan in self.get_active_channels():
             if chan.bank == idx:
                 bank.channels[chan.bank_pos] = chan.number
 
@@ -872,7 +872,7 @@ def decode_name(inp: abc.Sequence[int]) -> str:
         # invalid name
         return ""
 
-    return name
+    return name.rstrip()
 
 
 def encode_name(inp: str) -> abc.Sequence[int]:

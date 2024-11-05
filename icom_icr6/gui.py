@@ -11,6 +11,7 @@ from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
 from . import (
+    expimp,
     gui_dlg_clone,
     gui_model,
     gui_nb_awchannels,
@@ -82,7 +83,14 @@ class App(tk.Frame):
             accelerator="Shift+Ctrl+S",
         )
         master.bind_all("<Shift-Control-S>", self.__on_file_save_as)
+
         file_menu.add_separator()
+
+        export_menu = self.__create_menu_export(file_menu)
+        file_menu.add_cascade(label="Export...", menu=export_menu)
+
+        file_menu.add_separator()
+
         file_menu.add_command(label="Exit", command=self.quit)
         menu_bar.add_cascade(label="File", menu=file_menu)
 
@@ -99,6 +107,18 @@ class App(tk.Frame):
         help_menu = tk.Menu(menu_bar)
         help_menu.add_command(label="About", command=self.__on_about)
         menu_bar.add_cascade(label="Help", menu=help_menu)
+
+    def __create_menu_export(self, parent: tk.Menu) -> tk.Menu:
+        menu = tk.Menu(parent)
+        menu.add_command(
+            label="Channels...",
+            command=lambda: self.__on_export("channels"),
+        )
+        menu.add_command(
+            label="Autowrrite channels...",
+            command=lambda: self.__on_export("awchannels"),
+        )
+        return menu
 
     def __create_nb_channels(self) -> tk.Widget:
         self._nb_channels = gui_nb_channels.ChannelsPage(
@@ -246,6 +266,27 @@ class App(tk.Frame):
                 f"Comment: {model.comment}"
             )
             messagebox.showinfo("Radio info", info)
+
+    def __on_export(self, what: str) -> None:
+        fname = filedialog.asksaveasfilename(
+            parent=self,
+            filetypes=[("CSV file", ".csv"), ("All files", "*.*")],
+            initialdir=str(self._last_file.parent) if self._last_file else ".",
+            initialfile=f"{what}.csv",
+            defaultextension=".csv",
+        )
+
+        if not fname:
+            return
+
+        match what:
+            case "channels":
+                channels = self._radio_memory.get_active_channels()
+                expimp.export_channels_file(channels, Path(fname))
+
+            case "awchannels":
+                channels = self._radio_memory.get_autowrite_channels()
+                expimp.export_awchannels_file(channels, Path(fname))
 
 
 def start_gui() -> None:

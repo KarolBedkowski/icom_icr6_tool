@@ -6,28 +6,29 @@
 
 import csv
 import io
+import typing as ty
+from pathlib import Path
 
 from . import model
 
 _CHANNEL_FIELDS = (
     "channel",
     "freq",
+    "mode",
+    "name",
     "af",
     "att",
-    "mode",
     "ts",
     "dup",
-    "tone_mode",
     "offset",
+    "skip",
+    "vsc",
+    "tone_mode",
     "tsql_freq",
     "dtsc",
-    "cf",
-    "vsc",
-    "c",
-    "name",
-    "hide",
-    "skip",
     "polarity",
+    "cf",
+    "c",
     "bank",
     "bank_pos",
 )
@@ -52,6 +53,53 @@ def import_channel_str(chan: model.Channel, data: str) -> None:
 
         chan.from_record(row)
         return
+
+
+def export_channels_file(
+    channels: ty.Iterable[model.Channel], output: Path
+) -> None:
+    with output.open("w") as out:
+        writer = csv.DictWriter(
+            out,
+            fieldnames=_CHANNEL_FIELDS,
+            quoting=csv.QUOTE_NONNUMERIC,
+            extrasaction="ignore",
+        )
+        writer.writeheader()
+        writer.writerows(chan.to_record() for chan in channels)
+
+
+_AWCHANNEL_FIELDS = (
+    "channel",
+    "freq",
+    "af",
+    "att",
+    "mode",
+    "ts",
+    "dup",
+    "tone_mode",
+    "offset",
+    "tsql_freq",
+    "dtsc",
+    "cf",
+    "vsc",
+    "c",
+    "polarity",
+)
+
+
+def export_awchannels_file(
+    channels: ty.Iterable[model.Channel], output: Path
+) -> None:
+    with output.open("w") as out:
+        writer = csv.DictWriter(
+            out,
+            fieldnames=_AWCHANNEL_FIELDS,
+            quoting=csv.QUOTE_NONNUMERIC,
+            extrasaction="ignore",
+        )
+        writer.writeheader()
+        writer.writerows(chan.to_record() for chan in channels)
 
 
 _SCAN_EDGE_FIELDS = (
