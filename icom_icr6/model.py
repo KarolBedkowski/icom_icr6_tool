@@ -11,11 +11,15 @@ import copy
 import logging
 import typing as ty
 import unicodedata
+from collections import abc
 from dataclasses import dataclass
 
 from . import consts
 
 _LOG = logging.getLogger(__name__)
+
+
+MutableMemory = abc.MutableSequence[int] | memoryview
 
 
 @dataclass
@@ -26,7 +30,9 @@ class RadioModel:
     serial: str
 
     @classmethod
-    def from_data(cls: type[RadioModel], data: bytes) -> RadioModel:
+    def from_data(
+        cls: type[RadioModel], data: bytes | bytearray | memoryview
+    ) -> RadioModel:
         serial = binascii.unhexlify(data[25 : 25 + 14])
         serial_decoded = (
             f"{serial[0]<<8|serial[1]:04d}"
@@ -35,9 +41,9 @@ class RadioModel:
         )
 
         return RadioModel(
-            model=data[0:4],
+            model=bytes(data[0:4]),
             rev=data[5],
-            comment=data[6:22].decode(),
+            comment=bytes(data[6:22]).decode(),
             serial=serial_decoded,
         )
 
@@ -67,7 +73,10 @@ def bool2bit(val: bool | int, mask: int) -> int:
 
 
 def data_set_bit(
-    data: list[int], offset: int, bit: int, value: object
+    data: MutableMemory,
+    offset: int,
+    bit: int,
+    value: object,
 ) -> None:
     """Set one `bit` in byte `data[offset]` to `value`."""
     if value:
@@ -76,7 +85,12 @@ def data_set_bit(
         data[offset] = data[offset] & (~(1 << bit))
 
 
-def data_set(data: list[int], offset: int, mask: int, value: int) -> None:
+def data_set(
+    data: MutableMemory,
+    offset: int,
+    mask: int,
+    value: int,
+) -> None:
     """Set bits indicated by `mask` in byte `data[offset]` to `value`."""
     data[offset] = (data[offset] & (~mask)) | (value & mask)
 
@@ -163,8 +177,8 @@ class Channel:
     def from_data(
         cls: type[Channel],
         idx: int,
-        data: bytes | list[int],
-        cflags: bytes | list[int] | None,
+        data: bytearray | memoryview,
+        cflags: bytearray | memoryview | None,
     ) -> Channel:
         freq = ((data[2] & 0b00000011) << 16) | (data[1] << 8) | data[0]
         freq_flags = (data[2] & 0b11110000) >> 4
@@ -233,7 +247,7 @@ class Channel:
             debug_info=debug_info,
         )
 
-    def to_data(self, data: list[int], cflags: list[int]) -> None:
+    def to_data(self, data: MutableMemory, cflags: MutableMemory) -> None:
         enc_freq = encode_freq(self.freq, self.offset)
         freq0, freq1, freq2 = enc_freq.freq_bytes()
         offset_l, offset_h = enc_freq.offset_bytes()
@@ -274,7 +288,7 @@ class Channel:
         # canceller
         data_set(data, 10, 0b11, self.canceller)
         # name
-        data[11:16] = encode_name(self.name)
+        data[11:16] = bytes(encode_name(self.name))
 
         # hide_channel, bank
         cflags[0] = (
@@ -360,14 +374,14 @@ class Bank:
         return None
 
     @classmethod
-    def from_data(cls: type[Bank], idx: int, data: bytes | list[int]) -> Bank:
+    def from_data(cls: type[Bank], idx: int, data: abc.Sequence[int]) -> Bank:
         return Bank(
             idx,
             name=bytes(data[0:6]).decode() if data[0] else "",
             channels=[None] * 100,
         )
 
-    def to_data(self, data: list[int]) -> None:
+    def to_data(self, data: MutableMemory) -> None:
         data[0:6] = self.name[:6].ljust(6).encode()
 
 
@@ -392,7 +406,10 @@ class ScanLink:
 
     @classmethod
     def from_data(
-        cls: type[ScanLink], idx: int, data: list[int], edata: list[int]
+        cls: type[ScanLink],
+        idx: int,
+        data: abc.Sequence[int],
+        edata: abc.Sequence[int],
     ) -> ScanLink:
         # 4 bytes, with 7bite padding = 25 bits
         edges = (
@@ -407,7 +424,7 @@ class ScanLink:
             edges=edges,
         )
 
-    def to_data(self, data: list[int], edata: list[int]) -> None:
+    def to_data(self, data: MutableMemory, edata: MutableMemory) -> None:
         data[0:6] = self.name[:6].ljust(6).encode()
 
         edges = self.edges
@@ -445,7 +462,9 @@ class ScanEdge:
         self.disabled = True
 
     @classmethod
-    def from_data(cls: type[ScanEdge], idx: int, data: list[int]) -> ScanEdge:
+    def from_data(
+        cls: type[ScanEdge], idx: int, data: abc.Sequence[int]
+    ) -> ScanEdge:
         start = (data[3] << 24) | (data[2] << 16) | (data[1] << 8) | data[0]
         start //= 3
         end = (data[7] << 24) | (data[6] << 16) | (data[5] << 8) | data[4]
@@ -462,7 +481,7 @@ class ScanEdge:
             name=bytes(data[10:16]).decode() if data[10] else "",
         )
 
-    def to_data(self, data: list[int]) -> None:
+    def to_data(self, data: MutableMemory) -> None:
         start = self.start * 3
         data[0] = start & 0xFF
         data[1] = (start >> 8) & 0xFF
@@ -486,7 +505,7 @@ class ScanEdge:
         if self.name:
             data[10:16] = self.name[:6].ljust(6).encode()
         else:
-            data[10:16] = [0, 0, 0, 0, 0, 0]
+            data[10:16] = bytes([0, 0, 0, 0, 0, 0])
 
 
 @dataclass
@@ -520,7 +539,7 @@ class RadioSettings:
 
     @classmethod
     def from_data(
-        cls: type[RadioSettings], data: bytes | list[int]
+        cls: type[RadioSettings], data: abc.Sequence[int]
     ) -> RadioSettings:
         return RadioSettings(
             func_dial_step=data[13] & 0b00000011,
@@ -551,7 +570,7 @@ class RadioSettings:
             program_skip_scan=bool(data[53] & 0b00001000),
         )
 
-    def to_data(self, data: list[int]) -> None:
+    def to_data(self, data: MutableMemory) -> None:
         data_set(data, 13, 0b11, self.func_dial_step)
         data_set_bit(data, 15, 0, self.key_beep)
         data_set(data, 16, 0b00111111, self.beep_level)
@@ -598,13 +617,15 @@ class BankLinks:
         return (bool(self.banks & (1 << i)) for i in range(consts.NUM_BANKS))
 
     @classmethod
-    def from_data(cls: type[BankLinks], data: bytes | list[int]) -> BankLinks:
+    def from_data(
+        cls: type[BankLinks], data: bytearray | memoryview
+    ) -> BankLinks:
         # Y -> A
         assert len(data) == 3
         banks = ((data[2] & 0b00111111) << 16) | (data[1] << 8) | data[0]
         return BankLinks(banks)
 
-    def to_data(self, data: list[int]) -> None:
+    def to_data(self, data: MutableMemory) -> None:
         val = self.banks
         data[0] = val & 0xFF
         data[1] = (val >> 8) & 0xFF
@@ -619,7 +640,7 @@ class BankLinks:
 
 class RadioMemory:
     def __init__(self) -> None:
-        self.mem = [0] * consts.MEM_SIZE
+        self.mem = bytearray(consts.MEM_SIZE)
         self._cache_channels: dict[int, Channel] = {}
         self._cache_banks: dict[int, Bank] = {}
 
@@ -673,12 +694,13 @@ class RadioMemory:
             return chan
 
         start = idx * 16
-        data = self.mem[start : start + 16]
-
         cflags_start = idx * 2 + 0x5F80
-        cflags = self.mem[cflags_start : cflags_start + 2]
 
-        chan = Channel.from_data(idx, data, cflags)
+        chan = Channel.from_data(
+            idx,
+            self.mem[start : start + 16],
+            self.mem[cflags_start : cflags_start + 2],
+        )
         self._cache_channels[idx] = chan
 
         return chan
@@ -690,15 +712,14 @@ class RadioMemory:
         self._cache_channels[idx] = chan
         self._cache_banks.clear()
 
+        mv = memoryview(self.mem)
+
         start = idx * 16
-        data = self.mem[start : start + 16]
-
         cflags_start = idx * 2 + 0x5F80
-        cflags = self.mem[cflags_start : cflags_start + 2]
 
-        chan.to_data(data, cflags)
-        self.mem[start : start + 16] = data
-        self.mem[cflags_start : cflags_start + 2] = cflags
+        chan.to_data(
+            mv[start : start + 16], mv[cflags_start : cflags_start + 2]
+        )
 
     def find_first_hidden_channel(self, start: int = 0) -> Channel | None:
         for idx in range(start, consts.NUM_CHANNELS):
@@ -710,16 +731,19 @@ class RadioMemory:
 
     def get_autowrite_channels(self) -> ty.Iterable[Channel]:
         # load position map
+        mv = memoryview(self.mem)
+
         chan_pos = [255] * consts.NUM_AUTOWRITE_CHANNELS
+        chan_positiions = mv[0x6A30:]
         for idx in range(consts.NUM_AUTOWRITE_CHANNELS):
-            if (pos := self.mem[idx + 0x6A30]) < consts.NUM_AUTOWRITE_CHANNELS:
+            if (pos := chan_positiions[idx]) < consts.NUM_AUTOWRITE_CHANNELS:
                 chan_pos[pos] = idx
 
         # load only channels that are in pos map
         for idx in range(consts.NUM_AUTOWRITE_CHANNELS):
             if (cpos := chan_pos[idx]) != 255:
                 start = idx * 16 + 0x5140
-                data = self.mem[start : start + 16]
+                data = mv[start : start + 16]
                 chan = Channel.from_data(cpos, data, None)
                 yield chan
 
@@ -728,18 +752,12 @@ class RadioMemory:
             raise IndexError
 
         start = 0x5DC0 + idx * 16
-        data = self.mem[start : start + 16]
-
-        return ScanEdge.from_data(idx, data)
+        return ScanEdge.from_data(idx, self.mem[start : start + 16])
 
     def set_scan_edge(self, se: ScanEdge) -> None:
-        idx = se.idx
-        start = 0x5DC0 + idx * 16
-        data = self.mem[start : start + 16]
-
-        se.to_data(data)
-
-        self.mem[start : start + 16] = data
+        start = 0x5DC0 + se.idx * 16
+        mv = memoryview(self.mem)
+        se.to_data(mv[start : start + 16])
 
     def _get_active_channels(self) -> ty.Iterable[Channel]:
         for cidx in range(consts.NUM_CHANNELS):
@@ -755,9 +773,7 @@ class RadioMemory:
             return bank
 
         start = 0x6D10 + idx * 8
-        data = self.mem[start : start + 8]
-
-        bank = Bank.from_data(idx, data)
+        bank = Bank.from_data(idx, self.mem[start : start + 8])
 
         # TODO: confilicts / doubles
         for chan in self._get_active_channels():
@@ -771,59 +787,45 @@ class RadioMemory:
         idx = bank.idx
         self._cache_banks[idx] = bank
 
+        mv = memoryview(self.mem)
         start = 0x6D10 + idx * 8
-        data = self.mem[start : start + 8]
-
-        bank.to_data(data)
-
-        self.mem[start : start + 8] = data
+        bank.to_data(mv[start : start + 8])
 
     def get_scan_link(self, idx: int) -> ScanLink:
         if idx < 0 or idx > consts.NUM_SCAN_LINKS - 1:
             raise IndexError
 
         start = 0x6DC0 + idx * 8
-        data = self.mem[start : start + 8]
-
         # edges
         estart = 0x6C2C + 4 * idx
-        edata = self.mem[estart : estart + 4]
 
-        return ScanLink.from_data(idx, data, edata)
+        return ScanLink.from_data(
+            idx, self.mem[start : start + 8], self.mem[estart : estart + 4]
+        )
 
     def set_scan_link(self, sl: ScanLink) -> None:
+        mv = memoryview(self.mem)
         start = 0x6DC0 + sl.idx * 8
-        data = self.mem[start : start + 8]
-
         # edges mapping
         estart = 0x6C2C + 4 * sl.idx
-        edata = self.mem[estart : estart + 4]
-
-        sl.to_data(data, edata)
-
-        self.mem[start : start + 8] = data
-        self.mem[estart : estart + 4] = edata
+        sl.to_data(mv[start : start + 8], mv[estart : estart + 4])
 
     def get_settings(self) -> RadioSettings:
-        data = self.mem[0x6BD0 : 0x6BD0 + 64]
-        return RadioSettings.from_data(data)
+        return RadioSettings.from_data(self.mem[0x6BD0 : 0x6BD0 + 64])
 
     def set_settings(self, sett: RadioSettings) -> None:
-        data = self.mem[0x6BD0 : 0x6BD0 + 64]
-        sett.to_data(data)
-        self.mem[0x6BD0 : 0x6BD0 + 64] = data
+        mv = memoryview(self.mem)
+        sett.to_data(mv[0x6BD0 : 0x6BD0 + 64])
 
     def get_bank_links(self) -> BankLinks:
-        data = self.mem[0x6C28 : 0x6C28 + 3]
-        return BankLinks.from_data(data)
+        return BankLinks.from_data(self.mem[0x6C28 : 0x6C28 + 3])
 
     def set_bank_links(self, bl: BankLinks) -> None:
-        data = self.mem[0x6C28 : 0x6C28 + 3]
-        bl.to_data(data)
-        self.mem[0x6C28 : 0x6C28 + 3] = data
+        mv = memoryview(self.mem)
+        bl.to_data(mv[0x6C28 : 0x6C28 + 3])
 
 
-def decode_name(inp: list[int] | bytes) -> str:
+def decode_name(inp: abc.Sequence[int]) -> str:
     """Decode name from 5-bytes that contains 6 - 6bits coded characters with
     4-bit padding on beginning..
 
@@ -854,7 +856,7 @@ def decode_name(inp: list[int] | bytes) -> str:
     return name
 
 
-def encode_name(inp: str) -> list[int]:
+def encode_name(inp: str) -> abc.Sequence[int]:
     inp = inp[: consts.NAME_LEN].upper().ljust(consts.NAME_LEN)
 
     iic = [0 if x == "^" else consts.CODED_CHRS.index(x) for x in inp]
