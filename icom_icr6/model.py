@@ -505,6 +505,27 @@ class ScanEdge:
         else:
             data[10:16] = bytes([0, 0, 0, 0, 0, 0])
 
+    def to_record(self) -> dict[str, object]:
+        return {
+            "idx": self.idx,
+            "start": self.start,
+            "end": self.end,
+            "mode": consts.MODES[self.mode],
+            "ts": consts.STEPS[self.tuning_step],
+            "att": str(self.attenuator),
+            "name": self.name,
+        }
+
+    def from_record(self, data: dict[str, object]) -> None:
+        _LOG.debug("data: %r", data)
+        self.idx = int(data["idx"])  # type: ignore
+        self.start = int(data["start"] or "0")  # type: ignore
+        self.end = int(data["end"] or "0")  # type: ignore
+        self.mode = consts.MODES.index(str(data["mode"]))
+        self.tuning_step = consts.STEPS.index(str(data["ts"]))
+        self.attenuator = obj2bool(data["att"])
+        self.name = str(data["name"])
+
 
 @dataclass
 class RadioSettings:

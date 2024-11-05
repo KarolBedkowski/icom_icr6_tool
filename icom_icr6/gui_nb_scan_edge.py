@@ -9,7 +9,7 @@ import tkinter as tk
 import typing as ty
 from tkinter import messagebox
 
-from . import consts, gui_model, model
+from . import consts, expimp, gui_model, model
 from .gui_widgets import (
     ComboboxPopup,
     EntryPopup,
@@ -47,15 +47,17 @@ class ScanEdgePage(tk.Frame):
             "<<TreeviewSelect>>", self.__on_channel_select, add="+"
         )
         self._se_content.bind("<Delete>", self.__on_channel_delete)
+        self._se_content.bind("<Control-c>", self.__on_scan_edge_copy)
+        self._se_content.bind("<Control-v>", self.__on_scan_edge_paste)
 
     def __on_channel_select(self, _event: tk.Event) -> None:  # type: ignore
         sel = self._se_content.selection()
         if not sel:
             return
 
-        chan_num = int(sel[0])
-        chan = self._radio_memory.get_channel(chan_num)
-        _LOG.debug("chan: %r", chan)
+        se_num = int(sel[0])
+        se = self._radio_memory.get_scan_edge(se_num)
+        _LOG.debug("scan_edge: %r", se)
 
     def __on_channel_delete(self, _event: tk.Event) -> None:  # type: ignore
         sel = self._se_content.selection()
@@ -82,6 +84,37 @@ class ScanEdgePage(tk.Frame):
             for idx in range(consts.NUM_SCAN_EDGES)
         ]
         self._se_content.update_all()
+
+    def __on_scan_edge_copy(self, _event: tk.Event) -> None:  # type: ignore
+        sel = self._se_content.selection()
+        if sel:
+            se_num = int(sel[0])
+            se = self._radio_memory.get_scan_edge(se_num)
+            clip = gui_model.Clipboard.get()
+            clip.put("scan_edge", expimp.export_scan_edge_str(se))
+
+    def __on_scan_edge_paste(self, _event: tk.Event) -> None:  # type: ignore
+        sel = self._se_content.selection()
+        if not sel:
+            return
+
+        clip = gui_model.Clipboard.get()
+        if clip.object_type != "scan_edge":
+            return
+
+        se_num = int(sel[0])
+        se = self._radio_memory.get_scan_edge(se_num)
+
+        try:
+            expimp.import_scan_edge_str(se, ty.cast(str, clip.content))
+        except Exception:
+            _LOG.exception("import from clipboard error")
+            return
+
+        se.idx = se_num
+
+        self._radio_memory.set_scan_edge(se)
+        self.__update_scan_edges_list()
 
 
 class ScanEdgeListModel(TableViewModel[model.ScanEdge]):
