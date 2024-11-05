@@ -256,7 +256,6 @@ class Channel:
         data[0] = freq0
         data[1] = freq1
         # flags & freq2
-        print(repr(enc_freq), bin(data[2]))
         data_set(data, 2, 0b11110000, enc_freq.flags << 4)
         data_set(data, 2, 0b00001111, freq2 & 0b1111)
         print(repr(enc_freq), bin(data[2]))
@@ -311,7 +310,6 @@ class Channel:
         return {
             "channel": self.number,
             "freq": self.freq,
-            "fflags": self.freq_flags,
             "af": str(self.af_filter),
             "att": str(self.attenuator),
             "mode": consts.MODES[self.mode],
@@ -334,7 +332,7 @@ class Channel:
 
     def from_record(self, data: dict[str, object]) -> None:
         _LOG.debug("data: %r", data)
-        self.freq = int(data["freq"])  # type: ignore
+        self.freq = int(data["freq"] or "0")  # type: ignore
         self.af_filter = obj2bool(data["af"])
         self.attenuator = obj2bool(data["att"])
         self.mode = consts.MODES.index(str(data["mode"]))
