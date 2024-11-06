@@ -112,6 +112,31 @@ class ValidateError(ValueError):
 
 
 @dataclass
+class ChannelFlags:
+    channum: int
+    # control flags
+    hide_channel: bool
+    skip: int
+    # 31 = no bank
+    bank: int
+    bank_pos: int
+
+    @classmethod
+    def from_data(
+        cls: type[ChannelFlags],
+        channum: int,
+        data: bytearray | memoryview,
+    ) -> ChannelFlags:
+        return ChannelFlags(
+            channum=channum,
+            hide_channel=bool(data[0] & 0b10000000),
+            skip=(data[0] & 0b01100000) >> 5,
+            bank=data[0] & 0b00011111,
+            bank_pos=data[1],
+        )
+
+
+@dataclass
 class Channel:
     number: int
 
@@ -844,6 +869,25 @@ class RadioMemory:
             if not chan.hide_channel and chan.freq:
                 yield chan
 
+    def _get_channel_flags(self, idx: int) -> ChannelFlags:
+        if idx < 0 or idx > consts.NUM_CHANNELS - 1:
+            raise IndexError
+
+        cflags_start = idx * 2 + 0x5F80
+        return ChannelFlags.from_data(
+            idx,
+            self.mem[cflags_start : cflags_start + 2],
+        )
+
+    def _get_channels_in_bank(self, bank: int) -> ty.Iterable[ChannelFlags]:
+        mv = memoryview(self.mem)
+        mem_flags = mv[0x5F80:]
+        for channum in range(consts.NUM_CHANNELS):
+            start = channum * 2
+            cf = ChannelFlags.from_data(channum, mem_flags[start : start + 2])
+            if cf.bank == bank and not cf.hide_channel:
+                yield cf
+
     def get_bank(self, idx: int) -> Bank:
         if idx < 0 or idx > consts.NUM_BANKS - 1:
             raise IndexError
@@ -852,9 +896,8 @@ class RadioMemory:
         bank = Bank.from_data(idx, self.mem[start : start + 8])
 
         # TODO: confilicts / doubles
-        for chan in self.get_active_channels():
-            if chan.bank == idx:
-                bank.channels[chan.bank_pos] = chan.number
+        for cf in self._get_channels_in_bank(idx):
+            bank.channels[cf.bank_pos] = cf.channum
 
         return bank
 
