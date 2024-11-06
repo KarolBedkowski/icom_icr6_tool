@@ -347,7 +347,12 @@ class ChannelsListModel(TableViewModel[model.Channel | None]):
 
                 value = value.replace(" ", "")
                 return NumEntryPopup(
-                    parent, iid, column, value, min_val=0, max_val=159995
+                    parent,
+                    iid,
+                    column,
+                    value,
+                    min_val=0,
+                    max_val=consts.MAX_OFFSET,
                 )
 
             case "name":
