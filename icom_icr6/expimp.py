@@ -37,7 +37,10 @@ _CHANNEL_FIELDS = (
 def export_channel_str(chan: model.Channel) -> str:
     output = io.StringIO()
     writer = csv.DictWriter(
-        output, fieldnames=_CHANNEL_FIELDS, quoting=csv.QUOTE_NONNUMERIC
+        output,
+        fieldnames=_CHANNEL_FIELDS,
+        quoting=csv.QUOTE_NONNUMERIC,
+        extrasaction="ignore",
     )
     writer.writeheader()
     writer.writerow(chan.to_record())
@@ -117,7 +120,10 @@ _SCAN_EDGE_FIELDS = (
 def export_scan_edge_str(se: model.ScanEdge) -> str:
     output = io.StringIO()
     writer = csv.DictWriter(
-        output, fieldnames=_SCAN_EDGE_FIELDS, quoting=csv.QUOTE_NONNUMERIC
+        output,
+        fieldnames=_SCAN_EDGE_FIELDS,
+        quoting=csv.QUOTE_NONNUMERIC,
+        extrasaction="ignore",
     )
     writer.writeheader()
     writer.writerow(se.to_record())
