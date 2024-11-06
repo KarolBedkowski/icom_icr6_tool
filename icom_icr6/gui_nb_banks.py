@@ -226,6 +226,8 @@ class BanksPage(tk.Frame):
                 _LOG.warn("no hidden channel found")
                 return
 
+        chan = chan.clone()
+
         try:
             expimp.import_channel_str(chan, ty.cast(str, clip.content))
         except Exception:

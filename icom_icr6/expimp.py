@@ -55,6 +55,7 @@ def import_channel_str(chan: model.Channel, data: str) -> None:
             raise ValueError
 
         chan.from_record(row)
+        chan.validate()
         return
 
 

@@ -54,6 +54,14 @@ class RadioModel:
         return binascii.hexlify(self.model).decode()
 
 
+def _is_valid_index(
+    inlist: ty.Collection[object], idx: int, name: str
+) -> None:
+    if idx < 0 or idx >= len(inlist):
+        err = f"invalid {name}"
+        raise ValueError(err)
+
+
 def _try_get(inlist: list[str] | tuple[str, ...], idx: int) -> str:
     try:
         return inlist[idx]
@@ -172,6 +180,9 @@ class Channel:
     def __lt__(self, other: object) -> bool:
         assert isinstance(other, Channel)
         return self.number < other.number
+
+    def clone(self) -> Channel:
+        return copy.deepcopy(self)
 
     @classmethod
     def from_data(
@@ -298,8 +309,36 @@ class Channel:
         # bank_pos
         cflags[1] = self.bank_pos
 
-    def clone(self) -> Channel:
-        return copy.deepcopy(self)
+    def validate(self) -> None:
+        if self.freq < 0 or self.freq > consts.MAX_FREQUENCY:
+            raise ValueError("invalid freq")
+
+        _is_valid_index(consts.MODES, self.mode, "mode")
+        _is_valid_index(consts.STEPS, self.tuning_step, "tuning step")
+        _is_valid_index(consts.SKIPS, self.skip, "skip")
+
+        _is_valid_index(consts.DUPLEX_DIRS, self.duplex, "duplex")
+        if self.duplex in (1, 2) and not (
+            0 <= self.offset < 0 <= consts.MAX_OFFSET
+        ):
+            raise ValueError("invalid offset")
+
+        _is_valid_index(consts.TONE_MODES, self.tone_mode, "tone mode")
+        if self.tone_mode in (1, 2):  # TSQL
+            _is_valid_index(consts.CTCSS_TONES, self.tsql_freq, "tsql freq")
+        elif self.tone_mode in (3, 4):
+            _is_valid_index(consts.DTCS_CODES, self.dtsc, "dtsc")
+            _is_valid_index(consts.POLARITY, self.polarity, "polarity")
+
+        if self.bank < 0 or (
+            self.bank != consts.BANK_NOT_SET and self.bank >= consts.NUM_BANKS
+        ):
+            raise ValueError("invalid bank")
+
+        try:
+            validate_name(self.name)
+        except ValueError as err:
+            raise ValueError("invalid name") from err
 
     def to_record(self) -> dict[str, object]:
         try:
@@ -354,6 +393,9 @@ class Channel:
         else:
             self.bank = consts.BANK_NOT_SET
             self.bank_pos = 0
+
+        if self.freq:
+            self.hide_channel = False
 
 
 @dataclass

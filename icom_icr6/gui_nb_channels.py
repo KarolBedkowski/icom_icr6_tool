@@ -119,7 +119,7 @@ class ChannelsPage(tk.Frame):
             return
 
         chan_num = int(sel[0])
-        chan = self._radio_memory.get_channel(chan_num)
+        chan = self._radio_memory.get_channel(chan_num).clone()
 
         try:
             expimp.import_channel_str(chan, ty.cast(str, clip.content))
