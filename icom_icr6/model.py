@@ -58,8 +58,7 @@ def _is_valid_index(
     inlist: ty.Collection[object], idx: int, name: str
 ) -> None:
     if idx < 0 or idx >= len(inlist):
-        err = f"invalid {name}"
-        raise ValueError(err)
+        raise ValidateError(name, idx)
 
 
 def _try_get(inlist: list[str] | tuple[str, ...], idx: int) -> str:
@@ -101,6 +100,15 @@ def data_set(
 ) -> None:
     """Set bits indicated by `mask` in byte `data[offset]` to `value`."""
     data[offset] = (data[offset] & (~mask)) | (value & mask)
+
+
+class ValidateError(ValueError):
+    def __init__(self, field: str, value: object) -> None:
+        self.field = field
+        self.value = value
+
+    def __str__(self) -> str:
+        return "invalid value in {self.field}: {self.value!r}"
 
 
 @dataclass
@@ -310,18 +318,16 @@ class Channel:
         cflags[1] = self.bank_pos
 
     def validate(self) -> None:
-        if self.freq < 0 or self.freq > consts.MAX_FREQUENCY:
-            raise ValueError("invalid freq")
+        if not validate_frequency(self.freq):
+            raise ValidateError("freq", self.freq)
 
         _is_valid_index(consts.MODES, self.mode, "mode")
         _is_valid_index(consts.STEPS, self.tuning_step, "tuning step")
         _is_valid_index(consts.SKIPS, self.skip, "skip")
 
         _is_valid_index(consts.DUPLEX_DIRS, self.duplex, "duplex")
-        if self.duplex in (1, 2) and not (
-            0 <= self.offset < 0 <= consts.MAX_OFFSET
-        ):
-            raise ValueError("invalid offset")
+        if self.duplex in (1, 2) and not validate_offset(self.offset):
+            raise ValidateError("offset", self.offset)
 
         _is_valid_index(consts.TONE_MODES, self.tone_mode, "tone mode")
         if self.tone_mode in (1, 2):  # TSQL
@@ -333,12 +339,12 @@ class Channel:
         if self.bank < 0 or (
             self.bank != consts.BANK_NOT_SET and self.bank >= consts.NUM_BANKS
         ):
-            raise ValueError("invalid bank")
+            raise ValidateError("bank", self.bank)
 
         try:
             validate_name(self.name)
         except ValueError as err:
-            raise ValueError("invalid name") from err
+            raise ValidateError("name", self.name) from err
 
     def to_record(self) -> dict[str, object]:
         try:
@@ -370,6 +376,7 @@ class Channel:
         }
 
     def from_record(self, data: dict[str, object]) -> None:
+        # TODO: adjust freq
         _LOG.debug("data: %r", data)
         self.freq = int(data["freq"] or "0")  # type: ignore
         self.af_filter = obj2bool(data["af"])
@@ -552,13 +559,13 @@ class ScanEdge:
 
     def validate(self) -> None:
         if self.idx < 0 or self.idx >= consts.NUM_SCAN_EDGES:
-            raise ValueError("invalid idx")
+            raise ValidateError("idx", self.idx)
 
-        if self.start < 0 or self.start > consts.MAX_FREQUENCY:
-            raise ValueError("invalid start freq")
+        if not validate_frequency(self.start):
+            raise ValidateError("idx", self.start)
 
-        if self.end < 0 or self.end > consts.MAX_FREQUENCY:
-            raise ValueError("invalid end freq")
+        if not validate_frequency(self.end):
+            raise ValidateError("freq", self.end)
 
         _is_valid_index(consts.MODES, self.mode, "mode")
         _is_valid_index(consts.STEPS, self.tuning_step, "tuning step")
@@ -566,7 +573,7 @@ class ScanEdge:
         try:
             validate_name(self.name)
         except ValueError as err:
-            raise ValueError("invalid name") from err
+            raise ValidateError("name", self.name) from err
 
     def to_record(self) -> dict[str, object]:
         return {
@@ -723,12 +730,9 @@ class BankLinks:
 class RadioMemory:
     def __init__(self) -> None:
         self.mem = bytearray(consts.MEM_SIZE)
-        self._cache_channels: dict[int, Channel] = {}
-        self._cache_banks: dict[int, Bank] = {}
 
     def reset(self) -> None:
-        self._cache_banks.clear()
-        self._cache_channels.clear()
+        pass
 
     def update_from(self, rm: RadioMemory) -> None:
         self.mem = rm.mem
@@ -772,27 +776,19 @@ class RadioMemory:
         if idx < 0 or idx > consts.NUM_CHANNELS - 1:
             raise IndexError
 
-        if chan := self._cache_channels.get(idx):
-            return chan
-
         start = idx * 16
         cflags_start = idx * 2 + 0x5F80
 
-        chan = Channel.from_data(
+        return Channel.from_data(
             idx,
             self.mem[start : start + 16],
             self.mem[cflags_start : cflags_start + 2],
         )
-        self._cache_channels[idx] = chan
-
-        return chan
 
     def set_channel(self, chan: Channel) -> None:
         _LOG.debug("set_channel: %r", chan)
+        chan.validate()
         idx = chan.number
-
-        self._cache_channels[idx] = chan
-        self._cache_banks.clear()
 
         mv = memoryview(self.mem)
 
@@ -837,6 +833,7 @@ class RadioMemory:
         return ScanEdge.from_data(idx, self.mem[start : start + 16])
 
     def set_scan_edge(self, se: ScanEdge) -> None:
+        se.validate()
         start = 0x5DC0 + se.idx * 16
         mv = memoryview(self.mem)
         se.to_data(mv[start : start + 16])
@@ -851,9 +848,6 @@ class RadioMemory:
         if idx < 0 or idx > consts.NUM_BANKS - 1:
             raise IndexError
 
-        if bank := self._cache_banks.get(idx):
-            return bank
-
         start = 0x6D10 + idx * 8
         bank = Bank.from_data(idx, self.mem[start : start + 8])
 
@@ -862,13 +856,10 @@ class RadioMemory:
             if chan.bank == idx:
                 bank.channels[chan.bank_pos] = chan.number
 
-        self._cache_banks[idx] = bank
         return bank
 
     def set_bank(self, bank: Bank) -> None:
         idx = bank.idx
-        self._cache_banks[idx] = bank
-
         mv = memoryview(self.mem)
         start = 0x6D10 + idx * 8
         bank.to_data(mv[start : start + 8])
@@ -1038,11 +1029,31 @@ def validate_frequency(inp: str | int) -> bool:
     else:
         freq = inp
 
-    if consts.MAX_FREQUENCY < freq < 0:
+    if freq > consts.MAX_FREQUENCY or freq < 0:
         return False
 
     try:
         encode_freq(freq, 0)
+    except ValueError:
+        return False
+
+    return True
+
+
+def validate_offset(inp: str | int) -> bool:
+    if isinstance(inp, str):
+        try:
+            freq = int(inp)
+        except ValueError:
+            return False
+    else:
+        freq = inp
+
+    if freq > consts.MAX_OFFSET or freq < 0:
+        return False
+
+    try:
+        encode_freq(freq, freq)
     except ValueError:
         return False
 
