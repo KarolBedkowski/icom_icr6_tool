@@ -497,6 +497,9 @@ class ScanEdge:
 
         return str(self.attenuator)
 
+    def clone(self) -> ScanEdge:
+        return copy.deepcopy(self)
+
     def delete(self) -> None:
         self.start = self.end = 0
         self.disabled = True
@@ -546,6 +549,24 @@ class ScanEdge:
             data[10:16] = self.name[:6].ljust(6).encode()
         else:
             data[10:16] = bytes([0, 0, 0, 0, 0, 0])
+
+    def validate(self) -> None:
+        if self.idx < 0 or self.idx >= consts.NUM_SCAN_EDGES:
+            raise ValueError("invalid idx")
+
+        if self.start < 0 or self.start > consts.MAX_FREQUENCY:
+            raise ValueError("invalid start freq")
+
+        if self.end < 0 or self.end > consts.MAX_FREQUENCY:
+            raise ValueError("invalid end freq")
+
+        _is_valid_index(consts.MODES, self.mode, "mode")
+        _is_valid_index(consts.STEPS, self.tuning_step, "tuning step")
+
+        try:
+            validate_name(self.name)
+        except ValueError as err:
+            raise ValueError("invalid name") from err
 
     def to_record(self) -> dict[str, object]:
         return {

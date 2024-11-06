@@ -103,7 +103,7 @@ class ScanEdgePage(tk.Frame):
             return
 
         se_num = int(sel[0])
-        se = self._radio_memory.get_scan_edge(se_num)
+        se = self._radio_memory.get_scan_edge(se_num).clone()
 
         try:
             expimp.import_scan_edge_str(se, ty.cast(str, clip.content))

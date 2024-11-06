@@ -139,4 +139,5 @@ def import_scan_edge_str(se: model.ScanEdge, data: str) -> None:
             raise ValueError
 
         se.from_record(row)
+        se.validate()
         return
