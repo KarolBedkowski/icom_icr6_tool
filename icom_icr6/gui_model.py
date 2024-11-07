@@ -203,6 +203,7 @@ class ChannelModel:
             chan.bank_pos = self.bank_pos.get()
 
     def validate(self) -> list[str]:
+        # FIXME: not used?
         errors = []
         if not model.validate_frequency(self.freq.get() * 1000):
             errors.append("Invalid frequency")
@@ -464,26 +465,30 @@ class ChannelsListModel(TableViewModel[model.Channel | None]):
                     list(consts.BANK_NAMES), value, consts.BANK_NOT_SET
                 )
                 if chan.bank not in (prev_bank, consts.BANK_NOT_SET):
-                    bank = self._radio_memory.get_bank(chan.bank)
-                    pos = bank.find_free_slot()
+                    bank_channels = self._radio_memory.get_bank_channels(
+                        chan.bank
+                    )
+                    pos = bank_channels.find_free_slot()
                     chan.bank_pos = pos if pos is not None else 99
 
             case "bank_pos":
                 bank_pos = 0
                 if chan.bank != consts.BANK_NOT_SET:
                     bank_pos = int(value or 0)
-                    bank = self._radio_memory.get_bank(chan.bank)
-                    if bank.channels[bank_pos] != chan.number:
+                    bank_channels = self._radio_memory.get_bank_channels(
+                        chan.bank
+                    )
+                    if bank_channels[bank_pos] != chan.number:
                         # selected slot is used by another channel
-                        if chan.number in bank.channels:
+                        if chan.number in bank_channels:
                             # do not update
                             bank_pos = chan.bank_pos
                         else:
                             # find unused next slot
-                            pos = bank.find_free_slot(bank_pos)
+                            pos = bank_channels.find_free_slot(bank_pos)
                             if pos is None:
                                 # find first unused slot
-                                pos = bank.find_free_slot()
+                                pos = bank_channels.find_free_slot()
 
                             if pos is not None:
                                 bank_pos = pos

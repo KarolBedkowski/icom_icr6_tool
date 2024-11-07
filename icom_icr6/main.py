@@ -93,7 +93,7 @@ def main_print_banks() -> None:
 
     print("Banks")
     for idx in range(22):
-        print(idx, mem.get_bank(idx))
+        print(idx, mem.get_bank(idx), mem.get_bank_channels(idx))
 
 
 def main_print_scan_programs() -> None:

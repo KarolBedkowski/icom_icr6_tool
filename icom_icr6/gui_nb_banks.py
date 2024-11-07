@@ -154,8 +154,8 @@ class BanksPage(tk.Frame):
 
         bank_pos = int(sel[0])
         selected_bank: int = int(self._banks_list.curselection()[0])  # type: ignore
-        bank = self._radio_memory.get_bank(selected_bank)
-        if channum := bank.channels[bank_pos]:
+        channels = self._radio_memory.get_bank_channels(selected_bank)
+        if channum := channels[bank_pos]:
             chan = self._radio_memory.get_channel(channum)
             _LOG.debug("selected: %r", chan)
             return chan
@@ -343,10 +343,11 @@ class BankChannelsListModel(gui_model.ChannelsListModel):
 
         bank_num = self.bank_num
         bank = self._radio_memory.get_bank(bank_num)
+        channels = self._radio_memory.get_bank_channels(bank_num)
 
         if not value:
             # remove channel from bank
-            if channum := bank.channels[row]:
+            if channum := channels[row]:
                 chan = self._radio_memory.get_channel(channum)
                 _LOG.debug("clean bank in: %r", chan)
                 chan.clear_bank()
@@ -365,7 +366,7 @@ class BankChannelsListModel(gui_model.ChannelsListModel):
 
         # check if replacing other channel in this bank
         try:
-            idx = bank.channels.index(channum)
+            idx = channels.index(channum)
         except ValueError:
             res = UpdateCellResult.UPDATE_ROW
         else:
@@ -384,12 +385,13 @@ class BankChannelsListModel(gui_model.ChannelsListModel):
         self.bank_num = -1
         self.data.clear()
 
-    def set_bank(self, bank_num: int, bank: model.Bank) -> None:
+    def set_bank(self, bank_num: int, _bank: model.Bank) -> None:
+        channels = self._radio_memory.get_bank_channels(bank_num)
         self.data = [
             self._radio_memory.get_channel(channum)
             if channum is not None
             else None
-            for channum in bank.channels
+            for channum in channels.channels
         ]
         self.bank_num = bank_num
 

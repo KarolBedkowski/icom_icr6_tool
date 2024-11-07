@@ -12,7 +12,7 @@ import logging
 import typing as ty
 import unicodedata
 from collections import abc
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from . import consts
 
@@ -431,26 +431,42 @@ class Channel:
 
 
 @dataclass
-class Bank:
-    idx: int
-    # 6 characters
-    name: str
-    # list of channels in bank; update via channel
-    channels: list[int | None]
+class BankChannels:
+    channels: list[int | None] = field(default_factory=lambda: [None] * 100)
+
+    def __getitem__(self, pos: int) -> int | None:
+        return self.channels[pos]
+
+    def __contains__(self, channum: int) -> bool:
+        return channum in self.channels
+
+    def index(self, channum: int) -> int:
+        return self.channels.index(channum)
 
     def find_free_slot(self, start: int = 0) -> int | None:
+        assert self.channels is not None
         for idx in range(start, len(self.channels)):
             if self.channels[idx] is None:
                 return idx
 
         return None
 
+    def set(self, chan_flags: ty.Iterable[ChannelFlags]) -> None:
+        for cf in chan_flags:
+            self.channels[cf.bank_pos] = cf.channum
+
+
+@dataclass
+class Bank:
+    idx: int
+    # 6 characters
+    name: str
+
     @classmethod
     def from_data(cls: type[Bank], idx: int, data: abc.Sequence[int]) -> Bank:
         return Bank(
             idx,
             name=bytes(data[0:6]).decode() if data[0] else "",
-            channels=[None] * 100,
         )
 
     def to_data(self, data: MutableMemory) -> None:
@@ -889,17 +905,22 @@ class RadioMemory:
                 yield cf
 
     def get_bank(self, idx: int) -> Bank:
+        _LOG.debug("loading bank %d", idx)
         if idx < 0 or idx > consts.NUM_BANKS - 1:
             raise IndexError
 
         start = 0x6D10 + idx * 8
-        bank = Bank.from_data(idx, self.mem[start : start + 8])
+        return Bank.from_data(idx, self.mem[start : start + 8])
+
+    def get_bank_channels(self, bank_idx: int) -> BankChannels:
+        _LOG.debug("loading bank channels %d", bank_idx)
+        if bank_idx < 0 or bank_idx > consts.NUM_BANKS - 1:
+            raise IndexError
 
         # TODO: confilicts / doubles
-        for cf in self._get_channels_in_bank(idx):
-            bank.channels[cf.bank_pos] = cf.channum
-
-        return bank
+        bc = BankChannels()
+        bc.set(self._get_channels_in_bank(bank_idx))
+        return bc
 
     def set_bank(self, bank: Bank) -> None:
         idx = bank.idx
