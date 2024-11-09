@@ -372,6 +372,9 @@ class Channel:
             raise ValidateError("name", self.name) from err
 
     def to_record(self) -> dict[str, object]:
+        if self.hide_channel:
+            return {}
+
         try:
             bank = consts.BANK_NAMES[self.bank]
         except IndexError:

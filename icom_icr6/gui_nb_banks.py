@@ -220,9 +220,22 @@ class BanksPage(tk.Frame):
         self._bank_content.selection_set(sel[0])
 
     def __on_channel_copy(self, _event: tk.Event) -> None:  # type: ignore
-        if chan := self._get_selected_channel():
-            clip = gui_model.Clipboard.get()
-            clip.put("channel", expimp.export_channel_str(chan))
+        sel = self._bank_content.selection()
+        if not sel:
+            return
+
+        selected_bank: int = int(self._banks_list.curselection()[0])  # type: ignore
+        bank_channels = self._radio_memory.get_bank_channels(selected_bank)
+
+        selected_channels = (
+            self._radio_memory.get_channel(channum)
+            if (channum := bank_channels[int(bank_pos)]) is not None
+            else None
+            for bank_pos in sel
+        )
+
+        clip = gui_model.Clipboard.get()
+        clip.put("channel", expimp.export_channel_str(selected_channels))
 
     def __on_channel_paste(self, _event: tk.Event) -> None:  # type: ignore
         selected_bank, bank_pos = self._get_selections()
@@ -233,31 +246,49 @@ class BanksPage(tk.Frame):
         if clip.object_type != "channel":
             return
 
-        chan = self._get_selected_channel()
-        if chan:
-            # replace
-            _LOG.debug("replacing channel: %r", chan)
-        else:
-            # insert, find first hidden channel
-            # TODO: insert, find next after pasted?
-            chan = self._radio_memory.find_first_hidden_channel()
-            if not chan:
-                _LOG.warn("no hidden channel found")
-                return
-
-        chan = chan.clone()
-
         try:
-            expimp.import_channel_str(chan, ty.cast(str, clip.content))
+            rows = expimp.import_channels_str(ty.cast(str, clip.content))
         except Exception:
             _LOG.exception("import from clipboard error")
             return
 
-        chan.bank = selected_bank
-        chan.bank_pos = bank_pos
-        chan.hide_channel = False
+        bank_channels = self._radio_memory.get_bank_channels(selected_bank)
 
-        self._radio_memory.set_channel(chan)
+        for pos, row in enumerate(rows, bank_pos):
+            if not row.get("freq"):
+                if pos % 100 == 99:  # noQa: PLR2004
+                    break
+
+                continue
+
+            chan_num = bank_channels[pos]
+            if chan_num:
+                chan = self._radio_memory.get_channel(chan_num)
+            else:
+                chan = self._radio_memory.find_first_hidden_channel()  # type: ignore
+                if not chan:
+                    _LOG.warn("no hidden channel found")
+                    return
+
+            chan = chan.clone()
+            # replace channel
+            try:
+                chan.from_record(row)
+                chan.validate()
+            except ValueError:
+                _LOG.exception("import from clipboard error")
+                _LOG.error("chan_num=%d, row=%r", chan_num, row)
+                return
+
+                # replace
+            _LOG.debug("replacing channel: %r", chan)
+
+            chan.bank = selected_bank
+            chan.bank_pos = pos
+            chan.hide_channel = False
+
+            self._radio_memory.set_channel(chan)
+
         self.__update_chan_list(None)
 
 

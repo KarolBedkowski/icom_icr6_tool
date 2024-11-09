@@ -107,10 +107,11 @@ class ChannelsPage(tk.Frame):
         if not sel:
             return
 
-        chan_num = int(sel[0])
-        chan = self._radio_memory.get_channel(chan_num)
+        channels = (
+            self._radio_memory.get_channel(int(chan_num)) for chan_num in sel
+        )
         clip = gui_model.Clipboard.get()
-        clip.put("channel", expimp.export_channel_str(chan))
+        clip.put("channel", expimp.export_channel_str(channels))
 
     def __on_channel_paste(self, _event: tk.Event) -> None:  # type: ignore
         sel = self._channels_list.selection()
@@ -121,20 +122,35 @@ class ChannelsPage(tk.Frame):
         if clip.object_type != "channel":
             return
 
-        chan_num = int(sel[0])
-        chan = self._radio_memory.get_channel(chan_num).clone()
-
         try:
-            expimp.import_channel_str(chan, ty.cast(str, clip.content))
+            rows = list(expimp.import_channels_str(ty.cast(str, clip.content)))
         except Exception:
             _LOG.exception("import from clipboard error")
             return
 
-        chan.hide_channel = False
-        # do not set bank on paste
-        chan.bank = consts.BANK_NOT_SET
-        chan.bank_pos = 0
-        self._radio_memory.set_channel(chan)
+        start_num = int(sel[0])
+        for chan_num, row in enumerate(rows, start_num):
+            chan = self._radio_memory.get_channel(chan_num).clone()
+            # do not clean existing rows
+            if row.get("freq"):
+                try:
+                    chan.from_record(row)
+                    chan.validate()
+                except ValueError:
+                    _LOG.exception("import from clipboard error")
+                    _LOG.error("chan_num=%d, row=%r", chan_num, row)
+                    return
+
+                chan.hide_channel = False
+                # do not set bank on paste
+                chan.bank = consts.BANK_NOT_SET
+                chan.bank_pos = 0
+                self._radio_memory.set_channel(chan)
+
+            # stop on range boundary
+            if chan_num % 100 == 99:  # noQa: PLR2004
+                break
+
         self.__update_chan_list(None)
 
     def _show_stats(self) -> None:

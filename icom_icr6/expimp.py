@@ -34,7 +34,7 @@ _CHANNEL_FIELDS = (
 )
 
 
-def export_channel_str(chan: model.Channel) -> str:
+def export_channel_str(channels: ty.Iterable[model.Channel | None]) -> str:
     output = io.StringIO()
     writer = csv.DictWriter(
         output,
@@ -43,20 +43,18 @@ def export_channel_str(chan: model.Channel) -> str:
         extrasaction="ignore",
     )
     writer.writeheader()
-    writer.writerow(chan.to_record())
+    writer.writerows(chan.to_record() if chan else {} for chan in channels)
     return output.getvalue()
 
 
-def import_channel_str(chan: model.Channel, data: str) -> None:
+def import_channels_str(data: str) -> ty.Iterable[dict[str, object]]:
     inp = io.StringIO(data)
     reader = csv.DictReader(inp)
     for row in reader:
         if not all(f in row for f in _CHANNEL_FIELDS):
             raise ValueError
 
-        chan.from_record(row)
-        chan.validate()
-        return
+        yield row
 
 
 def export_channels_file(
@@ -118,7 +116,7 @@ _SCAN_EDGE_FIELDS = (
 )
 
 
-def export_scan_edge_str(se: model.ScanEdge) -> str:
+def export_scan_edges_str(ses: ty.Iterable[model.ScanEdge]) -> str:
     output = io.StringIO()
     writer = csv.DictWriter(
         output,
@@ -127,17 +125,15 @@ def export_scan_edge_str(se: model.ScanEdge) -> str:
         extrasaction="ignore",
     )
     writer.writeheader()
-    writer.writerow(se.to_record())
+    writer.writerows(se.to_record() if se else {} for se in ses)
     return output.getvalue()
 
 
-def import_scan_edge_str(se: model.ScanEdge, data: str) -> None:
+def import_scan_edges_str(data: str) -> ty.Iterable[dict[str, object]]:
     inp = io.StringIO(data)
     reader = csv.DictReader(inp)
     for row in reader:
         if not all(f in row for f in _SCAN_EDGE_FIELDS):
             raise ValueError
 
-        se.from_record(row)
-        se.validate()
-        return
+        yield row

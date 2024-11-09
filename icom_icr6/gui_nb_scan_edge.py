@@ -87,11 +87,12 @@ class ScanEdgePage(tk.Frame):
 
     def __on_scan_edge_copy(self, _event: tk.Event) -> None:  # type: ignore
         sel = self._se_content.selection()
-        if sel:
-            se_num = int(sel[0])
-            se = self._radio_memory.get_scan_edge(se_num)
-            clip = gui_model.Clipboard.get()
-            clip.put("scan_edge", expimp.export_scan_edge_str(se))
+        if not sel:
+            return
+
+        ses = (self._radio_memory.get_scan_edge(int(se_num)) for se_num in sel)
+        clip = gui_model.Clipboard.get()
+        clip.put("scan_edge", expimp.export_scan_edges_str(ses))
 
     def __on_scan_edge_paste(self, _event: tk.Event) -> None:  # type: ignore
         sel = self._se_content.selection()
@@ -102,18 +103,30 @@ class ScanEdgePage(tk.Frame):
         if clip.object_type != "scan_edge":
             return
 
-        se_num = int(sel[0])
-        se = self._radio_memory.get_scan_edge(se_num).clone()
-
         try:
-            expimp.import_scan_edge_str(se, ty.cast(str, clip.content))
+            rows = expimp.import_scan_edges_str(ty.cast(str, clip.content))
         except Exception:
             _LOG.exception("import from clipboard error")
             return
 
-        se.idx = se_num
+        start_num = int(sel[0])
+        for se_num, row in enumerate(rows, start_num):
+            if row.get("start"):
+                se = self._radio_memory.get_scan_edge(se_num).clone()
+                try:
+                    se.from_record(row)
+                    se.validate()
+                except ValueError:
+                    _LOG.exception("import from clipboard error")
+                    _LOG.error("se_num=%d, row=%r", se_num, row)
+                    return
 
-        self._radio_memory.set_scan_edge(se)
+                se.idx = se_num
+                self._radio_memory.set_scan_edge(se)
+
+            if se_num == consts.NUM_SCAN_EDGES - 1:
+                break
+
         self.__update_scan_edges_list()
 
 
