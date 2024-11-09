@@ -124,6 +124,18 @@ def main_write_mem_raw() -> None:
     io.save_raw_memory(dst, mem)
 
 
+def main_write_icf_mem() -> None:
+    if len(sys.argv) < 3:
+        print("file name required")
+        return
+
+    file = Path(sys.argv[2])
+    mem = io.load_raw_memory(file)
+
+    dst = Path(sys.argv[3]) if len(sys.argv) > 3 else file.with_suffix(".icf")
+    io.save_icf_file(dst, mem)
+
+
 def main_print_settings() -> None:
     if len(sys.argv) < 3:
         print("file name required")
@@ -147,7 +159,8 @@ Command:
    channels <icf file> [<start channel num>] [hidden]
    banks <icf file>
    scan <icf file>
-   write_mem <icf file> [<raw file>]
+   icf2raw <icf file> [<raw file>]
+   raw2icf <raw file> [<icf file>]
    clone_from_radio <port> <icf file>
    radio_info <port>
    autowrite <icf file>
@@ -167,8 +180,10 @@ def main() -> None:
             main_print_banks()
         case "scan":
             main_print_scan_programs()
-        case "write_mem":
+        case "icf2raw":
             main_write_mem_raw()
+        case "raw2icf":
+            main_write_icf_mem()
         case "clone_from_radio":
             main_clone_from_radio()
         case "autowrite":

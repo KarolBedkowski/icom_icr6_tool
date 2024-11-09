@@ -425,6 +425,16 @@ def load_icf_file(file: Path) -> model.RadioMemory:
             if line := line.strip():
                 mem.read(line)
 
+    mem.validate()
+    return mem
+
+
+def load_raw_memory(file: Path) -> model.RadioMemory:
+    mem = model.RadioMemory()
+    with file.open("rb") as inp:
+        mem.mem = bytearray(inp.read())
+
+    mem.validate()
     return mem
 
 
@@ -432,7 +442,7 @@ def save_icf_file(file: Path, mem: model.RadioMemory) -> None:
     """Write RadioMemory to icf file."""
     with file.open("wt") as out:
         # header
-        out.write("32500001\r\n#Comment=\r\n#MapRev=1\n#EtcData=001A\r\n")
+        out.write("32500001\r\n#Comment=\r\n#MapRev=1\r\n#EtcData=001A\r\n")
         # data
         for line in mem.dump():
             out.write(line)
