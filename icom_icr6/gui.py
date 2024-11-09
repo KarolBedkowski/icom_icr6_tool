@@ -55,7 +55,8 @@ class App(tk.Frame):
         self._ntb.pack(fill="both", expand=True)
 
         tk.Label(self, text="", textvariable=self._status_value).pack(
-            side=tk.BOTTOM, fill=tk.X, expand=False
+            side=tk.LEFT,
+            fill=tk.X,
         )
 
         if file:
