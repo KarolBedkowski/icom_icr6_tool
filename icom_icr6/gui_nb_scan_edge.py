@@ -278,9 +278,9 @@ class ScanEdgeListModel(TableViewModel[model.ScanEdge]):
         if not se.start or not se.end:
             return (
                 str(se.idx),
-                se.name.rstrip(),
-                gui_model.format_freq(se.start // 1000),
-                gui_model.format_freq(se.end // 1000),
+                "",
+                "",
+                "",
             )
 
         return (

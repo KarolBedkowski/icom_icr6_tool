@@ -552,8 +552,8 @@ class ScanEdge:
         return copy.deepcopy(self)
 
     def delete(self) -> None:
+        self.name = ""
         self.start = self.end = 0
-        self.disabled = True
 
     @classmethod
     def from_data(
