@@ -1,6 +1,5 @@
-- ctrl-c/ctrl-v operations
-- optimise memory
-- device comment
+- ctrl-c/ctrl-v operations via system clipboard
+- select multiple rows
 - export / import data
 - clone in background
 - handle errors

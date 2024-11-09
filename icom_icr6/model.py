@@ -961,6 +961,15 @@ class RadioMemory:
         mv = memoryview(self.mem)
         bl.to_data(mv[0x6C28 : 0x6C28 + 3])
 
+    def get_comment(self) -> str:
+        cmt = self.mem[0x6D00 : 0x6D00 + 16]
+        return cmt.decode().rstrip()
+
+    def set_comment(self, comment: str) -> None:
+        cmt = fix_comment(comment).ljust(16).encode()
+        mv = memoryview(self.mem)
+        mv[0x6D00 : 0x6D00 + 16] = cmt
+
 
 def decode_name(inp: abc.Sequence[int]) -> str:
     """Decode name from 5-bytes that contains 6 - 6bits coded characters with
@@ -1132,6 +1141,14 @@ def validate_name(name: str) -> None:
         raise ValueError
 
 
+def validate_comment(comment: str) -> None:
+    if len(comment) > 16:
+        raise ValueError
+
+    if any(i not in consts.VALID_CHAR for i in comment.upper()):
+        raise ValueError
+
+
 def fix_frequency(freq: int) -> int:
     freq = max(freq, consts.MIN_FREQUENCY)
     freq = min(freq, consts.MAX_FREQUENCY)
@@ -1169,6 +1186,18 @@ def fix_name(name: str) -> str:
     )
     name = "".join(c for c in name if c in consts.VALID_CHAR)
     return name[:6]
+
+
+def fix_comment(name: str) -> str:
+    name = name.rstrip()
+    if not name:
+        return ""
+
+    name = (
+        unicodedata.normalize("NFKD", name).encode("ascii", "replace").decode()
+    )
+    name = "".join(c for c in name if c.upper() in consts.VALID_CHAR)
+    return name[:16]
 
 
 def tuning_steps_for_freq(freq: int) -> list[str]:

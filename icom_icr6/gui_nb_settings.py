@@ -60,6 +60,8 @@ class SettingsPage(tk.Frame):
         self._var_af_filer_am = gui_model.BoolVar()
         self._var_charging_type = gui_model.ListVar(consts.SETT_CHARGE_TYPE)
 
+        self._var_comment = tk.StringVar()
+
     def _create_fields(self) -> None:
         frame = tk.Frame(self)
         frame.columnconfigure(0, weight=0)
@@ -186,8 +188,13 @@ class SettingsPage(tk.Frame):
         new_entry(frame, 11, 2, "CIV address", self._var_civ_address)
         new_checkbox(frame, 11, 4, "CIV transceive", self._var_civ_transceive)
 
+        validator = self.register(validate_comment)
+        new_entry(
+            frame, 12, 0, "Comment", self._var_comment, validator=validator
+        )
+
         ttk.Button(frame, text="Update", command=self.__on_update).grid(
-            row=12, column=5, sticky=tk.E
+            row=13, column=5, sticky=tk.E
         )
 
         frame.pack(fill=tk.X, side=tk.TOP, padx=12, pady=12)
@@ -221,6 +228,8 @@ class SettingsPage(tk.Frame):
         self._var_af_filer_wfm.set_raw(sett.af_filer_wfm)
         self._var_af_filer_am.set_raw(sett.af_filer_am)
         self._var_charging_type.set_raw(sett.charging_type)
+
+        self._var_comment.set(self._radio_memory.get_comment())
 
     def __on_update(self) -> None:
         sett = self._radio_memory.get_settings()
@@ -256,4 +265,18 @@ class SettingsPage(tk.Frame):
 
         self._radio_memory.set_settings(sett)
 
+        self._radio_memory.set_comment(self._var_comment.get())
+
         self.__update()
+
+
+def validate_comment(comment: str) -> bool:
+    if not comment:
+        return True
+
+    try:
+        model.validate_comment(comment)
+    except ValueError:
+        return False
+
+    return True
