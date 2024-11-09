@@ -25,6 +25,7 @@ class AutoWriteChannelsPage(tk.Frame):
         self, parent: tk.Widget, radio_memory: model.RadioMemory
     ) -> None:
         super().__init__(parent)
+        self._parent = parent
 
         self._radio_memory = radio_memory
 
@@ -53,6 +54,7 @@ class AutoWriteChannelsPage(tk.Frame):
 
         self._chan_list_model.data = data  # type: ignore
         self._chan_list.update_all()
+        self._show_stats()
 
         if event is not None:
             self._chan_list.yview(0)
@@ -76,6 +78,11 @@ class AutoWriteChannelsPage(tk.Frame):
         if chan := self._chan_list_model.data[chan_num]:
             clip = gui_model.Clipboard.get()
             clip.put("channel", expimp.export_channel_str(chan))
+
+    def _show_stats(self) -> None:
+        self._parent.set_status(  # type: ignore
+            f"Channels: {len(self._chan_list_model.data)}"
+        )
 
 
 class RWChannelsListModel(gui_model.ChannelsListModel):

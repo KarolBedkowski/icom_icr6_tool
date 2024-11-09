@@ -20,6 +20,7 @@ class ChannelsPage(tk.Frame):
         self, parent: tk.Widget, radio_memory: model.RadioMemory
     ) -> None:
         super().__init__(parent)
+        self._parent = parent
         self._radio_memory = radio_memory
 
         pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
@@ -95,6 +96,8 @@ class ChannelsPage(tk.Frame):
         ]
         self._channels_list.update_all()
 
+        self._show_stats()
+
         if event is not None:
             self._channels_list.yview(0)
             self._channels_list.xview(0)
@@ -133,3 +136,10 @@ class ChannelsPage(tk.Frame):
         chan.bank_pos = 0
         self._radio_memory.set_channel(chan)
         self.__update_chan_list(None)
+
+    def _show_stats(self) -> None:
+        active = sum(
+            (1 for c in self._tb_model.data if c and not c.hide_channel),
+            0,
+        )
+        self._parent.set_status(f"Active channels: {active}")  # type: ignore

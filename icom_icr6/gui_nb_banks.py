@@ -29,6 +29,7 @@ class BanksPage(tk.Frame):
         self, parent: tk.Widget, radio_memory: model.RadioMemory
     ) -> None:
         super().__init__(parent)
+        self._parent = parent
         self.rowconfigure(0, weight=1)
         self.columnconfigure(0, weight=1)
 
@@ -126,7 +127,14 @@ class BanksPage(tk.Frame):
         bl = self._radio_memory.get_bank_links()
         self._bank_link.set_raw(bl[selected_bank])
 
-        self._chan_list_model.set_bank(selected_bank, bank)
+        channels = self._radio_memory.get_bank_channels(selected_bank)
+        self._chan_list_model.data = [
+            self._radio_memory.get_channel(channum)
+            if channum is not None
+            else None
+            for channum in channels.channels
+        ]
+        self._chan_list_model.bank_num = selected_bank
         bcont.update_all()
 
         if event:
@@ -136,6 +144,18 @@ class BanksPage(tk.Frame):
         self._field_bank_name["state"] = "normal"
         self._field_bank_link["state"] = "normal"
         self._btn_update["state"] = "normal"
+        self._show_stats()
+
+    def _show_stats(self) -> None:
+        active = sum(
+            (
+                1
+                for c in self._chan_list_model.data
+                if c and not c.hide_channel
+            ),
+            0,
+        )
+        self._parent.set_status(f"Active channels in bank: {active}")  # type: ignore
 
     def _get_selections(self) -> tuple[int | None, int | None]:
         """selected bank, selected bank pos."""
@@ -170,7 +190,6 @@ class BanksPage(tk.Frame):
 
         bank = self._radio_memory.get_bank(selected_bank)
         bank.name = self._bank_name.get().strip()[:6]
-        self._radio_memory.set_bank(bank)
 
         bl = self._radio_memory.get_bank_links()
         bl[selected_bank] = self._bank_link.get_raw()
@@ -384,16 +403,6 @@ class BankChannelsListModel(gui_model.ChannelsListModel):
     def clear(self) -> None:
         self.bank_num = -1
         self.data.clear()
-
-    def set_bank(self, bank_num: int, _bank: model.Bank) -> None:
-        channels = self._radio_memory.get_bank_channels(bank_num)
-        self.data = [
-            self._radio_memory.get_channel(channum)
-            if channum is not None
-            else None
-            for channum in channels.channels
-        ]
-        self.bank_num = bank_num
 
 
 def validate_bank_name(name: str | None) -> bool:

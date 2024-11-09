@@ -229,6 +229,7 @@ class App(tk.Frame):
             pages[page].set(self._radio_memory)
 
     def __on_nb_page_changed(self, _event: tk.Event) -> None:  # type: ignore
+        self.set_status("")
         selected_tab = self._ntb.tabs().index(self._ntb.select())  # type: ignore
         self.__update_widgets(selected_tab)
 
