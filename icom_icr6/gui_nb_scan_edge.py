@@ -71,10 +71,11 @@ class ScanEdgePage(tk.Frame):
         ):
             return
 
-        se_num = int(sel[0])
-        se = self._radio_memory.get_scan_edge(se_num)
-        se.delete()
-        self._radio_memory.set_scan_edge(se)
+        for se_num in sel:
+            se = self._radio_memory.get_scan_edge(int(se_num))
+            se.delete()
+            self._radio_memory.set_scan_edge(se)
+
         self.__update_scan_edges_list()
         self._se_content.selection_set(sel)
 

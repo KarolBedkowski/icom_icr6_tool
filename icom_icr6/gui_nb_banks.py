@@ -201,8 +201,8 @@ class BanksPage(tk.Frame):
         self._get_selected_channel()
 
     def __on_channel_delete(self, _event: tk.Event) -> None:  # type: ignore
-        chan = self._get_selected_channel()
-        if not chan:
+        sel = self._bank_content.selection()
+        if not sel:
             return
 
         if not messagebox.askyesno(
@@ -212,9 +212,14 @@ class BanksPage(tk.Frame):
         ):
             return
 
-        sel = self._bank_content.selection()
-        chan.clear_bank()
-        self._radio_memory.set_channel(chan)
+        selected_bank: int = int(self._banks_list.curselection()[0])  # type: ignore
+        bank_channels = self._radio_memory.get_bank_channels(selected_bank)
+
+        for sel_pos in sel:
+            if channnum := bank_channels[int(sel_pos)]:
+                chan = self._radio_memory.get_channel(channnum)
+                chan.clear_bank()
+                self._radio_memory.set_channel(chan)
 
         self.__update_chan_list(None)
         self._bank_content.selection_set(sel[0])

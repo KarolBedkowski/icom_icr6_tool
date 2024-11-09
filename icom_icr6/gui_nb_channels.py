@@ -74,10 +74,11 @@ class ChannelsPage(tk.Frame):
         ):
             return
 
-        chan_num = int(sel[0])
-        chan = self._radio_memory.get_channel(chan_num)
-        chan.delete()
-        self._radio_memory.set_channel(chan)
+        for chan_num in sel:
+            chan = self._radio_memory.get_channel(int(chan_num))
+            chan.delete()
+            self._radio_memory.set_channel(chan)
+
         self.__update_chan_list(None)
         self._channels_list.selection_set(sel)
 
