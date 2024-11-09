@@ -92,20 +92,18 @@ class ScanEdgePage(tk.Frame):
             return
 
         ses = (self._radio_memory.get_scan_edge(int(se_num)) for se_num in sel)
-        clip = gui_model.Clipboard.get()
-        clip.put("scan_edge", expimp.export_scan_edges_str(ses))
+        clip = gui_model.Clipboard.instance()
+        clip.put(expimp.export_scan_edges_str(ses))
 
     def __on_scan_edge_paste(self, _event: tk.Event) -> None:  # type: ignore
         sel = self._se_content.selection()
         if not sel:
             return
 
-        clip = gui_model.Clipboard.get()
-        if clip.object_type != "scan_edge":
-            return
+        clip = gui_model.Clipboard.instance()
 
         try:
-            rows = expimp.import_scan_edges_str(ty.cast(str, clip.content))
+            rows = expimp.import_scan_edges_str(ty.cast(str, clip.get()))
         except Exception:
             _LOG.exception("import from clipboard error")
             return

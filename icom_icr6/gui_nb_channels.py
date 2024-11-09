@@ -111,20 +111,18 @@ class ChannelsPage(tk.Frame):
         channels = (
             self._radio_memory.get_channel(int(chan_num)) for chan_num in sel
         )
-        clip = gui_model.Clipboard.get()
-        clip.put("channel", expimp.export_channel_str(channels))
+        clip = gui_model.Clipboard.instance()
+        clip.put(expimp.export_channel_str(channels))
 
     def __on_channel_paste(self, _event: tk.Event) -> None:  # type: ignore
         sel = self._channels_list.selection()
         if not sel:
             return
 
-        clip = gui_model.Clipboard.get()
-        if clip.object_type != "channel":
-            return
+        clip = gui_model.Clipboard.instance()
 
         try:
-            rows = list(expimp.import_channels_str(ty.cast(str, clip.content)))
+            rows = list(expimp.import_channels_str(ty.cast(str, clip.get())))
         except Exception:
             _LOG.exception("import from clipboard error")
             return

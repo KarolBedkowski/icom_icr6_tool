@@ -295,6 +295,8 @@ def start_gui() -> None:
     file = Path(sys.argv[1]) if len(sys.argv) > 1 else None
 
     root = tk.Tk()
+    gui_model.Clipboard.initialize(root)
+
     root.title("ICOM IC-R6 Tool")
     style = ttk.Style()
     style.theme_use("clam")

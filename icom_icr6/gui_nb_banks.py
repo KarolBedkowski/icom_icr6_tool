@@ -238,20 +238,18 @@ class BanksPage(tk.Frame):
             for bank_pos in sel
         )
 
-        clip = gui_model.Clipboard.get()
-        clip.put("channel", expimp.export_channel_str(selected_channels))
+        clip = gui_model.Clipboard.instance()
+        clip.put(expimp.export_channel_str(selected_channels))
 
     def __on_channel_paste(self, _event: tk.Event) -> None:  # type: ignore
         selected_bank, bank_pos = self._get_selections()
         if selected_bank is None or bank_pos is None:
             return
 
-        clip = gui_model.Clipboard.get()
-        if clip.object_type != "channel":
-            return
+        clip = gui_model.Clipboard.instance()
 
         try:
-            rows = expimp.import_channels_str(ty.cast(str, clip.content))
+            rows = expimp.import_channels_str(ty.cast(str, clip.get()))
         except Exception:
             _LOG.exception("import from clipboard error")
             return

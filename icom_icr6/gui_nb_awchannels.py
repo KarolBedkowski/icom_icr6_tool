@@ -80,8 +80,8 @@ class AutoWriteChannelsPage(tk.Frame):
             for chan_num in sel
             if (chan := self._chan_list_model.data[int(chan_num)])
         )
-        clip = gui_model.Clipboard.get()
-        clip.put("channel", expimp.export_channel_str(channels))
+        clip = gui_model.Clipboard.instance()
+        clip.put(expimp.export_channel_str(channels))
 
     def _show_stats(self) -> None:
         self._parent.set_status(  # type: ignore

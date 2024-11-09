@@ -1,4 +1,3 @@
-- ctrl-c/ctrl-v operations via system clipboard
 - export / import data
 - clone in background
 - handle errors

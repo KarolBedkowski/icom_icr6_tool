@@ -572,18 +572,36 @@ class Clipboard:
     _instance: Clipboard | None
 
     def __init__(self) -> None:
-        self.object_type: str = ""
-        self.content: object | None = None
+        self._content: object | None = None
+        self._tk_root: tk.Tk | None = None
 
     @classmethod
-    def get(cls: type[Clipboard]) -> Clipboard:
+    def initialize(cls: type[Clipboard], tk_root: tk.Tk) -> None:
+        cls._instance = Clipboard()
+        cls._instance._tk_root = tk_root  # noqa: SLF001
+
+    @classmethod
+    def instance(cls: type[Clipboard]) -> Clipboard:
         if not hasattr(cls, "_instance"):
             cls._instance = Clipboard()
 
         assert cls._instance
         return cls._instance
 
-    def put(self, object_type: str, content: object | None) -> None:
-        _LOG.debug("Clipboard put: %r, %r", object_type, content)
-        self.object_type = object_type
-        self.content = content
+    def put(self, content: object | None) -> None:
+        _LOG.debug("Clipboard put: %r", content)
+        if self._tk_root and isinstance(content, str):
+            self._tk_root.clipboard_clear()
+            self._tk_root.clipboard_append(content)
+            return
+
+        self._content = content
+
+    def get(self) -> object:
+        if self._tk_root:
+            try:
+                return self._tk_root.clipboard_get()
+            except tk.TclError:
+                pass
+
+        return self._content
