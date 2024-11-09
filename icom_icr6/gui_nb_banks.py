@@ -153,7 +153,6 @@ class BanksPage(tk.Frame):
                 for c in self._chan_list_model.data
                 if c and not c.hide_channel
             ),
-            0,
         )
         self._parent.set_status(f"Active channels in bank: {active}")  # type: ignore
 

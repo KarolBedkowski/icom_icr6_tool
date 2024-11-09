@@ -157,6 +157,5 @@ class ChannelsPage(tk.Frame):
     def _show_stats(self) -> None:
         active = sum(
             (1 for c in self._tb_model.data if c and not c.hide_channel),
-            0,
         )
         self._parent.set_status(f"Active channels: {active}")  # type: ignore

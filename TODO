@@ -1,5 +1,4 @@
 - ctrl-c/ctrl-v operations via system clipboard
-- delete multiple rows
 - export / import data
 - clone in background
 - handle errors
