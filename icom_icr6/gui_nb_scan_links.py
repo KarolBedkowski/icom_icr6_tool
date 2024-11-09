@@ -8,10 +8,49 @@ import logging
 import tkinter as tk
 from tkinter import ttk
 
-from . import consts, model
+from . import consts, gui_model, model
 from .gui_widgets import new_entry
 
 _LOG = logging.getLogger(__name__)
+
+
+class _Row:
+    def __init__(self, parent: tk.Widget, idx: int) -> None:
+        self.idx = idx
+        self.value = tk.IntVar()
+        self.cb = tk.Checkbutton(
+            parent,
+            text=str(idx),
+            variable=self.value,
+            onvalue=1,
+            offvalue=0,
+            state="disabled",
+        )
+        self.labels = []
+        self.cb.grid(row=idx, column=0, sticky=tk.W)
+        for i, sticky in enumerate(
+            [tk.W, tk.E, tk.E, tk.E + tk.W, tk.E + tk.W, tk.E + tk.W], 1
+        ):
+            lvar = tk.StringVar()
+            lab = tk.Label(parent, text="", textvariable=lvar)
+            lab.grid(row=idx, column=i, sticky=sticky, padx=12)
+            self.labels.append((lvar, lab))
+
+    def set_labels(self, *label: str) -> None:
+        for (lvar, _), lab in zip(self.labels, label, strict=True):
+            lvar.set(lab)
+
+    def clear(self) -> None:
+        for lvar, _ in self.labels:
+            lvar.set("")
+
+    def set_checked(self, val: object) -> None:
+        self.value.set(1 if val else 0)
+
+    def set_state(self, state: str) -> None:
+        self.cb["state"] = state
+        for _, lab in self.labels:
+            lab["state"] = state
 
 
 class ScanLinksPage(tk.Frame):
@@ -84,19 +123,15 @@ class ScanLinksPage(tk.Frame):
 
     def _create_scan_edges_list(self, parent: tk.Frame) -> None:
         slf = tk.Frame(parent)
-        self._scan_links_edges = []
+
+        slf.columnconfigure(0, weight=0)
+
+        # list of tuple - vars for checkbox and labels
+        self._scan_links_edges: list[_Row] = []
+
         for idx in range(consts.NUM_SCAN_EDGES):
-            var = tk.IntVar()
-            cb = tk.Checkbutton(
-                slf,
-                text=str(idx),
-                variable=var,
-                onvalue=1,
-                offvalue=0,
-                state="disabled",
-            )
-            cb.grid(row=idx, column=0, sticky=tk.W)
-            self._scan_links_edges.append((var, cb))
+            row = _Row(slf, idx)
+            self._scan_links_edges.append(row)
 
         slf.pack(side=tk.TOP, expand=True, fill=tk.BOTH, ipady=6)
 
@@ -122,17 +157,21 @@ class ScanLinksPage(tk.Frame):
         sl = self._radio_memory.get_scan_link(sel_sl[0])
         self._sl_name.set(sl.name.rstrip())
 
-        for idx, (var, cb) in enumerate(self._scan_links_edges):
+        for idx, row in enumerate(self._scan_links_edges):
             se = self._radio_memory.get_scan_edge(idx)
+            row.set_checked(sl[idx])
+            row.set_state("normal")
             if se.start:
-                sename = se.name or "-"
-                name = f"{idx}: {sename} {se.start} - {se.end} / {se.mode}"
+                row.set_labels(
+                    se.name or "-",
+                    gui_model.format_freq(se.start),
+                    gui_model.format_freq(se.end),
+                    consts.STEPS[se.tuning_step],
+                    consts.MODES[se.mode],
+                    "ATT" if se.attenuator else "",
+                )
             else:
-                name = str(idx)
-
-            cb["text"] = name
-            cb["state"] = "normal"
-            var.set(1 if sl[idx] else 0)
+                row.clear()
 
         self._btn_deselect["state"] = "normal"
         self._btn_update["state"] = "normal"
@@ -146,8 +185,8 @@ class ScanLinksPage(tk.Frame):
 
         sl = self._radio_memory.get_scan_link(sel_sl[0])
         sl.name = self._sl_name.get()
-        for idx, (var, _) in enumerate(self._scan_links_edges):
-            sl[idx] = var.get()
+        for idx, row in enumerate(self._scan_links_edges):
+            sl[idx] = row.value.get()
 
         self._radio_memory.set_scan_link(sl)
         self.__update_scan_links_list()
@@ -158,16 +197,17 @@ class ScanLinksPage(tk.Frame):
             return
 
         val = 1
-        if all(var.get() == 1 for var, _ in self._scan_links_edges):
+        if all(row.value.get() == 1 for row in self._scan_links_edges):
             val = 0
 
-        for var, _ in self._scan_links_edges:
-            var.set(val)
+        for row in self._scan_links_edges:
+            row.set_checked(val)
 
     def __disable_widgets(self) -> None:
-        for var, cb in self._scan_links_edges:
-            cb["state"] = "disabled"
-            var.set(0)
+        for row in self._scan_links_edges:
+            row.clear()
+            row.set_checked(False)
+            row.set_state("disabled")
 
         self._btn_deselect["state"] = "disabled"
         self._btn_update["state"] = "disabled"
