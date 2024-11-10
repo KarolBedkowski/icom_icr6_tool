@@ -454,9 +454,9 @@ def save_icf_file(file: Path, mem: model.RadioMemory) -> None:
     with file.open("wt") as out:
         # header
         out.write("32500001\r\n")
-        out.write("#Comment={mem.file_comment}\r\n")
-        out.write("#MapRev={mem.file_maprev}\r\n")
-        out.write("#EtcData={mem.file_etcdata}\r\n")
+        out.write(f"#Comment={mem.file_comment}\r\n")
+        out.write(f"#MapRev={mem.file_maprev}\r\n")
+        out.write(f"#EtcData={mem.file_etcdata}\r\n")
         # data
         for line in mem.dump():
             out.write(line)
