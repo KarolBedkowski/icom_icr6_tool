@@ -46,8 +46,10 @@ class ScanEdgePage(tk.Frame):
         self.__update_scan_edges_list()
 
     def _create_list(self, frame: tk.Frame) -> None:
-        self._tb_model = ScanEdgeListModel(self._radio_memory)
-        ccframe, self._scanedges_list = build_list_model(frame, self._tb_model)
+        self._se_list_model = ScanEdgeListModel(self._radio_memory)
+        ccframe, self._scanedges_list = build_list_model(
+            frame, self._se_list_model
+        )
         ccframe.pack(expand=True, fill=tk.BOTH, side=tk.TOP, padx=12, pady=12)
 
         self._scanedges_list.bind(
@@ -89,7 +91,7 @@ class ScanEdgePage(tk.Frame):
         self._scanedges_list.selection_set(sel)
 
     def __update_scan_edges_list(self) -> None:
-        self._tb_model.data = [
+        self._se_list_model.data = [
             self._radio_memory.get_scan_edge(idx)
             for idx in range(consts.NUM_SCAN_EDGES)
         ]

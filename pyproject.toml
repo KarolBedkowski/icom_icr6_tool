@@ -97,6 +97,7 @@ lint.ignore = [
   "ANN101",
   'COM812',
   'I001',
+  "EM101",
 ]
 lint.extend-select = [
   "N",

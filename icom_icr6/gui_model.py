@@ -387,7 +387,7 @@ class ChannelsListModel(TableViewModel[model.Channel | None]):
 
             case "canc":
                 return ComboboxPopup(
-                    parent, iid, column, value, list(consts.CANCELLER)
+                    parent, iid, column, value, consts.CANCELLER
                 )
             case "canc_freq":
                 value = value.replace(" ", "")

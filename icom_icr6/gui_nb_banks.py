@@ -37,6 +37,7 @@ class BanksPage(tk.Frame):
         self._bank_link = gui_model.BoolVar()
         self._radio_memory = radio_memory
         self._last_selected_bank = 0
+        self._last_selected_chan: tuple[str, ...] = ()
 
         pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
         banks = self._banks_list = tk.Listbox(pw, selectmode=tk.SINGLE)
@@ -59,17 +60,21 @@ class BanksPage(tk.Frame):
         self._radio_memory = radio_memory
 
         # hide canceller in global models
-        cols = self._bank_content["columns"]
+        cols = self._chan_list["columns"]
         if not radio_memory.is_usa_model():
             cols = [c for c in cols if c not in ("canc", "canc_freq")]
 
-        self._bank_content["displaycolumns"] = cols
+        self._chan_list["displaycolumns"] = cols
+
+        self.__update_banks_list()
 
         if activate:
             self._banks_list.selection_set(self._last_selected_bank)
 
-        self.__update_banks_list()
         self.__update_chan_list()
+
+        if activate:
+            self._chan_list.selection_set(self._last_selected_chan)
 
     def __create_bank_fields(self, frame: tk.Frame) -> None:
         fields = tk.Frame(frame)
@@ -94,17 +99,17 @@ class BanksPage(tk.Frame):
 
     def __create_chan_list(self, frame: tk.Frame) -> None:
         self._chan_list_model = BankChannelsListModel(self._radio_memory)
-        ccframe, self._bank_content = build_list_model(
+        ccframe, self._chan_list = build_list_model(
             frame, self._chan_list_model
         )
         ccframe.pack(side=tk.TOP, expand=True, fill=tk.BOTH, ipady=6)
 
-        self._bank_content.bind(
+        self._chan_list.bind(
             "<<TreeviewSelect>>", self.__on_channel_select, add="+"
         )
-        self._bank_content.bind("<Delete>", self.__on_channel_delete)
-        self._bank_content.bind("<Control-c>", self.__on_channel_copy)
-        self._bank_content.bind("<Control-v>", self.__on_channel_paste)
+        self._chan_list.bind("<Delete>", self.__on_channel_delete)
+        self._chan_list.bind("<Control-c>", self.__on_channel_copy)
+        self._chan_list.bind("<Control-v>", self.__on_channel_paste)
 
     def __update_banks_list(self) -> None:
         banks = self._banks_list
@@ -123,11 +128,11 @@ class BanksPage(tk.Frame):
             self._field_bank_link["state"] = "disabled"
             self._btn_update["state"] = "disabled"
             self._chan_list_model.clear()
-            self._bank_content.update_all()
+            self._chan_list.update_all()
             self._bank_name.set("")
 
     def __update_chan_list(self, event: tk.Event | None = None) -> None:  # type: ignore
-        bcont = self._bank_content
+        bcont = self._chan_list
 
         if sel := self._banks_list.curselection():  # type: ignore
             selected_bank = sel[0]
@@ -176,7 +181,7 @@ class BanksPage(tk.Frame):
     def _get_selections(self) -> tuple[int | None, int | None]:
         """selected bank, selected bank pos."""
         sel_bank = self._banks_list.curselection()  # type: ignore
-        sel_pos = self._bank_content.selection()
+        sel_pos = self._chan_list.selection()
 
         return (
             (sel_bank[0] if sel_bank else None),
@@ -199,9 +204,11 @@ class BanksPage(tk.Frame):
         self.__update_banks_list()
 
     def __on_channel_select(self, _event: tk.Event) -> None:  # type: ignore
-        sel = self._bank_content.selection()
+        sel = self._chan_list.selection()
         if not sel:
             return
+
+        self._last_selected_chan = sel
 
         bank_pos = int(sel[0])
         selected_bank: int = int(self._banks_list.curselection()[0])  # type: ignore
@@ -211,7 +218,7 @@ class BanksPage(tk.Frame):
             _LOG.debug("selected: %r", chan)
 
     def __on_channel_delete(self, _event: tk.Event) -> None:  # type: ignore
-        sel = self._bank_content.selection()
+        sel = self._chan_list.selection()
         if not sel:
             return
 
@@ -232,10 +239,10 @@ class BanksPage(tk.Frame):
                 self._radio_memory.set_channel(chan)
 
         self.__update_chan_list()
-        self._bank_content.selection_set(sel[0])
+        self._chan_list.selection_set(sel[0])
 
     def __on_channel_copy(self, _event: tk.Event) -> None:  # type: ignore
-        sel = self._bank_content.selection()
+        sel = self._chan_list.selection()
         if not sel:
             return
 
@@ -332,8 +339,12 @@ class BankChannelsListModel(gui_model.ChannelsListModel):
         ]
 
         if self._with_canceller:
-            cols.append(tvc("canc", "Canceller", tk.CENTER, 30))
-            cols.append(tvc("canc_freq", "Canceller freq", tk.E, 40))
+            cols.extend(
+                (
+                    tvc("canc", "Canceller", tk.CENTER, 30),
+                    tvc("canc_freq", "Canceller freq", tk.E, 40),
+                )
+            )
 
         return cols
 

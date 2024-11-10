@@ -28,7 +28,9 @@ class SettingsPage(tk.Frame):
         self, radio_memory: model.RadioMemory, *, activate: bool = False
     ) -> None:
         self._radio_memory = radio_memory
-        self.__update()
+
+        if activate:
+            self.__update()
 
     def _create_vars(self) -> None:
         self._var_func_dial_step = gui_model.ListVar(

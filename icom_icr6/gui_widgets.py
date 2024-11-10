@@ -246,7 +246,7 @@ class TableView2(ttk.Treeview, ty.Generic[T]):
                 self.selection_set(sel[0])
 
     @contextmanager
-    def with_sellection(self) -> ty.Iterator[tuple[str, ...]]:
+    def with_selection(self) -> ty.Iterator[tuple[str, ...]]:
         """Keep items selected after context exit."""
         sel = self.selection()
         try:
