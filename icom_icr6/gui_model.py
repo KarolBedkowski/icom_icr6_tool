@@ -311,7 +311,7 @@ class ChannelsListModel(TableViewModel[model.Channel | None]):
 
             case "duplex":
                 return ComboboxPopup(
-                    parent, iid, column, value, consts.DUPLEX_DIRS
+                    parent, iid, column, value, consts.DUPLEX_DIRS[:3]
                 )
 
             case "skip":
@@ -555,7 +555,9 @@ class ChannelsListModel(TableViewModel[model.Channel | None]):
             yes_no(channel.attenuator),
             consts.STEPS[channel.tuning_step],
             consts.DUPLEX_DIRS[channel.duplex],
-            format_freq(channel.offset // 1000) if channel.duplex else "",
+            format_freq(channel.offset // 1000)
+            if channel.duplex in (1, 2)
+            else "",
             consts.SKIPS[channel.skip],
             yes_no(channel.vsc),
             consts.TONE_MODES[channel.tone_mode],
