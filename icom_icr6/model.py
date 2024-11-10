@@ -24,6 +24,12 @@ MutableMemory = abc.MutableSequence[int] | memoryview
 
 @dataclass
 class RadioModel:
+    # Data format - 39B
+    # mode: 4B
+    # rev: 1B
+    # comment: 16B
+    # unknown: 4B
+    # serial 14B
     model: bytes
     rev: int
     comment: str
