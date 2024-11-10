@@ -39,6 +39,14 @@ class ChannelsPage(tk.Frame):
 
     def set(self, radio_memory: model.RadioMemory) -> None:
         self._radio_memory = radio_memory
+
+        # hide canceller in global models
+        cols = self._channels_list["columns"]
+        if not radio_memory.is_usa_model():
+            cols = [c for c in cols if c not in ("canc", "canc_freq")]
+
+        self._channels_list["displaycolumns"] = cols
+
         self.__update_chan_list(None)
 
     def _create_channel_list(self, frame: tk.Frame) -> None:

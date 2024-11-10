@@ -163,14 +163,16 @@ class TableView2(ttk.Treeview, ty.Generic[T]):
         self.model = model
         super().__init__(parent, columns=model.get_cols_id())
 
+        self._create_columns()
+        self._entry_popup: tk.Widget | None = None
+        self.bind("<Double-1>", self._on_double_click)
+        self.bind("<<TreeviewSelect>>", self._on_channel_select)
+
+    def _create_columns(self) -> None:
         self.column("#0", width=0, stretch=tk.NO)
         for col_id, title, anchor, width in self.model.columns:
             self.column(column=col_id, anchor=anchor, width=width)  # type: ignore
             self.heading(col_id, text=title, anchor=tk.CENTER)
-
-        self._entry_popup: tk.Widget | None = None
-        self.bind("<Double-1>", self._on_double_click)
-        self.bind("<<TreeviewSelect>>", self._on_channel_select)
 
     def _on_double_click(self, event: tk.Event) -> None:  # type: ignore
         if self._entry_popup:

@@ -33,6 +33,14 @@ class AutoWriteChannelsPage(tk.Frame):
 
     def set(self, radio_memory: model.RadioMemory) -> None:
         self._radio_memory = radio_memory
+
+        # hide canceller in global models
+        cols = self._chan_list["columns"]
+        if not radio_memory.is_usa_model():
+            cols = [c for c in cols if c not in ("canc", "canc_freq")]
+
+        self._chan_list["displaycolumns"] = cols
+
         self.__update_channels_list(None)
 
     def _create_channel_list(self, frame: tk.Frame) -> None:
@@ -92,7 +100,7 @@ class AutoWriteChannelsPage(tk.Frame):
 class RWChannelsListModel(gui_model.ChannelsListModel):
     def _columns(self) -> ty.Iterable[TableViewColumn]:
         tvc = TableViewColumn
-        cols = [
+        return (
             tvc("num", "Num", tk.E, 30),
             tvc("freq", "Freq", tk.E, 80),
             tvc("mode", "Mode", tk.CENTER, 25),
@@ -106,20 +114,16 @@ class RWChannelsListModel(gui_model.ChannelsListModel):
             tvc("tsql", "TSQL", tk.E, 40),
             tvc("dtsc", "DTSC", tk.E, 30),
             tvc("polarity", "Polarity", tk.CENTER, 35),
-        ]
-
-        if self._with_canceller:
-            cols.append(tvc("canc", "Canceller", tk.CENTER, 30))
-            cols.append(tvc("canc_freq", "Canceller freq", tk.E, 40))
-
-        return cols
+            tvc("canc", "Canceller", tk.CENTER, 30),
+            tvc("canc_freq", "Canceller freq", tk.E, 40),
+        )
 
     def _data2iid(self, chan: model.Channel) -> str:
         return str(chan.number)
 
     def data2row(self, channel: model.Channel | None) -> TableViewModelRow:
         assert channel
-        cols = [
+        return (
             str(channel.number),
             gui_model.format_freq(channel.freq // 1000),
             consts.MODES[channel.mode],
@@ -141,13 +145,9 @@ class RWChannelsListModel(gui_model.ChannelsListModel):
             consts.POLARITY[channel.polarity]
             if channel.tone_mode in (3, 4)
             else "",
-        ]
-
-        if self._with_canceller:
-            cols.append(consts.CANCELLER[channel.canceller])
-            cols.append(gui_model.format_freq(channel.canceller_freq * 10))
-
-        return cols
+            consts.CANCELLER[channel.canceller],
+            gui_model.format_freq(channel.canceller_freq * 10),
+        )
 
     def get_editor(
         self,

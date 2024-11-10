@@ -785,6 +785,9 @@ class RadioMemory:
 
     def update_from(self, rm: RadioMemory) -> None:
         self.mem = rm.mem
+        self.file_comment = rm.file_comment
+        self.file_maprev = rm.file_maprev
+        self.file_etcdata = rm.file_etcdata
         self.validate()
         self.reset()
 
@@ -821,7 +824,7 @@ class RadioMemory:
             err = f"invalid memory footer: {mem_footer}"
             raise ValueError(err)
 
-        _LOG.debug("region: %x", self.mem[0x6B0C])
+        _LOG.debug("region: %r", self.file_etcdata)
 
     def get_channel(self, idx: int) -> Channel:
         if idx < 0 or idx > consts.NUM_CHANNELS - 1:
@@ -981,7 +984,7 @@ class RadioMemory:
         mv[0x6D00 : 0x6D00 + 16] = cmt
 
     def is_usa_model(self) -> bool:
-        return True or self.file_etcdata == "0003"
+        return self.file_etcdata == "0003"
 
 
 def decode_name(inp: abc.Sequence[int]) -> str:

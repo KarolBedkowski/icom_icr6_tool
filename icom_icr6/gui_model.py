@@ -244,7 +244,7 @@ class ChannelsListModel(TableViewModel[model.Channel | None]):
 
     def _columns(self) -> ty.Iterable[TableViewColumn]:
         tvc = TableViewColumn
-        cols = [
+        return (
             tvc("num", "Num", tk.E, 30),
             tvc("freq", "Freq", tk.E, 80),
             tvc("mode", "Mode", tk.CENTER, 25),
@@ -262,12 +262,9 @@ class ChannelsListModel(TableViewModel[model.Channel | None]):
             tvc("polarity", "Polarity", tk.CENTER, 35),
             tvc("bank", "Bank", tk.CENTER, 25),
             tvc("bank_pos", "Bank pos", tk.W, 25),
-        ]
-        if self._with_canceller:
-            cols.append(tvc("canc", "Canceller", tk.CENTER, 30))
-            cols.append(tvc("canc_freq", "Canceller freq", tk.E, 40))
-
-        return cols
+            tvc("canc", "Canceller", tk.CENTER, 30),
+            tvc("canc_freq", "Canceller freq", tk.E, 40),
+        )
 
     def _data2iid(self, chan: model.Channel) -> str:
         return str(chan.number)
@@ -399,7 +396,6 @@ class ChannelsListModel(TableViewModel[model.Channel | None]):
                     iid,
                     column,
                     value,
-                    min_val=consts.CANCCELER_MIN_FREQ,
                     max_val=consts.CANCCELER_MAX_FREQ,
                 )
 
@@ -524,8 +520,9 @@ class ChannelsListModel(TableViewModel[model.Channel | None]):
                 )
 
             case "canc_freq":
-                chan.canceller_freq = (
-                    int(value.replace(" ", "")) // 10 if value else 0
+                chan.canceller_freq = min(
+                    max(int(value.replace(" ", "")) // 10 if value else 0, 30),
+                    300,
                 )
 
             case _:
@@ -549,7 +546,7 @@ class ChannelsListModel(TableViewModel[model.Channel | None]):
         except IndexError:
             bank = bank_pos = ""
 
-        cols = [
+        return (
             str(channel.number),
             format_freq(channel.freq // 1000),
             consts.MODES[channel.mode],
@@ -573,13 +570,9 @@ class ChannelsListModel(TableViewModel[model.Channel | None]):
             else "",
             bank,
             bank_pos,
-        ]
-
-        if self._with_canceller:
-            cols.append(consts.CANCELLER[channel.canceller])
-            cols.append(format_freq(channel.canceller_freq * 10))
-
-        return cols
+            consts.CANCELLER[channel.canceller],
+            format_freq(channel.canceller_freq * 10),
+        )
 
 
 class ListVar(tk.StringVar):

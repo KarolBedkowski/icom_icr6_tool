@@ -54,6 +54,14 @@ class BanksPage(tk.Frame):
 
     def set(self, radio_memory: model.RadioMemory) -> None:
         self._radio_memory = radio_memory
+
+        # hide canceller in global models
+        cols = self._bank_content["columns"]
+        if not radio_memory.is_usa_model():
+            cols = [c for c in cols if c not in ("canc", "canc_freq")]
+
+        self._bank_content["displaycolumns"] = cols
+
         self.__update_banks_list()
 
     def __create_bank_fields(self, frame: tk.Frame) -> None:
@@ -340,7 +348,7 @@ class BankChannelsListModel(gui_model.ChannelsListModel):
                 "!",
             )
 
-        cols = [
+        return (
             str(channel.bank_pos),
             str(channel.number),
             gui_model.format_freq(channel.freq // 1000),
@@ -365,13 +373,9 @@ class BankChannelsListModel(gui_model.ChannelsListModel):
             consts.POLARITY[channel.polarity]
             if channel.tone_mode in (3, 4)
             else "",
-        ]
-
-        if self._with_canceller:
-            cols.append(consts.CANCELLER[channel.canceller])
-            cols.append(gui_model.format_freq(channel.canceller_freq * 10))
-
-        return cols
+            consts.CANCELLER[channel.canceller],
+            gui_model.format_freq(channel.canceller_freq * 10),
+        )
 
     def get_editor(
         self,
