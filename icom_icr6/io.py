@@ -420,6 +420,17 @@ def load_icf_file(file: Path) -> model.RadioMemory:
 
         for line in inp:
             if line.startswith("#"):
+                key, _, val = line.strip()[1:].partition("=")
+                match key:
+                    case "Comment":
+                        mem.file_comment = val
+                    case "MapRev":
+                        mem.file_maprev = val
+                    case "EtcData":
+                        mem.file_etcdata = val
+                    case _:
+                        _LOG.warn("unknown line: %r", line)
+
                 continue
 
             if line := line.strip():
@@ -442,7 +453,10 @@ def save_icf_file(file: Path, mem: model.RadioMemory) -> None:
     """Write RadioMemory to icf file."""
     with file.open("wt") as out:
         # header
-        out.write("32500001\r\n#Comment=\r\n#MapRev=1\r\n#EtcData=001A\r\n")
+        out.write("32500001\r\n")
+        out.write("#Comment={mem.file_comment}\r\n")
+        out.write("#MapRev={mem.file_maprev}\r\n")
+        out.write("#EtcData={mem.file_etcdata}\r\n")
         # data
         for line in mem.dump():
             out.write(line)

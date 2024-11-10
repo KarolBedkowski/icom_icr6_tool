@@ -238,12 +238,13 @@ def name_validator(char: str, value: str) -> bool:
 
 class ChannelsListModel(TableViewModel[model.Channel | None]):
     def __init__(self, radio_memory: model.RadioMemory) -> None:
+        self._with_canceller = radio_memory.is_usa_model()
         super().__init__(self._columns())
         self._radio_memory = radio_memory
 
     def _columns(self) -> ty.Iterable[TableViewColumn]:
         tvc = TableViewColumn
-        return (
+        cols = [
             tvc("num", "Num", tk.E, 30),
             tvc("freq", "Freq", tk.E, 80),
             tvc("mode", "Mode", tk.CENTER, 25),
@@ -261,7 +262,12 @@ class ChannelsListModel(TableViewModel[model.Channel | None]):
             tvc("polarity", "Polarity", tk.CENTER, 35),
             tvc("bank", "Bank", tk.CENTER, 25),
             tvc("bank_pos", "Bank pos", tk.W, 25),
-        )
+        ]
+        if self._with_canceller:
+            cols.append(tvc("canc", "Canceller", tk.CENTER, 30))
+            cols.append(tvc("canc_freq", "Canceller freq", tk.E, 40))
+
+        return cols
 
     def _data2iid(self, chan: model.Channel) -> str:
         return str(chan.number)
@@ -382,6 +388,21 @@ class ChannelsListModel(TableViewModel[model.Channel | None]):
                     max_val=consts.MAX_FREQUENCY // 1000,
                 )
 
+            case "canc":
+                return ComboboxPopup(
+                    parent, iid, column, value, list(consts.CANCELLER)
+                )
+            case "canc_freq":
+                value = value.replace(" ", "")
+                return NumEntryPopup(
+                    parent,
+                    iid,
+                    column,
+                    value,
+                    min_val=consts.CANCCELER_MIN_FREQ,
+                    max_val=consts.CANCCELER_MAX_FREQ,
+                )
+
         return None
 
     def update_cell(
@@ -497,6 +518,16 @@ class ChannelsListModel(TableViewModel[model.Channel | None]):
 
                 chan.bank_pos = bank_pos
 
+            case "canc":
+                chan.canceller = get_index_or_default(
+                    consts.CANCELLER, value, 0
+                )
+
+            case "canc_freq":
+                chan.canceller_freq = (
+                    int(value.replace(" ", "")) // 10 if value else 0
+                )
+
             case _:
                 return UpdateCellResult.NOOP, None
 
@@ -518,7 +549,7 @@ class ChannelsListModel(TableViewModel[model.Channel | None]):
         except IndexError:
             bank = bank_pos = ""
 
-        return (
+        cols = [
             str(channel.number),
             format_freq(channel.freq // 1000),
             consts.MODES[channel.mode],
@@ -542,7 +573,13 @@ class ChannelsListModel(TableViewModel[model.Channel | None]):
             else "",
             bank,
             bank_pos,
-        )
+        ]
+
+        if self._with_canceller:
+            cols.append(consts.CANCELLER[channel.canceller])
+            cols.append(format_freq(channel.canceller_freq * 10))
+
+        return cols
 
 
 class ListVar(tk.StringVar):

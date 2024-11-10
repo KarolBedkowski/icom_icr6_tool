@@ -92,7 +92,7 @@ class AutoWriteChannelsPage(tk.Frame):
 class RWChannelsListModel(gui_model.ChannelsListModel):
     def _columns(self) -> ty.Iterable[TableViewColumn]:
         tvc = TableViewColumn
-        return (
+        cols = [
             tvc("num", "Num", tk.E, 30),
             tvc("freq", "Freq", tk.E, 80),
             tvc("mode", "Mode", tk.CENTER, 25),
@@ -106,14 +106,20 @@ class RWChannelsListModel(gui_model.ChannelsListModel):
             tvc("tsql", "TSQL", tk.E, 40),
             tvc("dtsc", "DTSC", tk.E, 30),
             tvc("polarity", "Polarity", tk.CENTER, 35),
-        )
+        ]
+
+        if self._with_canceller:
+            cols.append(tvc("canc", "Canceller", tk.CENTER, 30))
+            cols.append(tvc("canc_freq", "Canceller freq", tk.E, 40))
+
+        return cols
 
     def _data2iid(self, chan: model.Channel) -> str:
         return str(chan.number)
 
     def data2row(self, channel: model.Channel | None) -> TableViewModelRow:
         assert channel
-        return (
+        cols = [
             str(channel.number),
             gui_model.format_freq(channel.freq // 1000),
             consts.MODES[channel.mode],
@@ -135,7 +141,13 @@ class RWChannelsListModel(gui_model.ChannelsListModel):
             consts.POLARITY[channel.polarity]
             if channel.tone_mode in (3, 4)
             else "",
-        )
+        ]
+
+        if self._with_canceller:
+            cols.append(consts.CANCELLER[channel.canceller])
+            cols.append(gui_model.format_freq(channel.canceller_freq * 10))
+
+        return cols
 
     def get_editor(
         self,

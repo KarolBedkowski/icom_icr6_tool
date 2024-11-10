@@ -774,6 +774,11 @@ class BankLinks:
 class RadioMemory:
     def __init__(self) -> None:
         self.mem = bytearray(consts.MEM_SIZE)
+        self.file_comment = ""
+        self.file_maprev = "1"
+        # 001A = EU, 0003 = USA, 0002A - ?
+        # for USA - canceller is available
+        self.file_etcdata = "001A"
 
     def reset(self) -> None:
         pass
@@ -815,6 +820,8 @@ class RadioMemory:
         if mem_footer != consts.MEM_FOOTER:
             err = f"invalid memory footer: {mem_footer}"
             raise ValueError(err)
+
+        _LOG.debug("region: %x", self.mem[0x6B0C])
 
     def get_channel(self, idx: int) -> Channel:
         if idx < 0 or idx > consts.NUM_CHANNELS - 1:
@@ -972,6 +979,9 @@ class RadioMemory:
         cmt = fix_comment(comment).ljust(16).encode()
         mv = memoryview(self.mem)
         mv[0x6D00 : 0x6D00 + 16] = cmt
+
+    def is_usa_model(self) -> bool:
+        return True or self.file_etcdata == "0003"
 
 
 def decode_name(inp: abc.Sequence[int]) -> str:

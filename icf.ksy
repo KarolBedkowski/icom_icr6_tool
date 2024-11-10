@@ -44,9 +44,17 @@ seq:
     repeat: expr
     repeat-expr: 200
 
+  - id: unknown2bpad
+    size: 20
+    doc: 8x 0xff (pad)?; unknown
+
+  - id: device_region
+    type: u1
+    doc: device region? 0x20 EU, 0x30 USA?
+
   - id: unknown2b
-    size: 216
-    doc: 8x 0xff (pad) ?; device state?
+    size: 195
+    doc: device state?
 
   - id: settings
     type: settings
@@ -237,6 +245,7 @@ types:
 
       - id: canceller_freq
         type: b9
+        doc: range 30-300 -> 300Hz-3kHz; EU 228=2280Hz
       - id: unknown4
         type: b4
         doc: always 0
