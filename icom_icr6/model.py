@@ -255,7 +255,7 @@ class Channel:
             "unknowns": [
                 data[4] & 0b11000000,
                 data[4] & 0b00001000,  # TODO: flag "is channel valid"?
-                data[7] & 0b11111110,
+                data[7] & 0b11000000,
                 data[10] & 0b01111000,
             ],
             "raw": binascii.hexlify(bytes(data)),
@@ -318,11 +318,16 @@ class Channel:
         )
         # duplex
         data_set(data, 4, 0b00110000, self.duplex << 4)
+        # must be set to zero?
+        data_set(data, 4, 0b00001000, 0)
         # tone_mode
         data_set(data, 4, 0b00000111, self.tone_mode)
         # offset
         data[5] = offset_l
         data[6] = offset_h
+
+        # must be set to zero?
+        data_set(data, 7, 0b11000000, 0)
         # tsql_freq
         data_set(data, 7, 0b00111111, self.tsql_freq)
         # polarity, dtsc

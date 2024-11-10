@@ -224,7 +224,7 @@ types:
         enum: duplex
       - id: unknown3
         type: b1
-        doc: 1 for invalid channels?
+        doc: 1 for invalid channels?  must be - when enabled channel ane tone_mode
       - id: tone_mode
         type: b3
         enum: tone_mode
@@ -234,6 +234,7 @@ types:
 
       - id: unknown2
         type: b2
+        doc: 1 for invalid channels?  must be 0 when enabled channel?
       - id: tsql_freq
         type: b6
 

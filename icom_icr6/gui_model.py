@@ -319,7 +319,7 @@ class ChannelsListModel(TableViewModel[model.Channel | None]):
 
             case "tone":
                 return ComboboxPopup(
-                    parent, iid, column, value, consts.TONE_MODES
+                    parent, iid, column, value, consts.TONE_MODES[:5]
                 )
 
             case "tsql":
