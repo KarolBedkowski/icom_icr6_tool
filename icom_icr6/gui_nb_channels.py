@@ -22,14 +22,13 @@ class ChannelsPage(tk.Frame):
         super().__init__(parent)
         self._parent = parent
         self._radio_memory = radio_memory
+        self._last_selected_groupg = 0
 
         pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
-        self._chan_group_list = tk.Listbox(pw, selectmode=tk.SINGLE)
-        self._chan_group_list.insert(tk.END, *gui_model.CHANNEL_RANGES)
-        self._chan_group_list.bind(
-            "<<ListboxSelect>>", self.__update_chan_list
-        )
-        pw.add(self._chan_group_list, weight=0)
+        self._groups_list = tk.Listbox(pw, selectmode=tk.SINGLE)
+        self._groups_list.insert(tk.END, *gui_model.CHANNEL_RANGES)
+        self._groups_list.bind("<<ListboxSelect>>", self.__update_chan_list)
+        pw.add(self._groups_list, weight=0)
 
         frame = tk.Frame(pw)
         self._create_channel_list(frame)
@@ -37,7 +36,9 @@ class ChannelsPage(tk.Frame):
 
         pw.pack(expand=True, fill=tk.BOTH, side=tk.TOP, padx=12, pady=12)
 
-    def set(self, radio_memory: model.RadioMemory) -> None:
+    def set(
+        self, radio_memory: model.RadioMemory, *, activate: bool = False
+    ) -> None:
         self._radio_memory = radio_memory
 
         # hide canceller in global models
@@ -47,7 +48,10 @@ class ChannelsPage(tk.Frame):
 
         self._channels_list["displaycolumns"] = cols
 
-        self.__update_chan_list(None)
+        if activate:
+            self._groups_list.selection_set(self._last_selected_groupg)
+
+        self.__update_chan_list()
 
     def _create_channel_list(self, frame: tk.Frame) -> None:
         self._tb_model = gui_model.ChannelsListModel(self._radio_memory)
@@ -62,41 +66,39 @@ class ChannelsPage(tk.Frame):
         self._channels_list.bind("<Control-v>", self.__on_channel_paste)
 
     def __on_channel_select(self, _event: tk.Event) -> None:  # type: ignore
-        sel = self._channels_list.selection()
-        if not sel:
-            return
-
-        chan_num = int(sel[0])
-        chan = self._radio_memory.get_channel(chan_num)
-        _LOG.debug("chan: %r", chan)
+        for sel in self._channels_list.selection():
+            chan_num = int(sel)
+            chan = self._radio_memory.get_channel(chan_num)
+            _LOG.debug("chan: %r", chan)
 
     def __on_channel_delete(self, _event: tk.Event) -> None:  # type: ignore
-        sel = self._channels_list.selection()
-        if not sel:
-            return
+        with self._channels_list.with_sellection() as sel:
+            if not sel:
+                return
 
-        if not messagebox.askyesno(
-            "Delete channel",
-            "Delete channel configuration?",
-            icon=messagebox.WARNING,
-        ):
-            return
+            if not messagebox.askyesno(
+                "Delete channel",
+                "Delete channel configuration?",
+                icon=messagebox.WARNING,
+            ):
+                return
 
-        for chan_num in sel:
-            chan = self._radio_memory.get_channel(int(chan_num))
-            chan.delete()
-            self._radio_memory.set_channel(chan)
+            for chan_num in sel:
+                chan = self._radio_memory.get_channel(int(chan_num))
+                chan.delete()
+                self._radio_memory.set_channel(chan)
 
-        self.__update_chan_list(None)
-        self._channels_list.selection_set(sel)
+            self.__update_chan_list()
 
-    def __update_chan_list(self, event: tk.Event | None) -> None:  # type: ignore
-        if sel := self._chan_group_list.curselection():  # type: ignore
+    def __update_chan_list(self, event: tk.Event | None = None) -> None:  # type: ignore
+        if sel := self._groups_list.curselection():  # type: ignore
             selected_range = sel[0]
         else:
-            self._tb_model.data = []
+            self._tb_model.data.clear()
             self._channels_list.update_all()
             return
+
+        self._last_selected_groupg = sel[0]
 
         range_start = selected_range * 100
         self._tb_model.data = [

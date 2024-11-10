@@ -10,7 +10,7 @@ import abc
 import logging
 import tkinter as tk
 import typing as ty
-from contextlib import suppress
+from contextlib import contextmanager, suppress
 from enum import IntEnum
 from tkinter import ttk
 
@@ -244,6 +244,15 @@ class TableView2(ttk.Treeview, ty.Generic[T]):
         if sel:
             with suppress(tk.TclError):
                 self.selection_set(sel[0])
+
+    @contextmanager
+    def with_sellection(self) -> ty.Iterator[tuple[str, ...]]:
+        """Keep items selected after context exit."""
+        sel = self.selection()
+        try:
+            yield sel
+        finally:
+            self.selection_set(sel)
 
 
 class ComboboxPopup(ttk.Combobox):

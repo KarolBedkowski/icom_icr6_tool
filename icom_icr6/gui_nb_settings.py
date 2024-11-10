@@ -24,7 +24,9 @@ class SettingsPage(tk.Frame):
         self._create_vars()
         self._create_fields()
 
-    def set(self, radio_memory: model.RadioMemory) -> None:
+    def set(
+        self, radio_memory: model.RadioMemory, *, activate: bool = False
+    ) -> None:
         self._radio_memory = radio_memory
         self.__update()
 

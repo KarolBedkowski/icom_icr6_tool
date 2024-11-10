@@ -62,6 +62,7 @@ class ScanLinksPage(tk.Frame):
 
         self._radio_memory = radio_memory
         self._sl_name = tk.StringVar()
+        self._last_selected_sl = 0
 
         pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
         self._scan_links_list = tk.Listbox(pw, selectmode=tk.SINGLE)
@@ -80,8 +81,14 @@ class ScanLinksPage(tk.Frame):
 
         pw.pack(expand=True, fill=tk.BOTH, side=tk.TOP, padx=12, pady=12)
 
-    def set(self, radio_memory: model.RadioMemory) -> None:
+    def set(
+        self, radio_memory: model.RadioMemory, *, activate: bool = False
+    ) -> None:
         self._radio_memory = radio_memory
+
+        if activate:
+            self._scan_links_list.selection_set(self._last_selected_sl)
+
         self.__update_scan_links_list()
         self.__on_select_scan_link()
 
@@ -153,6 +160,8 @@ class ScanLinksPage(tk.Frame):
         if not sel_sl:
             self.__disable_widgets()
             return
+
+        self._last_selected_sl = sel_sl
 
         sl = self._radio_memory.get_scan_link(sel_sl[0])
         self._sl_name.set(sl.name.rstrip())

@@ -36,6 +36,7 @@ class BanksPage(tk.Frame):
         self._bank_name = tk.StringVar()
         self._bank_link = gui_model.BoolVar()
         self._radio_memory = radio_memory
+        self._last_selected_bank = 0
 
         pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
         banks = self._banks_list = tk.Listbox(pw, selectmode=tk.SINGLE)
@@ -52,7 +53,9 @@ class BanksPage(tk.Frame):
 
         self.__update_banks_list()
 
-    def set(self, radio_memory: model.RadioMemory) -> None:
+    def set(
+        self, radio_memory: model.RadioMemory, *, activate: bool = False
+    ) -> None:
         self._radio_memory = radio_memory
 
         # hide canceller in global models
@@ -62,7 +65,11 @@ class BanksPage(tk.Frame):
 
         self._bank_content["displaycolumns"] = cols
 
+        if activate:
+            self._banks_list.selection_set(self._last_selected_bank)
+
         self.__update_banks_list()
+        self.__update_chan_list()
 
     def __create_bank_fields(self, frame: tk.Frame) -> None:
         fields = tk.Frame(frame)
@@ -119,7 +126,7 @@ class BanksPage(tk.Frame):
             self._bank_content.update_all()
             self._bank_name.set("")
 
-    def __update_chan_list(self, event: tk.Event | None) -> None:  # type: ignore
+    def __update_chan_list(self, event: tk.Event | None = None) -> None:  # type: ignore
         bcont = self._bank_content
 
         if sel := self._banks_list.curselection():  # type: ignore
@@ -128,6 +135,8 @@ class BanksPage(tk.Frame):
             self._chan_list_model.data.clear()
             bcont.update_all()
             return
+
+        self._last_selected_bank = selected_bank
 
         bank = self._radio_memory.get_bank(selected_bank)
         self._bank_name.set(bank.name.rstrip())
@@ -174,21 +183,6 @@ class BanksPage(tk.Frame):
             (int(sel_pos[0]) if sel_pos else None),
         )
 
-    def _get_selected_channel(self) -> model.Channel | None:
-        sel = self._bank_content.selection()
-        if not sel:
-            return None
-
-        bank_pos = int(sel[0])
-        selected_bank: int = int(self._banks_list.curselection()[0])  # type: ignore
-        channels = self._radio_memory.get_bank_channels(selected_bank)
-        if channum := channels[bank_pos]:
-            chan = self._radio_memory.get_channel(channum)
-            _LOG.debug("selected: %r", chan)
-            return chan
-
-        return None
-
     def __on_bank_update(self) -> None:
         if sel := self._banks_list.curselection():  # type: ignore
             selected_bank = sel[0]
@@ -205,7 +199,16 @@ class BanksPage(tk.Frame):
         self.__update_banks_list()
 
     def __on_channel_select(self, _event: tk.Event) -> None:  # type: ignore
-        self._get_selected_channel()
+        sel = self._bank_content.selection()
+        if not sel:
+            return
+
+        bank_pos = int(sel[0])
+        selected_bank: int = int(self._banks_list.curselection()[0])  # type: ignore
+        channels = self._radio_memory.get_bank_channels(selected_bank)
+        if channum := channels[bank_pos]:
+            chan = self._radio_memory.get_channel(channum)
+            _LOG.debug("selected: %r", chan)
 
     def __on_channel_delete(self, _event: tk.Event) -> None:  # type: ignore
         sel = self._bank_content.selection()
@@ -228,7 +231,7 @@ class BanksPage(tk.Frame):
                 chan.clear_bank()
                 self._radio_memory.set_channel(chan)
 
-        self.__update_chan_list(None)
+        self.__update_chan_list()
         self._bank_content.selection_set(sel[0])
 
     def __on_channel_copy(self, _event: tk.Event) -> None:  # type: ignore
@@ -299,7 +302,7 @@ class BanksPage(tk.Frame):
 
             self._radio_memory.set_channel(chan)
 
-        self.__update_chan_list(None)
+        self.__update_chan_list()
 
 
 class BankChannelsListModel(gui_model.ChannelsListModel):

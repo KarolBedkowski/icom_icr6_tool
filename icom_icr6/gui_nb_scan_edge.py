@@ -31,36 +31,45 @@ class ScanEdgePage(tk.Frame):
     ) -> None:
         super().__init__(parent)
         self._radio_memory = radio_memory
+        self._last_selected_se = "0"
 
         self._create_list(self)
 
-    def set(self, radio_memory: model.RadioMemory) -> None:
+    def set(
+        self, radio_memory: model.RadioMemory, *, activate: bool = False
+    ) -> None:
         self._radio_memory = radio_memory
+
+        if activate:
+            self._scanedges_list.selection_set(self._last_selected_se)
+
         self.__update_scan_edges_list()
 
     def _create_list(self, frame: tk.Frame) -> None:
         self._tb_model = ScanEdgeListModel(self._radio_memory)
-        ccframe, self._se_content = build_list_model(frame, self._tb_model)
+        ccframe, self._scanedges_list = build_list_model(frame, self._tb_model)
         ccframe.pack(expand=True, fill=tk.BOTH, side=tk.TOP, padx=12, pady=12)
 
-        self._se_content.bind(
+        self._scanedges_list.bind(
             "<<TreeviewSelect>>", self.__on_channel_select, add="+"
         )
-        self._se_content.bind("<Delete>", self.__on_channel_delete)
-        self._se_content.bind("<Control-c>", self.__on_scan_edge_copy)
-        self._se_content.bind("<Control-v>", self.__on_scan_edge_paste)
+        self._scanedges_list.bind("<Delete>", self.__on_channel_delete)
+        self._scanedges_list.bind("<Control-c>", self.__on_scan_edge_copy)
+        self._scanedges_list.bind("<Control-v>", self.__on_scan_edge_paste)
 
     def __on_channel_select(self, _event: tk.Event) -> None:  # type: ignore
-        sel = self._se_content.selection()
+        sel = self._scanedges_list.selection()
         if not sel:
             return
+
+        self._last_selected_se = sel[0]
 
         se_num = int(sel[0])
         se = self._radio_memory.get_scan_edge(se_num)
         _LOG.debug("scan_edge: %r", se)
 
     def __on_channel_delete(self, _event: tk.Event) -> None:  # type: ignore
-        sel = self._se_content.selection()
+        sel = self._scanedges_list.selection()
         if not sel:
             return
 
@@ -77,17 +86,17 @@ class ScanEdgePage(tk.Frame):
             self._radio_memory.set_scan_edge(se)
 
         self.__update_scan_edges_list()
-        self._se_content.selection_set(sel)
+        self._scanedges_list.selection_set(sel)
 
     def __update_scan_edges_list(self) -> None:
         self._tb_model.data = [
             self._radio_memory.get_scan_edge(idx)
             for idx in range(consts.NUM_SCAN_EDGES)
         ]
-        self._se_content.update_all()
+        self._scanedges_list.update_all()
 
     def __on_scan_edge_copy(self, _event: tk.Event) -> None:  # type: ignore
-        sel = self._se_content.selection()
+        sel = self._scanedges_list.selection()
         if not sel:
             return
 
@@ -96,7 +105,7 @@ class ScanEdgePage(tk.Frame):
         clip.put(expimp.export_scan_edges_str(ses))
 
     def __on_scan_edge_paste(self, _event: tk.Event) -> None:  # type: ignore
-        sel = self._se_content.selection()
+        sel = self._scanedges_list.selection()
         if not sel:
             return
 

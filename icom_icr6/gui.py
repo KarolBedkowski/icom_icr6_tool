@@ -227,7 +227,7 @@ class App(tk.Frame):
                 p.set(self._radio_memory)
 
         else:
-            pages[page].set(self._radio_memory)
+            pages[page].set(self._radio_memory, activate=True)
 
     def __on_nb_page_changed(self, _event: tk.Event) -> None:  # type: ignore
         self.set_status("")

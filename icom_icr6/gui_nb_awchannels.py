@@ -31,7 +31,9 @@ class AutoWriteChannelsPage(tk.Frame):
 
         self._create_channel_list(self)
 
-    def set(self, radio_memory: model.RadioMemory) -> None:
+    def set(
+        self, radio_memory: model.RadioMemory, *, activate: bool = False
+    ) -> None:
         self._radio_memory = radio_memory
 
         # hide canceller in global models
