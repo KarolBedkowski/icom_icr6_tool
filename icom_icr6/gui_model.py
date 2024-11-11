@@ -295,6 +295,11 @@ class ChannelsListModel(TableViewModel[model.Channel | None]):
             value,
             chan,
         )
+
+        # freq must be set to change other columns
+        if coldef.colid != "freq" and (chan.freq == 0 or chan.hide_channel):
+            return None
+
         match coldef.colid:
             case "num":  # num
                 return None

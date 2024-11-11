@@ -173,18 +173,25 @@ class ScanEdgeListModel(TableViewModel[model.ScanEdge]):
             return None
 
         iid = self._data2iid(data_row)
-        chan = self.data[row]
+        se = self.data[row]
         _LOG.debug(
-            "get_editor: row=%d[%r], col=%d[%s], value=%r, chan=%r",
+            "get_editor: row=%d[%r], col=%d[%s], value=%r, se=%r",
             row,
             iid,
             column,
             coldef.colid,
             value,
-            chan,
+            se,
         )
 
         res: tk.Widget | None = None
+
+        if (
+            coldef.colid not in ("start", "end")
+            and not se.start
+            and not se.end
+        ):
+            return None
 
         match coldef.colid:
             case "num":  # num
