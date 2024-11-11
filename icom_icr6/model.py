@@ -114,7 +114,7 @@ class ValidateError(ValueError):
         self.value = value
 
     def __str__(self) -> str:
-        return "invalid value in {self.field}: {self.value!r}"
+        return f"invalid value in {self.field}: {self.value!r}"
 
 
 @dataclass
@@ -259,6 +259,7 @@ class Channel:
                 data[10] & 0b01111000,
             ],
             "raw": binascii.hexlify(bytes(data)),
+            "raw_flags": binascii.hexlify(bytes(cflags)) if cflags else None,
             "freq": freq,
             "offset": offset,
             "flags": (data[2] & 0b11110000) >> 4,
@@ -272,6 +273,13 @@ class Channel:
         else:
             hide_channel = skip = bank = bank_pos = 0
 
+        duplex = d if (d := (data[4] & 0b00110000) >> 4) <= 2 else 0
+        tone_mode = t if (t := data[4] & 0b00000111) <= 4 else 0
+        tsql_freq = (
+            ts if (ts := data[7] & 0b00111111) < len(consts.CTCSS_TONES) else 0
+        )
+        dtsc = d if (d := data[8] & 0b01111111) < len(consts.DTCS_CODES) else 0
+
         return Channel(
             number=idx,
             freq=freq_real,
@@ -280,12 +288,12 @@ class Channel:
             attenuator=bool(data[3] & 0b01000000),
             mode=(data[3] & 0b00110000) >> 4,
             tuning_step=data[3] & 0b00001111,
-            duplex=(data[4] & 0b00110000) >> 4,
-            tone_mode=data[4] & 0b00000111,
+            duplex=duplex,
+            tone_mode=tone_mode,
             offset=offset_real,
-            tsql_freq=data[7] & 0b00111111,
+            tsql_freq=tsql_freq,
             polarity=(data[8] & 0b10000000) >> 7,
-            dtsc=(data[8] & 0b01111111),
+            dtsc=dtsc,
             canceller_freq=(data[9] << 1) | ((data[10] & 0b10000000) >> 7),
             vsc=bool(data[10] & 0b00000100),
             canceller=data[10] & 0b00000011,
@@ -298,6 +306,8 @@ class Channel:
         )
 
     def to_data(self, data: MutableMemory, cflags: MutableMemory) -> None:
+        self.offset = min(self.offset, consts.MAX_OFFSET)
+
         enc_freq = encode_freq(self.freq, self.offset)
         freq0, freq1, freq2 = enc_freq.freq_bytes()
         offset_l, offset_h = enc_freq.offset_bytes()
@@ -317,7 +327,8 @@ class Channel:
             | (self.tuning_step & 0b1111)
         )
         # duplex
-        data_set(data, 4, 0b00110000, self.duplex << 4)
+        duplex = self.duplex if self.duplex <= 2 else 0
+        data_set(data, 4, 0b00110000, duplex << 4)
         # must be set to zero?
         data_set(data, 4, 0b00001000, 0)
         # tone_mode
@@ -329,7 +340,7 @@ class Channel:
         # must be set to zero?
         data_set(data, 7, 0b11000000, 0)
         # tsql_freq
-        data_set(data, 7, 0b00111111, self.tsql_freq)
+        data_set(data, 7, 0b00111111, min(self.tsql_freq, 49))
         # polarity, dtsc
         data[8] = bool2bit(self.polarity, 0b10000000) | (
             self.dtsc & 0b01111111
@@ -362,15 +373,14 @@ class Channel:
         _is_valid_index(consts.SKIPS, self.skip, "skip")
 
         _is_valid_index(consts.DUPLEX_DIRS, self.duplex, "duplex")
-        if self.duplex in (1, 2) and not validate_offset(self.offset):
+        if not validate_offset(self.offset):
             raise ValidateError("offset", self.offset)
 
         _is_valid_index(consts.TONE_MODES, self.tone_mode, "tone mode")
-        if self.tone_mode in (1, 2):  # TSQL
-            _is_valid_index(consts.CTCSS_TONES, self.tsql_freq, "tsql freq")
-        elif self.tone_mode in (3, 4):
-            _is_valid_index(consts.DTCS_CODES, self.dtsc, "dtsc")
-            _is_valid_index(consts.POLARITY, self.polarity, "polarity")
+        # TSQL
+        _is_valid_index(consts.CTCSS_TONES, self.tsql_freq, "tsql freq")
+        _is_valid_index(consts.DTCS_CODES, self.dtsc, "dtsc")
+        _is_valid_index(consts.POLARITY, self.polarity, "polarity")
 
         if self.bank < 0 or (
             self.bank != consts.BANK_NOT_SET and self.bank >= consts.NUM_BANKS

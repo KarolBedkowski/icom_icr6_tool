@@ -228,6 +228,7 @@ types:
       - id: tone_mode
         type: b3
         enum: tone_mode
+        doc: only in fm mode
 
       - id: offset
         type: u2le
@@ -499,5 +500,5 @@ enums:
     4: dtcs_r
 
   polarity:
-    0: reverse
-    1: normal
+    0: normal
+    1: reverse

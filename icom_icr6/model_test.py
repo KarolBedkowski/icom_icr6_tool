@@ -3,7 +3,7 @@
 # Distributed under terms of the GPLv3 license.
 # pylint: disable=protected-access,unspecified-encoding,consider-using-with
 # mypy: allow-untyped-defs, allow-untyped-calls
-# ruff: noqa: SLF001
+# ruff: noqa: SLF001,PLR2004
 
 """ """
 
@@ -11,7 +11,7 @@ import binascii
 
 import pytest
 
-from . import model
+from . import consts, model
 
 
 @pytest.mark.parametrize(
@@ -35,8 +35,8 @@ def test_encode_freq(freq, offset, exp_freq, exp_flags):
 @pytest.mark.parametrize(
     ("inp", "encoded"),
     [
-        ("TE    ", b"\x0d\x25\x00\x00\x00"),
-        ("FSDFS ", b"\x09\xb3\x92\x6c\xc0"),
+        ("TE", b"\x0d\x25\x00\x00\x00"),
+        ("FSDFS", b"\x09\xb3\x92\x6c\xc0"),
         ("UZBEKI", b"\x0d\x7a\x8a\x5a\xe9"),
         ("NETH-3", b"\x0b\xa5\xd2\x83\x53"),
         ("CAN/GE", b"\x08\xe1\xb8\xf9\xe5"),
@@ -78,6 +78,94 @@ def test_encode_decode_channel(inp):
 
     assert data == new_data
     assert cflags == new_cflags
+
+
+class TestDecodeChannel:
+    def test_decode1(self):
+        data = bytearray(
+            binascii.unhexlify(b"E9030020000000080072000BA5C21B00")
+        )
+        cflags = bytearray(b"\x01\x00")
+
+        chan = model.Channel.from_data(100, data, cflags)
+        assert chan.freq == 5005000
+        assert chan.freq_flags == 0
+        assert chan.name == "NEPAL"
+        assert consts.MODES[chan.mode] == "AM"
+        assert not chan.af_filter
+        assert not chan.attenuator
+        assert consts.STEPS[chan.tuning_step] == "5"
+        assert consts.DUPLEX_DIRS[chan.duplex] == ""
+        assert chan.offset == 0
+        assert consts.TONE_MODES[chan.tone_mode] == ""
+        assert consts.CTCSS_TONES[chan.tsql_freq] == "88,5"
+        assert consts.POLARITY[chan.polarity] == "Normal"
+        assert consts.DTCS_CODES[chan.dtsc] == "023"
+        assert not chan.vsc
+        assert consts.CANCELLER[chan.canceller] == "Off"
+        assert chan.canceller_freq == 228
+        assert not chan.hide_channel
+        assert consts.SKIPS[chan.skip] == ""
+        assert chan.bank == 1
+        assert chan.bank_pos == 0
+
+    def test_decode2(self):
+        data = bytearray(
+            binascii.unhexlify(b"0a8b0205146009028472000935c0d000")
+        )
+        cflags = bytearray(b"\x01\x00")
+
+        chan = model.Channel.from_data(25, data, cflags)
+        assert chan.number == 25
+        assert chan.freq == 833_330_000
+        assert chan.freq_flags == 0
+        assert chan.name == "DUP-"
+        assert consts.MODES[chan.mode] == "FM"
+        assert not chan.af_filter
+        assert not chan.attenuator
+        assert consts.STEPS[chan.tuning_step] == "12.5"
+        assert consts.DUPLEX_DIRS[chan.duplex] == "-"
+        assert chan.offset == 12_000_000
+        assert consts.TONE_MODES[chan.tone_mode] == "DTCS-R"
+        assert consts.CTCSS_TONES[chan.tsql_freq] == "71,9"
+        assert consts.POLARITY[chan.polarity] == "Reverse"
+        assert consts.DTCS_CODES[chan.dtsc] == "032"
+        assert not chan.vsc
+        assert consts.CANCELLER[chan.canceller] == "Off"
+        assert chan.canceller_freq == 228
+        assert not chan.hide_channel
+        assert consts.SKIPS[chan.skip] == ""
+        assert chan.bank == 1
+        assert chan.bank_pos == 0
+
+    def test_decode3(self):
+        data = bytearray(
+            binascii.unhexlify(b"282300c82420032cba72040d25cf4452")
+        )
+        cflags = bytearray(binascii.unhexlify(b"732b"))
+
+        chan = model.Channel.from_data(99, data, cflags)
+        assert chan.number == 99
+        assert chan.freq == 45_000_000
+        assert chan.freq_flags == 0
+        assert chan.name == "TEST12"
+        assert consts.MODES[chan.mode] == "FM"
+        assert chan.af_filter
+        assert chan.attenuator
+        assert consts.STEPS[chan.tuning_step] == "25"
+        assert consts.DUPLEX_DIRS[chan.duplex] == "+"
+        assert chan.offset == 4_000_000
+        assert consts.TONE_MODES[chan.tone_mode] == "DTCS-R"
+        assert consts.CTCSS_TONES[chan.tsql_freq] == "225,75"
+        assert consts.POLARITY[chan.polarity] == "Reverse"
+        assert consts.DTCS_CODES[chan.dtsc] == "346"
+        assert chan.vsc
+        assert consts.CANCELLER[chan.canceller] == "Off"
+        assert chan.canceller_freq == 228
+        assert not chan.hide_channel
+        assert consts.SKIPS[chan.skip] == "P"
+        assert consts.BANK_NAMES[chan.bank] == "U"
+        assert chan.bank_pos == 43
 
 
 @pytest.mark.parametrize(

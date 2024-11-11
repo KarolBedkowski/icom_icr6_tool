@@ -409,6 +409,8 @@ def load_icf_file(file: Path) -> model.RadioMemory:
     """Load icf file as RadioMemory."""
     mem = model.RadioMemory()
 
+    _LOG.info("loading %s", file)
+
     with file.open("rt") as inp:
         try:
             # check header == model in hex
@@ -436,6 +438,7 @@ def load_icf_file(file: Path) -> model.RadioMemory:
             if line := line.strip():
                 mem.read(line)
 
+    _LOG.info("loading %s done", file)
     mem.validate()
     return mem
 
@@ -451,6 +454,8 @@ def load_raw_memory(file: Path) -> model.RadioMemory:
 
 def save_icf_file(file: Path, mem: model.RadioMemory) -> None:
     """Write RadioMemory to icf file."""
+    _LOG.info("write %s", file)
+
     with file.open("wt") as out:
         # header
         out.write("32500001\r\n")
@@ -461,6 +466,8 @@ def save_icf_file(file: Path, mem: model.RadioMemory) -> None:
         for line in mem.dump():
             out.write(line)
             out.write("\r\n")
+
+    _LOG.info("write %s done", file)
 
 
 def save_raw_memory(file: Path, mem: model.RadioMemory) -> None:
