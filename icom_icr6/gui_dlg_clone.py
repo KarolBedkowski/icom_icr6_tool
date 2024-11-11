@@ -4,11 +4,14 @@
 
 """ """
 
+import logging
 import tkinter as tk
 from pathlib import Path
 from tkinter import simpledialog, ttk
 
 from . import io, model
+
+_LOG = logging.getLogger(__name__)
 
 
 class _CloneDialog(simpledialog.Dialog):
@@ -75,9 +78,9 @@ class CloneFromRadioDialog(_CloneDialog):
             self.radio_memory = None
             self.cancel()
         except Exception as err:
+            _LOG.exception("clone from radio error")
             self._var_progress.set(f"ERROR: {err}")
             self.radio_memory = None
-            raise
         else:
             super().ok()
 
@@ -104,8 +107,8 @@ class CloneToRadioDialog(_CloneDialog):
         except io.AbortError:
             self.cancel()
         except Exception as err:
+            _LOG.exception("clone to radio error")
             self._var_progress.set(f"ERROR: {err}")
-            raise
         else:
             self.result = True
             super().ok()
@@ -122,7 +125,8 @@ class RadioInfoDialog(_CloneDialog):
             self.result = radio.get_model()
         except io.AbortError:
             self.cancel()
-        except Exception:
-            raise
+        except Exception as err:
+            _LOG.exception("get info radio error")
+            self._var_progress.set(f"ERROR: {err}")
         else:
             super().ok()
