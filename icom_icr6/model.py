@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from . import consts
 
 _LOG = logging.getLogger(__name__)
-
+DEBUG = True
 
 MutableMemory = abc.MutableSequence[int] | memoryview
 
@@ -35,6 +35,8 @@ class RadioModel:
     comment: str
     serial: str
 
+    debug_info: dict[str, object] | None = None
+
     @classmethod
     def from_data(
         cls: type[RadioModel], data: bytes | bytearray | memoryview
@@ -51,6 +53,7 @@ class RadioModel:
             rev=data[5],
             comment=bytes(data[6:22]).decode(),
             serial=serial_decoded,
+            debug_info={"raw": binascii.hexlify(data)} if DEBUG else None,
         )
 
     def is_icr6(self) -> bool:
@@ -127,6 +130,8 @@ class ChannelFlags:
     bank: int
     bank_pos: int
 
+    debug_info: dict[str, object] | None = None
+
     @classmethod
     def from_data(
         cls: type[ChannelFlags],
@@ -139,6 +144,7 @@ class ChannelFlags:
             skip=(data[0] & 0b01100000) >> 5,
             bank=data[0] & 0b00011111,
             bank_pos=data[1],
+            debug_info={"raw": binascii.hexlify(data)} if DEBUG else None,
         )
 
 
@@ -251,19 +257,25 @@ class Channel:
                 data[2],
             )
 
-        debug_info = {
-            "unknowns": [
-                data[4] & 0b11000000,
-                data[4] & 0b00001000,  # TODO: flag "is channel valid"?
-                data[7] & 0b11000000,
-                data[10] & 0b01111000,
-            ],
-            "raw": binascii.hexlify(bytes(data)),
-            "raw_flags": binascii.hexlify(bytes(cflags)) if cflags else None,
-            "freq": freq,
-            "offset": offset,
-            "flags": (data[2] & 0b11110000) >> 4,
-        }
+        debug_info = (
+            {
+                "unknowns": [
+                    data[4] & 0b11000000,
+                    data[4] & 0b00001000,  # TODO: flag "is channel valid"?
+                    data[7] & 0b11000000,
+                    data[10] & 0b01111000,
+                ],
+                "raw": binascii.hexlify(bytes(data)),
+                "raw_flags": binascii.hexlify(bytes(cflags))
+                if cflags
+                else None,
+                "freq": freq,
+                "offset": offset,
+                "flags": (data[2] & 0b11110000) >> 4,
+            }
+            if DEBUG
+            else None
+        )
 
         if cflags:
             hide_channel = cflags[0] & 0b10000000
@@ -302,7 +314,7 @@ class Channel:
             skip=skip,
             bank=bank,
             bank_pos=bank_pos,
-            debug_info=debug_info,
+            debug_info=debug_info,  # type: ignore
         )
 
     def to_data(self, data: MutableMemory, cflags: MutableMemory) -> None:
@@ -486,11 +498,16 @@ class Bank:
     # 6 characters
     name: str
 
+    debug_info: dict[str, object] | None = None
+
     @classmethod
-    def from_data(cls: type[Bank], idx: int, data: abc.Sequence[int]) -> Bank:
+    def from_data(
+        cls: type[Bank], idx: int, data: bytearray | memoryview
+    ) -> Bank:
         return Bank(
             idx,
             name=bytes(data[0:6]).decode() if data[0] else "",
+            debug_info={"raw": binascii.hexlify(data)} if DEBUG else None,
         )
 
     def to_data(self, data: MutableMemory) -> None:
@@ -502,6 +519,8 @@ class ScanLink:
     idx: int
     name: str
     edges: int
+
+    debug_info: dict[str, object] | None = None
 
     def __getitem__(self, idx: int) -> bool:
         if idx < 0 or idx >= consts.NUM_SCAN_EDGES:
@@ -520,8 +539,8 @@ class ScanLink:
     def from_data(
         cls: type[ScanLink],
         idx: int,
-        data: abc.Sequence[int],
-        edata: abc.Sequence[int],
+        data: bytearray | memoryview,
+        edata: bytearray | memoryview,
     ) -> ScanLink:
         # 4 bytes, with 7bite padding = 25 bits
         edges = (
@@ -534,6 +553,7 @@ class ScanLink:
             idx=idx,
             name=bytes(data[0:6]).decode() if data[0] else "",
             edges=edges,
+            debug_info={"raw": binascii.hexlify(data)} if DEBUG else None,
         )
 
     def to_data(self, data: MutableMemory, edata: MutableMemory) -> None:
@@ -558,6 +578,8 @@ class ScanEdge:
     attenuator: int
     name: str
 
+    debug_info: dict[str, object] | None = None
+
     def human_attn(self) -> str:
         match self.attenuator:
             case 0:
@@ -578,7 +600,7 @@ class ScanEdge:
 
     @classmethod
     def from_data(
-        cls: type[ScanEdge], idx: int, data: abc.Sequence[int]
+        cls: type[ScanEdge], idx: int, data: bytearray | memoryview
     ) -> ScanEdge:
         start = (data[3] << 24) | (data[2] << 16) | (data[1] << 8) | data[0]
         start //= 3
@@ -594,6 +616,7 @@ class ScanEdge:
             tuning_step=(data[8] & 0b00001111),
             attenuator=(data[9] & 0b00110000) >> 4,
             name=bytes(data[10:16]).decode() if data[10] else "",
+            debug_info={"raw": binascii.hexlify(data)} if DEBUG else None,
         )
 
     def to_data(self, data: MutableMemory) -> None:
@@ -691,9 +714,11 @@ class RadioSettings:
     set_expand: bool
     stop_beep: bool
 
+    debug_info: dict[str, object] | None = None
+
     @classmethod
     def from_data(
-        cls: type[RadioSettings], data: abc.Sequence[int]
+        cls: type[RadioSettings], data: bytearray | memoryview
     ) -> RadioSettings:
         return RadioSettings(
             func_dial_step=data[13] & 0b00000011,
@@ -722,6 +747,7 @@ class RadioSettings:
             dial_function=(data[52] & 0b00010000) >> 4,
             mem_display_type=data[52] & 0b00000011,
             program_skip_scan=bool(data[53] & 0b00001000),
+            debug_info={"raw": binascii.hexlify(data)} if DEBUG else None,
         )
 
     def to_data(self, data: MutableMemory) -> None:
