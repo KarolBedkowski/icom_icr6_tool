@@ -10,15 +10,17 @@
 
 import logging
 import sys
+from contextlib import suppress
 from pathlib import Path
-
-import icecream
 
 from . import gui, io
 
-icecream.install()
+with suppress(ImportError):
+    import icecream
 
-ic = icecream.ic
+    icecream.install()
+    ic = icecream.ic
+
 
 LOG = logging.getLogger(__name__)
 
