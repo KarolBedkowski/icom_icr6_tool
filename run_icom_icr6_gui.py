@@ -19,7 +19,7 @@ except ImportError:
     try:
         from rich.traceback import install
 
-        install()
+        install(show_locals=True)
         print('rich.traceback enabled')
     except ImportError:
         pass

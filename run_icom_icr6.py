@@ -18,7 +18,7 @@ except ImportError:
     try:
         from rich.traceback import install
 
-        install()
+        install(show_locals=True)
     except ImportError:
         pass
 try:
