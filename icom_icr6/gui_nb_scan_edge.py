@@ -114,30 +114,46 @@ class ScanEdgePage(tk.Frame):
         clip = gui_model.Clipboard.instance()
 
         try:
-            rows = expimp.import_scan_edges_str(ty.cast(str, clip.get()))
+            rows = list(expimp.import_scan_edges_str(ty.cast(str, clip.get())))
         except Exception:
             _LOG.exception("import from clipboard error")
             return
 
-        start_num = int(sel[0])
-        for se_num, row in enumerate(rows, start_num):
-            if row.get("start"):
-                se = self._radio_memory.get_scan_edge(se_num).clone()
-                try:
-                    se.from_record(row)
-                    se.validate()
-                except ValueError:
-                    _LOG.exception("import from clipboard error")
-                    _LOG.error("se_num=%d, row=%r", se_num, row)
-                    return
+        # special case - when in clipboard is one record and selected  many-
+        # duplicate
+        if len(sel) > 1 and len(rows) == 1:
+            row = rows[0]
+            for spos in sel:
+                if not self.__paste_se(row, int(spos)):
+                    break
 
-                se.idx = se_num
-                self._radio_memory.set_scan_edge(se)
+        else:
+            start_num = int(sel[0])
+            for se_num, row in enumerate(rows, start_num):
+                if not self.__paste_se(row, se_num):
+                    break
 
-            if se_num == consts.NUM_SCAN_EDGES - 1:
-                break
+                if se_num == consts.NUM_SCAN_EDGES - 1:
+                    break
 
         self.__update_scan_edges_list()
+
+    def __paste_se(self, row: dict[str, object], se_num: int) -> bool:
+        if not row.get("start") or not row.get("end"):
+            return True
+
+        se = self._radio_memory.get_scan_edge(se_num).clone()
+        try:
+            se.from_record(row)
+            se.validate()
+        except ValueError:
+            _LOG.exception("import from clipboard error")
+            _LOG.error("se_num=%d, row=%r", se_num, row)
+            return False
+
+        se.idx = se_num
+        self._radio_memory.set_scan_edge(se)
+        return True
 
 
 class ScanEdgeListModel(TableViewModel[model.ScanEdge]):
