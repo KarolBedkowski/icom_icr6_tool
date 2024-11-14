@@ -306,7 +306,8 @@ class Channel:
             tsql_freq=tsql_freq,
             polarity=(data[8] & 0b10000000) >> 7,
             dtsc=dtsc,
-            canceller_freq=(data[9] << 1) | ((data[10] & 0b10000000) >> 7),
+            canceller_freq=10
+            * ((data[9] << 1) | ((data[10] & 0b10000000) >> 7)),
             vsc=bool(data[10] & 0b00000100),
             canceller=data[10] & 0b00000011,
             name=decode_name(data[11:16]),
@@ -358,8 +359,9 @@ class Channel:
             self.dtsc & 0b01111111
         )
         # canceller freq
-        data[9] = (self.canceller_freq & 0b111111110) >> 1
-        data_set(data, 10, 0b10000000, (self.canceller_freq & 1) << 7)
+        canc_freq = self.canceller_freq // 10
+        data[9] = (canc_freq & 0b111111110) >> 1
+        data_set(data, 10, 0b10000000, (canc_freq & 1) << 7)
         # vsc
         data_set(data, 10, 0b00000100, self.vsc << 3)
         # canceller

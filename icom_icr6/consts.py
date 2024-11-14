@@ -118,8 +118,8 @@ DTCS_CODES: ty.Final = (
 ).split(" ")
 
 CANCELLER: ty.Final = ["Off", "Train1", "Train2", "MSK"]
-CANCCELER_MIN_FREQ: ty.Final = 300
-CANCCELER_MAX_FREQ: ty.Final = 3000
+CANCELLER_MIN_FREQ: ty.Final = 300
+CANCELLER_MAX_FREQ: ty.Final = 3000
 
 SETT_FUNC_DIAL_STEP: ty.Final = ["100kHz", "1MHz", "10MHz"]
 SETT_DIAL_FUNCTION: ty.Final = ["Tuning", "Volume"]

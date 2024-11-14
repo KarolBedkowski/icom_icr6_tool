@@ -401,7 +401,7 @@ class ChannelsListModel(TableViewModel[model.Channel | None]):
                     iid,
                     column,
                     value,
-                    max_val=consts.CANCCELER_MAX_FREQ,
+                    max_val=consts.CANCELLER_MAX_FREQ,
                 )
 
         return None
