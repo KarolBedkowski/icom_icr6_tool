@@ -9,7 +9,7 @@ import tkinter as tk
 import typing as ty
 from tkinter import messagebox, ttk
 
-from . import consts, expimp, gui_model, model
+from . import consts, expimp, gui_chanlist, gui_model, model
 from .gui_widgets import build_list_model
 
 _LOG = logging.getLogger(__name__)
@@ -43,11 +43,11 @@ class ChannelsPage(tk.Frame):
         self._radio_memory = radio_memory
 
         # hide canceller in global models
-        cols = self._chan_list["columns"]
-        if not radio_memory.is_usa_model():
-            cols = [c for c in cols if c not in ("canc", "canc_freq")]
+        # cols = self._chan_list["columns"]
+        # if not radio_memory.is_usa_model():
+        #     cols = [c for c in cols if c not in ("canc", "canc_freq")]
 
-        self._chan_list["displaycolumns"] = cols
+        # self._chan_list["displaycolumns"] = cols
 
         if activate:
             self._groups_list.selection_set(self._last_selected_group)
@@ -58,69 +58,84 @@ class ChannelsPage(tk.Frame):
             self._chan_list.selection_set(self._last_selected_chan)
 
     def _create_channel_list(self, frame: tk.Frame) -> None:
-        self._chan_list_model = gui_model.ChannelsListModel(self._radio_memory)
-        ccframe, self._chan_list = build_list_model(
-            frame, self._chan_list_model
-        )
-        ccframe.pack(side=tk.TOP, expand=True, fill=tk.BOTH, ipady=6)
+        self._chan_list = gui_chanlist.ChannelsList(frame)
+        self._chan_list.on_record_update = self.__on_channel_update
+        self._chan_list.on_record_selected = self.__on_channel_select
+        self._chan_list.pack(side=tk.TOP, expand=True, fill=tk.BOTH, ipady=6)
+        # self._chan_list_model = gui_model.ChannelsListModel(self._radio_memory)
+        # ccframe, self._chan_list = build_list_model(
+        #     frame, self._chan_list_model
+        # )
+        # ccframe.pack(side=tk.TOP, expand=True, fill=tk.BOTH, ipady=6)
 
-        self._chan_list.bind(
-            "<<TreeviewSelect>>", self.__on_channel_select, add="+"
-        )
-        self._chan_list.bind("<Delete>", self.__on_channel_delete)
-        self._chan_list.bind("<Control-c>", self.__on_channel_copy)
-        self._chan_list.bind("<Control-v>", self.__on_channel_paste)
+        # self._chan_list.bind(
+        #     "<<TreeviewSelect>>", self.__on_channel_select, add="+"
+        # )
+        # self._chan_list.bind("<Delete>", self.__on_channel_delete)
+        # self._chan_list.bind("<Control-c>", self.__on_channel_copy)
+        # self._chan_list.bind("<Control-v>", self.__on_channel_paste)
 
-    def __on_channel_select(self, _event: tk.Event) -> None:  # type: ignore
-        if selection := self._chan_list.selection():
-            self._last_selected_chan = selection
+    def __on_channel_update(
+        self, recs: ty.Collection[gui_chanlist.Row]
+    ) -> None:
+        for rec in recs:
+            _LOG.debug("__on_channel_update: %r", rec)
+            chan = rec.channel
+            self._radio_memory.set_channel(chan)
 
-            for sel in selection:
-                chan_num = int(sel)
-                chan = self._radio_memory.get_channel(chan_num)
-                _LOG.debug("chan: %r", chan)
+    def __on_channel_select(self, recs: list[gui_chanlist.Row]) -> None:  # type: ignore
+        # if selection := self._chan_list.selection():
+        #     self._last_selected_chan = selection
+
+        for rec in recs:
+            _LOG.debug("chan selected: %r", rec.channel)
+
+        ic(self._chan_list.selected_rows())
 
     def __on_channel_delete(self, _event: tk.Event) -> None:  # type: ignore
-        with self._chan_list.with_selection() as sel:
-            if not sel:
-                return
+        pass
+        # with self._chan_list.with_selection() as sel:
+        #     if not sel:
+        #         return
 
-            if not messagebox.askyesno(
-                "Delete channel",
-                "Delete channel configuration?",
-                icon=messagebox.WARNING,
-            ):
-                return
+        #     if not messagebox.askyesno(
+        #         "Delete channel",
+        #         "Delete channel configuration?",
+        #         icon=messagebox.WARNING,
+        #     ):
+        #         return
 
-            for chan_num in sel:
-                chan = self._radio_memory.get_channel(int(chan_num))
-                chan.delete()
-                self._radio_memory.set_channel(chan)
+        #     for chan_num in sel:
+        #         chan = self._radio_memory.get_channel(int(chan_num))
+        #         chan.delete()
+        #         self._radio_memory.set_channel(chan)
 
-            self.__update_chan_list()
+        #     self.__update_chan_list()
 
     def __update_chan_list(self, event: tk.Event | None = None) -> None:  # type: ignore
         if sel := self._groups_list.curselection():  # type: ignore
             selected_range = sel[0]
         else:
-            self._chan_list_model.data.clear()
-            self._chan_list.update_all()
+            # self._chan_list.set_data([])
+            # self._chan_list_model.data.clear()
+            # self._chan_list.update_all()
             return
 
         self._last_selected_group = sel[0]
 
         range_start = selected_range * 100
-        self._chan_list_model.data = [
+        data = [
             self._radio_memory.get_channel(idx)
             for idx in range(range_start, range_start + 100)
         ]
-        self._chan_list.update_all()
+        self._chan_list.set_data(data)
+        # self._chan_list.update_all()
 
         self._show_stats()
 
-        if event is not None:
-            self._chan_list.yview(0)
-            self._chan_list.xview(0)
+        # if event is not None:
+        #     self._chan_list.yview(0)
+        #     self._chan_list.xview(0)
 
     def __on_channel_copy(self, _event: tk.Event) -> None:  # type: ignore
         sel = self._chan_list.selection()
@@ -188,11 +203,11 @@ class ChannelsPage(tk.Frame):
         return True
 
     def _show_stats(self) -> None:
-        active = sum(
-            (
-                1
-                for c in self._chan_list_model.data
-                if c and not c.hide_channel
-            ),
-        )
+        active = 0  # sum(
+        # (
+        #     1
+        #     for c in self._chan_list_model.data
+        #     if c and not c.hide_channel
+        # ),
+        # )
         self._parent.set_status(f"Active channels: {active}")  # type: ignore
