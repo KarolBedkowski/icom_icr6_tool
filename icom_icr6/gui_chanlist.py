@@ -7,18 +7,11 @@
 import logging
 import tkinter as tk
 import typing as ty
-from abc import ABC
 from collections import UserList
-from dataclasses import dataclass
 
 from tksheet import (
-    Dropdown,
     EventDataDict,
-    Formatter,
     Sheet,
-    bool_formatter,
-    float_formatter,
-    formatter,
     functions,
     int_formatter,
     num2alpha,
@@ -27,6 +20,29 @@ from tksheet import (
 from . import consts, model
 
 _LOG = logging.getLogger(__name__)
+
+
+COLUMNS = [
+    ("channel", "Num"),
+    ("freq", "Frequency"),
+    ("mode", "Mode"),
+    ("name", "Name"),
+    ("af", "AF"),
+    ("att", "ATT"),
+    ("ts", "Tuning Step"),
+    ("dup", "DUP"),
+    ("offset", "Offset"),
+    ("skip", "Skip"),
+    ("vsc", "VSC"),
+    ("tone_mode", "Tone"),
+    ("tsql_freq", "TSQL"),
+    ("dtsc", "DTSC"),
+    ("polarity", "Polarity"),
+    ("bank", "Bank"),
+    ("bank_pos", "Bank pos"),
+    ("canceller", "Canceller"),
+    ("canceller freq", "Canceller freq"),
+]
 
 
 class Row(UserList[object]):
@@ -39,14 +55,16 @@ class Row(UserList[object]):
             return
 
         chan = self.channel
+        col = COLUMNS[idx][0]
 
         if (not chan.freq or chan.hide_channel) and idx != 1:
             return
 
-        match idx:
-            case 0:
+        match col:
+            case "number":
                 return
-            case 1:  # freq
+
+            case "freq":  # freq
                 if val is None:
                     chan.freq = 0
                     chan.hide_channel = True
@@ -60,73 +78,13 @@ class Row(UserList[object]):
                 self.data = self._from_channel(chan)
                 return
 
-            case 2:  # mode
-                if val is None:
-                    val = 4
-                assert isinstance(val, int)
-                chan.mode = val
-            case 3:  # name
-                chan.name = str(val or "")
-            case 4:  # af_filter
-                assert isinstance(val, bool)
-                chan.af_filter = val
-            case 5:  # attenuator
-                assert isinstance(val, bool)
-                chan.attenuator = val
-            case 6:
-                if val is None:
-                    val = 14
-                assert isinstance(val, int)
-                chan.tuning_step = val
-            case 7:
-                val = val or 0
-                assert isinstance(val, int)
-                chan.duplex = val
-            case 8:
-                val = val or 0
-                assert isinstance(val, int)
-                chan.offset = val
-            case 9:
-                val = val or 0
-                assert isinstance(val, int)
-                chan.skip = val
-            case 10:
-                val = val or False
-                assert isinstance(val, bool)
-                chan.vsc = val
-            case 11:
-                val = val or 0
-                assert isinstance(val, int)
-                chan.tone_mode = val
-            case 12:
-                val = val or 0
-                assert isinstance(val, int)
-                chan.tsql_freq = val
-            case 13:
-                val = val or 0
-                assert isinstance(val, int)
-                chan.dtsc = val
-            case 14:
-                val = val or 0
-                assert isinstance(val, int)
-                chan.polarity = val
-            case 15:
-                if val is None:
-                    val = consts.BANK_NOT_SET
-                assert isinstance(val, int)
-                chan.bank = val
-            case 16:
-                val = val or 0
-                assert isinstance(val, int)
-                chan.bank_pos = val
-            case 17:
-                val = val or 0
-                assert isinstance(val, int)
-                chan.canceller = val
-            case 18:
-                val = val or 300
-                assert isinstance(val, int)
-                chan.canceller_freq = val // 10
+        # TODO: optimize
+        data = chan.to_record()
+        if data[col] == val:
+            return
+
+        data[col] = val
+        chan.from_record(data)
 
         super().__setitem__(idx, val)
 
@@ -137,27 +95,8 @@ class Row(UserList[object]):
         if channel.hide_channel or not channel.freq:
             return [channel.number, *([""] * 18)]
 
-        return [
-            channel.number,
-            channel.freq,
-            channel.mode,
-            channel.name.rstrip(),
-            channel.af_filter,
-            channel.attenuator,
-            channel.tuning_step,
-            channel.duplex,
-            channel.offset,
-            channel.skip,
-            channel.vsc,
-            channel.tone_mode,
-            channel.tsql_freq,
-            channel.dtsc,
-            channel.polarity,
-            channel.bank if channel.bank != consts.BANK_NOT_SET else None,
-            channel.bank_pos,
-            channel.canceller,
-            channel.canceller_freq * 10,
-        ]
+        data = channel.to_record()
+        return [data[col] for col, *_ in COLUMNS]
 
     def delete(self) -> None:
         self.channel.hide_channel = True
@@ -179,58 +118,6 @@ def format_freq(freq: int, **_kwargs: object) -> str:
     return f"{freq:_}".replace("_", " ")
 
 
-def yes_no(value: bool | None) -> str:
-    match value:
-        case None:
-            return ""
-        case True:
-            return "yes"
-        case False:
-            return "no"
-
-
-def dropdown_formatter(values: list[str]) -> dict[str, object]:
-    def format_function(val: str, **_kwargs: object) -> int:
-        return values.index(val)
-
-    def to_str_function(v: int, **_kwargs: object) -> str:
-        try:
-            return values[v]
-        except IndexError:
-            _LOG.warn("values: %r, v: %r, %r", values, v, _kwargs)
-            return ""
-
-    return formatter(  # type: ignore
-        datatypes=(int,),
-        format_function=format_function,
-        to_str_function=to_str_function,
-        invalid_value="",
-    )
-
-
-def dropdown_select_function(
-    values: ty.Sequence[str],
-) -> ty.Callable[[dict[str, object]], None]:
-    def func(event_data: EventDataDict) -> None:
-        event_data["value"] = values.index(event_data["value"])
-
-    return func
-
-
-class IndexedDropdown(Dropdown):
-    pass
-
-
-# def dropbox_modified_function(
-
-
-class Column(ty.NamedTuple):
-    colid: str
-    title: str
-    anchor: str
-    width: int
-
-
 class ChannelsList(tk.Frame):
     def __init__(self, parent: tk.Widget) -> None:
         super().__init__(parent)
@@ -244,7 +131,7 @@ class ChannelsList(tk.Frame):
         self.sheet.bind("<<SheetSelect>>", self._on_sheet_select)
         self.sheet.extra_bindings("begin_delete", self._on_delete)
 
-        self.columns = self._columns()
+        self.columns = COLUMNS
         self._configure()
         self.on_record_update: (
             ty.Callable[[ty.Collection[Row]], None] | None
@@ -257,89 +144,21 @@ class ChannelsList(tk.Frame):
         for row in range(len(self.sheet.data)):
             self._update_row_states(row)
 
-    def _columns(self) -> tuple[Column, ...]:
-        return (
-            Column("num", "Num", tk.E, 30),
-            Column("freq", "Frequency", tk.E, 200),
-            Column("mode", "Mode", tk.CENTER, 25),
-            Column("name", "Name", tk.W, 50),
-            Column("af", "AF", tk.CENTER, 25),
-            Column("att", "ATT", tk.CENTER, 25),
-            Column("ts", "Tuning Step", tk.CENTER, 40),
-            Column("duplex", "DUP", tk.CENTER, 25),
-            Column("offset", "Offset", tk.E, 60),
-            Column("skip", "Skip", tk.CENTER, 25),
-            Column("vsc", "VSC", tk.CENTER, 25),
-            Column("tone", "Tone", tk.CENTER, 30),
-            Column("tsql", "TSQL", tk.E, 40),
-            Column("dtsc", "DTSC", tk.E, 30),
-            Column("polarity", "Polarity", tk.CENTER, 35),
-            Column("bank", "Bank", tk.CENTER, 25),
-            Column("bank_pos", "Bank pos", tk.W, 25),
-            Column("canc", "Canceller", tk.CENTER, 30),
-            Column("canc_freq", "Canceller freq", tk.E, 40),
-        )
-
     def _setup_dropbox(self, col: int, values: list[str]) -> None:
-        def selection_function(event_data: EventDataDict) -> None:
-            event_data["value"] = values.index(event_data["value"])
-
-        def format_function(val: str, **_kwargs: object) -> int:
-            return values.index(val)
-
-        def to_str_function(v: int, **_kwargs: object) -> str:
-            try:
-                return values[v]
-            except IndexError:
-                _LOG.warn("values: %r, v: %r, %r", values, v, _kwargs)
-                return ""
-
-        fmtr = formatter(
-            datatypes=(int,),
-            format_function=format_function,
-            to_str_function=to_str_function,
-            invalid_value="",
-        )
-
         self.sheet[num2alpha(col)].dropdown(
             values=values,
             state="",
-            selection_function=selection_function,
-        ).align("center").format(fmtr)
+        ).align("center")
 
     def _setup_dropbox_bank(self, col: int) -> None:
         values: list[str] = ["", *consts.BANK_NAMES]
-
-        def func(event_data: EventDataDict) -> None:
-            if val := event_data["value"]:
-                event_data["value"] = values.index(val) - 1
-            else:
-                event_data["value"] = consts.BANK_NOT_SET
-
-        def format_function(val: str, **_kwargs: object) -> int:
-            return values.index(val) - 1 if val else consts.BANK_NOT_SET
-
-        def to_str_function(v: int, **_kwargs: object) -> str:
-            try:
-                return values[v + 1]
-            except IndexError:
-                return ""
-
-        fmtr = formatter(
-            datatypes=(int,),
-            format_function=format_function,
-            to_str_function=to_str_function,
-            invalid_value="",
-        )
-
         self.sheet[num2alpha(col)].dropdown(
             values=values,
             state="",
-            selection_function=func,
-        ).align("center").format(fmtr)
+        ).align("center")
 
     def _configure(self) -> None:
-        self.sheet.headers([c.title for c in self.columns])
+        self.sheet.headers([c[0] for c in self.columns])
 
         self.sheet[num2alpha(0)].format(int_formatter()).align("right")
         self.sheet[num2alpha(1)].format(
@@ -376,7 +195,7 @@ class ChannelsList(tk.Frame):
         self.sheet.hide_columns(0)
 
     def _on_sheet_modified(self, event: EventDataDict) -> None:
-        #if event.eventname == "edit_table":
+        # if event.eventname == "edit_table":
         #    return
 
         _LOG.debug("_on_sheet_modified: %r", event)
@@ -421,7 +240,7 @@ class ChannelsList(tk.Frame):
                     assert isinstance(value, int)
                     return max(min(value, consts.MAX_OFFSET), 0)
 
-                case "canc_freq":
+                case "cf":
                     assert isinstance(value, int)
                     return max(
                         min((value // 10) * 10, consts.CANCELLER_MAX_FREQ),
