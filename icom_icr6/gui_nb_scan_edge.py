@@ -219,7 +219,9 @@ class ScanEdgeListModel(TableViewModel[model.ScanEdge]):
                 )
 
             case "mode":
-                res = ComboboxPopup(parent, iid, column, value, consts.MODES)
+                res = ComboboxPopup(
+                    parent, iid, column, value, consts.MODES_SCAN_EDGES
+                )
 
             case "ts":
                 res = ComboboxPopup(parent, iid, column, value, consts.STEPS)
@@ -282,7 +284,7 @@ class ScanEdgeListModel(TableViewModel[model.ScanEdge]):
                 )
 
             case "mode":
-                se.mode = consts.MODES.index(value) if value else 0
+                se.mode = consts.MODES_SCAN_EDGES.index(value) if value else 0
 
             case "name":
                 se.name = model.fix_name(value or "")
@@ -322,6 +324,6 @@ class ScanEdgeListModel(TableViewModel[model.ScanEdge]):
             gui_model.format_freq(se.start // 1000),
             gui_model.format_freq(se.end // 1000),
             consts.STEPS[se.tuning_step] if se.start and se.end else "",
-            consts.MODES[se.mode] if se.start and se.end else "",
+            consts.MODES_SCAN_EDGES[se.mode] if se.start and se.end else "",
             se.human_attn(),  # TODOL: fix
         )
