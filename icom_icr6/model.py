@@ -22,6 +22,9 @@ DEBUG = True
 MutableMemory = abc.MutableSequence[int] | memoryview
 
 
+SENTINAL = object()
+
+
 @dataclass
 class RadioModel:
     # Data format - 39B
@@ -78,10 +81,11 @@ def _try_get(inlist: list[str] | tuple[str, ...], idx: int) -> str:
 
 
 def get_index_or_default(
-    inlist: ty.Sequence[str], value: str, default: int
+    inlist: ty.Sequence[str], value: object, default: int = 0
 ) -> int:
+    strval = value if isinstance(value, str) else str(value)
     try:
-        return inlist.index(value)
+        return inlist.index(strval)
     except ValueError:
         return default
 
@@ -438,7 +442,7 @@ class Channel:
             "dtsc": _try_get(consts.DTCS_CODES, self.dtsc),
             "canceller freq": self.canceller_freq,
             "vsc": self.vsc,
-            "canceller": self.canceller,
+            "canceller": consts.CANCELLER[self.canceller],
             "name": self.name,
             "hide": self.hide_channel,
             "skip": consts.SKIPS[self.skip],
@@ -450,34 +454,65 @@ class Channel:
     def from_record(self, data: dict[str, object]) -> None:
         # TODO: adjust freq
         _LOG.debug("from_record: %r", data)
-        freq = int(data["freq"] or "0")  # type: ignore
-        self.freq = fix_frequency(freq) if freq else 0
-        self.af_filter = obj2bool(data["af"])
-        self.attenuator = obj2bool(data["att"])
-        self.mode = get_index_or_default(consts.MODES, str(data["mode"]), 4)
-        self.tuning_step = get_index_or_default(
-            consts.STEPS, str(data["ts"]), 14
-        )
-        self.duplex = consts.DUPLEX_DIRS.index(str(data["dup"]))
-        self.tone_mode = consts.TONE_MODES.index(str(data["tone_mode"]))
-        self.offset = int(data["offset"])  # type: ignore
-        self.tsql_freq = consts.CTCSS_TONES.index(str(data["tsql_freq"]))
-        self.dtsc = consts.DTCS_CODES.index(str(data["dtsc"]))
-        self.canceller_freq = int(data["canceller freq"]) or 300  # type: ignore
-        self.vsc = obj2bool(data["vsc"])
-        self.canceller = int(data["canceller"])  # type: ignore
-        self.name = str(data["name"])
-        self.skip = consts.SKIPS.index(str(data["skip"]))
-        self.polarity = consts.POLARITY.index(str(data["polarity"]))
-        if bank := data["bank"]:
-            self.bank = consts.BANK_NAMES.index(ty.cast(str, bank))
-            self.bank_pos = int(ty.cast(str, data["bank_pos"]))
-        else:
-            self.bank = consts.BANK_NOT_SET
-            self.bank_pos = 0
+        if (freq := data.get("freq")) is not None:
+            ifreq = int(freq or "0")  # type: ignore
+            self.freq = fix_frequency(ifreq) if ifreq else 0
 
-        # TODO: ?
-        self.hide_channel = not self.freq
+            # TODO: ?
+            self.hide_channel = not self.freq
+
+        if (af := data.get("af")) is not None:
+            self.af_filter = obj2bool(af)
+
+        if (att := data.get("att")) is not None:
+            self.attenuator = obj2bool(att)
+
+        if (mode := data.get("mode")) is not None:
+            self.mode = get_index_or_default(consts.MODES, mode, 4)
+
+        if (ts := data.get("ts")) is not None:
+            self.tuning_step = get_index_or_default(consts.STEPS, ts, 14)
+
+        if (dup := data.get("dup")) is not None:
+            self.duplex = get_index_or_default(consts.DUPLEX_DIRS, dup)
+
+        if (mode := data.get("tone_mode")) is not None:
+            self.tone_mode = get_index_or_default(consts.TONE_MODES, mode)
+
+        if (offset := data.get("offset")) is not None:
+            self.offset = int(offset)  # type: ignore
+
+        if (tf := data.get("tsql_freq")) is not None:
+            self.tsql_freq = get_index_or_default(consts.CTCSS_TONES, tf)
+
+        if (dtsc := data.get("dtsc")) is not None:
+            self.dtsc = get_index_or_default(consts.DTCS_CODES, dtsc)
+
+        if (cf := data.get("canceller freq")) is not None:
+            self.canceller_freq = int(cf or 300)  # type: ignore
+
+        if (vsc := data.get("vsc")) is not None:
+            self.vsc = obj2bool(vsc)
+
+        if (c := data.get("canceller")) is not None:
+            self.canceller = get_index_or_default(consts.CANCELLER, c)
+
+        if (n := data.get("name")) is not None:
+            self.name = fix_name(str(n))
+
+        if (s := data.get("skip")) is not None:
+            self.skip = get_index_or_default(consts.SKIPS, s)
+
+        if (p := data.get("polarity")) is not None:
+            self.polarity = get_index_or_default(consts.POLARITY, p)
+
+        if bank := data.get("bank"):
+            self.bank = get_index_or_default(
+                consts.BANK_NAMES, bank, consts.BANK_NOT_SET
+            )
+
+        if (bp := data.get("bank_pos")) is not None:
+            self.bank_pos = int(bp)  # type: ignore
 
 
 @dataclass

@@ -83,8 +83,10 @@ class Row(UserList[object]):
         if data[col] == val:
             return
 
-        data[col] = val
-        chan.from_record(data)
+        try:
+            chan.from_record({col: val})
+        except Exception:
+            _LOG.exception("from record error: %r=%r", col, val)
 
         super().__setitem__(idx, val)
 
@@ -222,8 +224,8 @@ class ChannelsList(tk.Frame):
         _LOG.debug("_on_validate_edits: %r", event)
 
         column = self.columns[event.column + 1]  # FIXME: visible cols
-        row = self.sheet.data[event.row]
-        value = event.value
+        # row = self.sheet.data[event.row]
+        value: str = event.value
 
         try:
             match column[0]:
@@ -234,16 +236,16 @@ class ChannelsList(tk.Frame):
                     return model.fix_name(value)
 
                 case "offset":
-                    if not row.duplex:
-                        return None
+                    if off := int(value):
+                        return max(
+                            min(off, consts.MAX_OFFSET), consts.MIN_OFFSET
+                        )
 
-                    assert isinstance(value, int)
-                    return max(min(value, consts.MAX_OFFSET), 0)
-
-                case "cf":
-                    assert isinstance(value, int)
+                case "canceller freq":
+                    # round frequency to 10kHz
+                    freq = (int(value) // 10) * 10
                     return max(
-                        min((value // 10) * 10, consts.CANCELLER_MAX_FREQ),
+                        min(freq, consts.CANCELLER_MAX_FREQ),
                         consts.CANCELLER_MIN_FREQ,
                     )
 
@@ -258,6 +260,9 @@ class ChannelsList(tk.Frame):
 
     def _on_sheet_select(self, event: EventDataDict) -> None:
         _LOG.debug("_on_sheet_select: %r", event)
+        if not event.selected:
+            return
+
         row, col = event.selected.row, event.selected.column
         column = self.columns[col + 1]  # FIXME: visible cols
         col += 1
