@@ -22,7 +22,10 @@ MAX_OFFSET: ty.Final[int] = 159_995_000
 
 TONE_MODES: ty.Final = ["", "TSQL", "TSQL-R", "DTCS", "DTCS-R"]
 DUPLEX_DIRS: ty.Final = ["", "-", "+"]
-MODES: ty.Final = ["FM", "WFM", "AM", "Auto", "-"]
+# auto is probably not used
+# "-" is used only in scanedge
+MODES: ty.Final = ["FM", "WFM", "AM"]
+MODES_SCAN_EDGES: ty.Final = ["FM", "WFM", "AM", "Auto", "-"]
 STEPS: ty.Final = [
     "5",
     "6.25",
@@ -38,8 +41,8 @@ STEPS: ty.Final = [
     "100",
     "125",
     "200",
-    "Auto",
-    "",
+    "Auto",  # not used
+    "-",  # used only in scan-edges
 ]
 AVAIL_STEPS_NORMAL = [
     "5",
@@ -156,3 +159,6 @@ CODED_CHRS: ty.Final[str] = (
     " ^^^^^^^()*+^-./0123456789:^^=^^^ABCDEFGHIJKLMNOPQRSTUVWXYZ^^^^^"
 )
 ENCODED_NAME_LEN: ty.Final[int] = 5
+
+# used in scanedge
+ATTENUATOR: ty.Final = ["On", "Off", "-"]

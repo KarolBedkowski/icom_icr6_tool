@@ -77,6 +77,15 @@ def _try_get(inlist: list[str] | tuple[str, ...], idx: int) -> str:
         return f"<[{idx}]>"
 
 
+def get_index_or_default(
+    inlist: ty.Sequence[str], value: str, default: int
+) -> int:
+    try:
+        return inlist.index(value)
+    except ValueError:
+        return default
+
+
 def obj2bool(val: object) -> bool:
     if isinstance(val, str):
         return val.lower() in ("yes", "y", "true", "t")
@@ -205,7 +214,7 @@ class Channel:
             f"af={self.af_filter}, "
             f"att={self.attenuator}, "
             f"mode={consts.MODES[self.mode]}, "
-            f"tuning_step={consts.STEPS[self.tuning_step]}, "
+            f"tuning_step={self.tuning_step}:{consts.STEPS[self.tuning_step]}, "
             f"duplex={consts.DUPLEX_DIRS[self.duplex]}, "
             f"tone_mode={consts.TONE_MODES[self.tone_mode]}, "
             f"offset={self.offset}, "
@@ -418,8 +427,8 @@ class Channel:
         return {
             "channel": self.number,
             "freq": self.freq,
-            "af": str(self.af_filter),
-            "att": str(self.attenuator),
+            "af": self.af_filter,
+            "att": self.attenuator,
             "mode": consts.MODES[self.mode],
             "ts": consts.STEPS[self.tuning_step],
             "dup": consts.DUPLEX_DIRS[self.duplex],
@@ -427,9 +436,9 @@ class Channel:
             "offset": self.offset,
             "tsql_freq": _try_get(consts.CTCSS_TONES, self.tsql_freq),
             "dtsc": _try_get(consts.DTCS_CODES, self.dtsc),
-            "cf": self.canceller_freq,
-            "vsc": str(self.vsc),
-            "c": self.canceller,
+            "canceller freq": self.canceller_freq,
+            "vsc": self.vsc,
+            "canceller": self.canceller,
             "name": self.name,
             "hide": self.hide_channel,
             "skip": consts.SKIPS[self.skip],
@@ -440,20 +449,23 @@ class Channel:
 
     def from_record(self, data: dict[str, object]) -> None:
         # TODO: adjust freq
-        _LOG.debug("data: %r", data)
-        self.freq = int(data["freq"] or "0")  # type: ignore
+        _LOG.debug("from_record: %r", data)
+        freq = int(data["freq"] or "0")  # type: ignore
+        self.freq = fix_frequency(freq) if freq else 0
         self.af_filter = obj2bool(data["af"])
         self.attenuator = obj2bool(data["att"])
-        self.mode = consts.MODES.index(str(data["mode"]))
-        self.tuning_step = consts.STEPS.index(str(data["ts"]))
+        self.mode = get_index_or_default(consts.MODES, str(data["mode"]), 4)
+        self.tuning_step = get_index_or_default(
+            consts.STEPS, str(data["ts"]), 14
+        )
         self.duplex = consts.DUPLEX_DIRS.index(str(data["dup"]))
         self.tone_mode = consts.TONE_MODES.index(str(data["tone_mode"]))
         self.offset = int(data["offset"])  # type: ignore
         self.tsql_freq = consts.CTCSS_TONES.index(str(data["tsql_freq"]))
         self.dtsc = consts.DTCS_CODES.index(str(data["dtsc"]))
-        self.canceller_freq = int(data["cf"])  # type: ignore
+        self.canceller_freq = int(data["canceller freq"]) or 300  # type: ignore
         self.vsc = obj2bool(data["vsc"])
-        self.canceller = int(data["c"])  # type: ignore
+        self.canceller = int(data["canceller"])  # type: ignore
         self.name = str(data["name"])
         self.skip = consts.SKIPS.index(str(data["skip"]))
         self.polarity = consts.POLARITY.index(str(data["polarity"]))
@@ -464,8 +476,8 @@ class Channel:
             self.bank = consts.BANK_NOT_SET
             self.bank_pos = 0
 
-        if self.freq:
-            self.hide_channel = False
+        # TODO: ?
+        self.hide_channel = not self.freq
 
 
 @dataclass
@@ -576,6 +588,7 @@ class ScanEdge:
     # TODO: check - always False
     disabled: int
     mode: int
+    # tuning_step include 15 - "-"
     tuning_step: int
     attenuator: int
     name: str
@@ -657,8 +670,17 @@ class ScanEdge:
         if not validate_frequency(self.end):
             raise ValidateError("freq", self.end)
 
-        _is_valid_index(consts.MODES, self.mode, "mode")
+        _is_valid_index(consts.MODES_SCAN_EDGES, self.mode, "mode")
+        if self.mode == 3:
+            # "auto" is not used
+            raise ValidateError("mode", self.mode)
+
         _is_valid_index(consts.STEPS, self.tuning_step, "tuning step")
+        if self.tuning_step == 14:
+            # "auto" is not valid
+            raise ValidateError("tuning_step", self.tuning_step)
+
+        _is_valid_index(consts.ATTENUATOR, self.attenuator, "attenuator")
 
         try:
             validate_name(self.name)
@@ -670,20 +692,31 @@ class ScanEdge:
             "idx": self.idx,
             "start": self.start,
             "end": self.end,
-            "mode": consts.MODES[self.mode],
+            "mode": consts.MODES_SCAN_EDGES[self.mode],
             "ts": consts.STEPS[self.tuning_step],
-            "att": str(self.attenuator),
+            "att": consts.ATTENUATOR[self.attenuator],
             "name": self.name,
         }
 
     def from_record(self, data: dict[str, object]) -> None:
-        _LOG.debug("data: %r", data)
+        _LOG.debug("from_record: %r", data)
         self.idx = int(data["idx"])  # type: ignore
         self.start = int(data["start"] or "0")  # type: ignore
         self.end = int(data["end"] or "0")  # type: ignore
+
         self.mode = consts.MODES.index(str(data["mode"]))
+        if self.mode == 3:
+            # map "auto" to "-"
+            self.mode = 4
+
         self.tuning_step = consts.STEPS.index(str(data["ts"]))
-        self.attenuator = obj2bool(data["att"])
+        if self.tuning_step == 14:
+            # map "auto" tuning_step to "-"
+            self.tuning_step = 15
+
+        self.attenuator = get_index_or_default(
+            consts.ATTENUATOR, str(data["att"]), 2
+        )
         self.name = str(data["name"])
 
 
