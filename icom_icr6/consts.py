@@ -18,6 +18,7 @@ NAME_LEN: ty.Final[int] = 6
 
 MIN_FREQUENCY: ty.Final[int] = 100_000
 MAX_FREQUENCY: ty.Final[int] = 1_309_995_000
+MIN_OFFSET: ty.Final[int] = 5_000
 MAX_OFFSET: ty.Final[int] = 159_995_000
 
 TONE_MODES: ty.Final = ["", "TSQL", "TSQL-R", "DTCS", "DTCS-R"]

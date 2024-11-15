@@ -1220,7 +1220,10 @@ def validate_offset(inp: str | int) -> bool:
     else:
         freq = inp
 
-    if freq > consts.MAX_OFFSET or freq < 0:
+    if freq == 0:
+        return True
+
+    if freq > consts.MAX_OFFSET or freq < consts.MIN_OFFSET:
         return False
 
     try:
