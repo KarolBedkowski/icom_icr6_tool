@@ -139,10 +139,11 @@ types:
         type: b1
       - id: mode
         type: b3
-        enum: mode
+        enum: mode_scan_edge
       - id: tuning_step
         type: b4
         enum: steps
+        doc: scan edge use addidtional "-" scan edge
 
       - id: unknown1
         type: b2
@@ -185,7 +186,7 @@ types:
     seq:
       - id: freq0
         type: u1
-        doc: lsb
+        doc: lsb; comlpete freq=(freq3 << 16) | (freq2 << 8) | freq3
 
       - id: freq1
         type: u1
@@ -215,6 +216,9 @@ types:
       - id: tuning_step
         type: b4
         enum: steps
+        doc: |
+          channels not use "auto" and "-" steps; for broadcast there
+          is available additional 9k step; for aviation band - 8.33k
 
       - id: unknown1
         type: b2
@@ -224,7 +228,9 @@ types:
         enum: duplex
       - id: unknown3
         type: b1
-        doc: 1 for invalid channels?  must be - when enabled channel and tone_mode
+        doc: |
+          1 for invalid channels?  must be - when enabled channel
+          and tone_mode
       - id: tone_mode
         type: b3
         enum: tone_mode
@@ -457,6 +463,11 @@ types:
 
 enums:
   mode:
+    0: fm
+    1: wfm
+    2: am
+
+  mode_scan_edge:
     0: fm
     1: wfm
     2: am
