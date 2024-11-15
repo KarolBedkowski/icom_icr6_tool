@@ -65,20 +65,21 @@ class Row(UserList[object]):
                 return
 
             case "freq":  # freq
-                if val is None:
+                if not val:
                     chan.freq = 0
                     chan.hide_channel = True
                     self.data = self._from_channel(chan)
                     return
 
                 assert isinstance(val, int)
+                if not chan.freq:
+                    chan.mode = model.default_mode_for_freq(chan.freq)
+
                 chan.freq = val
                 chan.hide_channel = False
-                chan.mode = model.default_mode_for_freq(chan.freq)
                 self.data = self._from_channel(chan)
                 return
 
-        # TODO: optimize
         data = chan.to_record()
         if data[col] == val:
             return
@@ -185,10 +186,12 @@ class ChannelsList(tk.Frame):
         self._setup_dropbox(13, consts.DTCS_CODES)
         self._setup_dropbox(14, consts.POLARITY)
         self._setup_dropbox_bank(15)
+        # bank pos
         self.sheet[num2alpha(16)].format(
             int_formatter(invalid_value="")
         ).align("center")
         self._setup_dropbox(17, consts.CANCELLER)
+        # canceller
         self.sheet[num2alpha(18)].format(
             int_formatter(invalid_value="")
         ).align("right")
@@ -201,12 +204,6 @@ class ChannelsList(tk.Frame):
         #    return
 
         _LOG.debug("_on_sheet_modified: %r", event)
-
-        # if not self.on_record_update or not event.cells.table:
-        #    return
-
-        #        for r, _c in event.cells.table:
-        #            row = self.sheet.data[r]
 
         # TODO: distinct
         data = [self.sheet.data[r] for (r, _c) in event.cells.table]
@@ -268,15 +265,6 @@ class ChannelsList(tk.Frame):
         col += 1
         data_row = self.sheet.data[row]
 
-        if not data_row[1] and col != 1:
-            functions.set_readonly(
-                self.sheet.MT.cell_options, (row, col), readonly=True
-            )
-            return
-
-        functions.set_readonly(
-            self.sheet.MT.cell_options, (row, col), readonly=False
-        )
         if column[0] == "ts":
             self.sheet.set_dropdown_values(
                 row,
@@ -323,17 +311,29 @@ class ChannelsList(tk.Frame):
         self.sheet.highlight_cells(
             row, column=8, fg="black" if chan.duplex else "gray"
         )
+
+        row_is_readonly = not chan.freq or chan.hide_channel
+        for c in range(2, len(COLUMNS)):
+            functions.set_readonly(
+                self.sheet.MT.cell_options, (row, c), readonly=row_is_readonly
+            )
+
+        self._set_cell_ro(row, 12, chan.tone_mode not in (1, 2))
+
+        dtsc = chan.tone_mode in (3, 4)
+        self._set_cell_ro(row, 13, not dtsc)
+
+        self._set_cell_ro(row, 14, not dtsc)
+        self._set_cell_ro(row, 16, chan.bank == consts.BANK_NOT_SET)
+        self._set_cell_ro(row, 18, not chan.canceller)
+        self._set_cell_ro(row, 8, not chan.duplex)
+
+    def _set_cell_ro(self, row: int, col: int, readonly: object) -> None:
+        ro = bool(readonly)
+
         self.sheet.highlight_cells(
-            row, column=12, fg="black" if chan.tone_mode in (1, 2) else "gray"
+            row, column=col, fg="gray" if ro else "black"
         )
-        self.sheet.highlight_cells(
-            row, column=13, fg="black" if chan.tone_mode in (3, 4) else "gray"
-        )
-        self.sheet.highlight_cells(
-            row, column=14, fg="black" if chan.tone_mode in (3, 4) else "gray"
-        )
-        self.sheet.highlight_cells(
-            row,
-            column=16,
-            fg="black" if chan.bank != consts.BANK_NOT_SET else "gray",
+        functions.set_readonly(
+            self.sheet.MT.cell_options, (row, col), readonly=ro
         )
