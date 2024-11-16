@@ -43,11 +43,9 @@ class ChannelsPage(tk.Frame):
         self._radio_memory = radio_memory
 
         # hide canceller in global models
-        # cols = self._chan_list["columns"]
-        # if not radio_memory.is_usa_model():
-        #     cols = [c for c in cols if c not in ("canc", "canc_freq")]
-
-        # self._chan_list["displaycolumns"] = cols
+        self._chan_list.set_hide_canceller(
+            hide=not radio_memory.is_usa_model()
+        )
 
         if activate:
             self._groups_list.selection_set(self._last_selected_group)

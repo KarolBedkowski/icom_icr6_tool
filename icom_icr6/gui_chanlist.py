@@ -154,6 +154,12 @@ class ChannelsList(tk.Frame):
         self.on_record_selected: ty.Callable[[list[Row]], None] | None = None
         self.on_channel_bank_validate: BankPosValidator | None = None
 
+    def set_hide_canceller(self, *, hide: bool) -> None:
+        if hide:
+            self.sheet.hide_columns((16, 17))
+        else:
+            self.sheet.show_columns((16, 17))
+
     def set_data(self, data: ty.Iterable[model.Channel]) -> None:
         self.sheet.set_sheet_data(list(map(Row, data)))
         self.sheet.set_all_column_widths()
