@@ -140,12 +140,22 @@ class ChannelsList(tk.Frame):
             ty.Callable[[ty.Collection[Row]], None] | None
         ) = None
         self.on_record_selected: ty.Callable[[list[Row]], None] | None = None
+        self.on_channel_bank_validate: (
+            ty.Callable[[int | str, int, int], int] | None
+        ) = None
 
     def set_data(self, data: ty.Iterable[model.Channel]) -> None:
         self.sheet.set_sheet_data(list(map(Row, data)))
         self.sheet.set_all_column_widths()
         for row in range(len(self.sheet.data)):
             self._update_row_states(row)
+
+    def selection(self) -> set[int]:
+        return self.sheet.get_selected_rows(get_cells_as_rows=True)  # type: ignore
+
+    def selection_set(self, sel: ty.Iterable[int]) -> None:
+        for r in sel:
+            self.sheet.select_row(r)
 
     def _setup_dropbox(self, col: int, values: list[str]) -> None:
         self.sheet[num2alpha(col)].dropdown(
@@ -221,56 +231,57 @@ class ChannelsList(tk.Frame):
         _LOG.debug("_on_validate_edits: %r", event)
 
         column = self.columns[event.column + 1]  # FIXME: visible cols
-        # row = self.sheet.data[event.row]
-        value: str = event.value
+        row = self.sheet.data[event.row]
+        chan = row.channel
+        value = event.value
 
         try:
             match column[0]:
                 case "freq":
-                    return model.fix_frequency(int(value))
+                    value = model.fix_frequency(int(value))
 
                 case "name":
-                    return model.fix_name(value)
+                    value = model.fix_name(value)
 
                 case "offset":
                     if off := int(value):
-                        return max(
+                        value = max(
                             min(off, consts.MAX_OFFSET), consts.MIN_OFFSET
                         )
 
                 case "canceller freq":
                     # round frequency to 10kHz
                     freq = (int(value) // 10) * 10
-                    return max(
+                    value = max(
                         min(freq, consts.CANCELLER_MAX_FREQ),
                         consts.CANCELLER_MIN_FREQ,
                     )
+                case "bank":
+                    if chan.bank != value and self.on_channel_bank_validate:
+                        # change bank
+                        row[16] = self.on_channel_bank_validate(
+                            value, chan.number, 0
+                        )
 
                 case "bank_pos":
                     # TODO: validate
-                    return max(min(value, 99), 0)
+                    # TODO: refresh all records
+                    value = max(min(int(value), 99), 0)
+                    if self.on_channel_bank_validate:
+                        value = self.on_channel_bank_validate(
+                            chan.bank, chan.number, value
+                        )
 
         except ValueError:
+            _LOG.exception("_on_validate_edits: %r", value)
             return None
 
-        return event.value
+        return value
 
     def _on_sheet_select(self, event: EventDataDict) -> None:
         _LOG.debug("_on_sheet_select: %r", event)
         if not event.selected:
             return
-
-        row, col = event.selected.row, event.selected.column
-        column = self.columns[col + 1]  # FIXME: visible cols
-        col += 1
-        data_row = self.sheet.data[row]
-
-        if column[0] == "ts":
-            self.sheet.set_dropdown_values(
-                row,
-                col,
-                values=model.tuning_steps_for_freq(data_row[1]),
-            )  # freq
 
         if self.on_record_selected:
             sel_box = event.selected.box
@@ -306,6 +317,7 @@ class ChannelsList(tk.Frame):
             self.on_record_update(data)
 
     def _update_row_states(self, row: int) -> None:
+        """Set state of other cells in row (readony)."""
         data_row = self.sheet.data[row]
         chan = data_row.channel
         self.sheet.highlight_cells(
@@ -322,11 +334,18 @@ class ChannelsList(tk.Frame):
 
         dtsc = chan.tone_mode in (3, 4)
         self._set_cell_ro(row, 13, not dtsc)
-
         self._set_cell_ro(row, 14, not dtsc)
+
         self._set_cell_ro(row, 16, chan.bank == consts.BANK_NOT_SET)
         self._set_cell_ro(row, 18, not chan.canceller)
         self._set_cell_ro(row, 8, not chan.duplex)
+
+        # ts
+        self.sheet.set_dropdown_values(
+            row,
+            6,
+            values=model.tuning_steps_for_freq(chan.freq),
+        )
 
     def _set_cell_ro(self, row: int, col: int, readonly: object) -> None:
         ro = bool(readonly)

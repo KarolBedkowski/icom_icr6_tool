@@ -61,6 +61,7 @@ class ChannelsPage(tk.Frame):
         self._chan_list = gui_chanlist.ChannelsList(frame)
         self._chan_list.on_record_update = self.__on_channel_update
         self._chan_list.on_record_selected = self.__on_channel_select
+        self._chan_list.on_channel_bank_validate = self.__on_channel_bank_set
         self._chan_list.pack(side=tk.TOP, expand=True, fill=tk.BOTH, ipady=6)
         # self._chan_list_model = gui_model.ChannelsListModel(self._radio_memory)
         # ccframe, self._chan_list = build_list_model(
@@ -211,3 +212,36 @@ class ChannelsPage(tk.Frame):
         # ),
         # )
         self._parent.set_status(f"Active channels: {active}")  # type: ignore
+
+    def __on_channel_bank_set(
+        self, bank: int | str, channum: int, bank_pos: int
+    ) -> int:
+        if isinstance(bank, str):
+            if bank == "":
+                return bank_pos
+
+            bank = consts.BANK_NAMES.index(bank)
+
+        if bank == consts.BANK_NOT_SET:
+            return bank_pos
+
+        bank_channels = self._radio_memory.get_bank_channels(bank)
+        if bank_channels[bank_pos] == channum:
+            return bank_pos
+
+        # selected slot is used by another channel
+        if channum in bank_channels:
+            # change channel bank pos
+            return bank_pos
+
+        # find unused next slot
+        pos = bank_channels.find_free_slot(bank_pos)
+        if pos is None:
+            # find first unused slot
+            pos = bank_channels.find_free_slot()
+
+        if pos is not None:
+            return pos
+
+        # not found unused slot - replace, require update other rows
+        return bank_pos
