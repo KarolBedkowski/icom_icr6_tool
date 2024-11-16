@@ -3,24 +3,25 @@
 #
 # Distributed under terms of the GPLv3 license.
 
-"""
+""" """
 
-"""
 import icecream
+
 icecream.install()
 
 try:
     import stackprinter
 
-    stackprinter.set_excepthook(style="color",
-                                suppressed_paths=[r"lib/python.*/site-packages/"])
-    print('stackprinter enabled')
+    stackprinter.set_excepthook(
+        style="color", suppressed_paths=[r"lib/python.*/site-packages/"]
+    )
+    print("stackprinter enabled")
 except ImportError:
     try:
         from rich.traceback import install
 
         install(show_locals=True)
-        print('rich.traceback enabled')
+        print("rich.traceback enabled")
     except ImportError:
         pass
 try:
@@ -72,10 +73,34 @@ try:
     ty.TYPE_CHECKING = True
 
     import typeguard._checkers as checkers
+
     checkers.check_protocol = None  # agronholm/typeguard#465
 
 except ImportError as err:
     print(err)
+
+
+import logging
+
+try:
+    from rich.logging import RichHandler
+
+    logging.basicConfig(
+        level="NOTSET",
+        format="%(message)s",
+        datefmt="[%X]",
+        handlers=[RichHandler()],
+    )
+except ImportError:
+    logging.basicConfig()
+
+
+try:
+    import snoop
+
+    snoop.install()
+except ImportError:
+    pass
 
 
 from icom_icr6 import main

@@ -28,17 +28,17 @@ COLUMNS = [
     ("mode", "Mode"),
     ("name", "Name"),
     ("af", "AF"),
-    ("att", "ATT"),
+    ("att", "ATT"),  # 5
     ("ts", "Tuning Step"),
     ("dup", "DUP"),
     ("offset", "Offset"),
     ("skip", "Skip"),
-    ("vsc", "VSC"),
+    ("vsc", "VSC"),  # 10
     ("tone_mode", "Tone"),
     ("tsql_freq", "TSQL"),
     ("dtsc", "DTSC"),
     ("polarity", "Polarity"),
-    ("bank", "Bank"),
+    ("bank", "Bank"),  # 15
     ("bank_pos", "Bank pos"),
     ("canceller", "Canceller"),
     ("canceller freq", "Canceller freq"),
