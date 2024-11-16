@@ -172,6 +172,7 @@ class ChannelsList(tk.Frame):
     def selection_set(self, sel: ty.Iterable[int]) -> None:
         for r in sel:
             self.sheet.select_row(r)
+            self.sheet.set_xview(r)
 
     def _setup_dropbox(self, col: int, values: list[str]) -> None:
         self.sheet[num2alpha(col)].dropdown(
