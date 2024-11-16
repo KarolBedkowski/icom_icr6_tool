@@ -160,6 +160,16 @@ class ChannelFlags:
             debug_info={"raw": binascii.hexlify(data)} if DEBUG else None,
         )
 
+    def to_data(self, cflags: MutableMemory) -> None:
+        # hide_channel, bank
+        cflags[0] = (
+            bool2bit(self.hide_channel, 0b10000000)
+            | ((self.skip & 0b11) << 5)
+            | (self.bank & 0b00011111)
+        )
+        # bank_pos
+        cflags[1] = self.bank_pos
+
 
 @dataclass
 class Channel:
@@ -970,6 +980,13 @@ class RadioMemory:
             mv[start : start + 16], mv[cflags_start : cflags_start + 2]
         )
 
+        # remove other channels from this position
+        if chan.bank != consts.BANK_NOT_SET:
+            for cf in self._get_channels_in_bank(chan.bank):
+                if cf.channum != chan.number and cf.bank_pos == chan.bank_pos:
+                    cf.bank = consts.BANK_NOT_SET
+                    self._set_channel_flags(cf)
+
     def find_first_hidden_channel(self, start: int = 0) -> Channel | None:
         for idx in range(start, consts.NUM_CHANNELS):
             chan = self.get_channel(idx)
@@ -1024,6 +1041,12 @@ class RadioMemory:
             idx,
             self.mem[cflags_start : cflags_start + 2],
         )
+
+    def _set_channel_flags(self, cf: ChannelFlags) -> None:
+        cflags_start = cf.channum * 2 + 0x5F80
+        mv = memoryview(self.mem)
+        mem_flags = mv[cflags_start : cflags_start + 2]
+        cf.to_data(mem_flags)
 
     def _get_channels_in_bank(self, bank: int) -> ty.Iterable[ChannelFlags]:
         mv = memoryview(self.mem)
