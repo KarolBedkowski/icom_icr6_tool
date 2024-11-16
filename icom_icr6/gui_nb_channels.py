@@ -70,7 +70,6 @@ class ChannelsPage(tk.Frame):
         # self._chan_list.bind(
         #     "<<TreeviewSelect>>", self.__on_channel_select, add="+"
         # )
-        # self._chan_list.bind("<Delete>", self.__on_channel_delete)
         # self._chan_list.bind("<Control-c>", self.__on_channel_copy)
         # self._chan_list.bind("<Control-v>", self.__on_channel_paste)
 
@@ -84,43 +83,17 @@ class ChannelsPage(tk.Frame):
 
         if self.__need_full_refresh:
             self.__update_chan_list()
+        else:
+            self._show_stats()
 
     def __on_channel_select(self, recs: list[gui_chanlist.Row]) -> None:  # type: ignore
-        # if selection := self._chan_list.selection():
-        #     self._last_selected_chan = selection
-
         for rec in recs:
             _LOG.debug("chan selected: %r", rec.channel)
 
-        ic(self._chan_list.selected_rows())
-
-    def __on_channel_delete(self, _event: tk.Event) -> None:  # type: ignore
-        pass
-        # with self._chan_list.with_selection() as sel:
-        #     if not sel:
-        #         return
-
-        #     if not messagebox.askyesno(
-        #         "Delete channel",
-        #         "Delete channel configuration?",
-        #         icon=messagebox.WARNING,
-        #     ):
-        #         return
-
-        #     for chan_num in sel:
-        #         chan = self._radio_memory.get_channel(int(chan_num))
-        #         chan.delete()
-        #         self._radio_memory.set_channel(chan)
-
-        #     self.__update_chan_list()
-
-    def __update_chan_list(self, event: tk.Event | None = None) -> None:  # type: ignore
+    def __update_chan_list(self, _event: tk.Event | None = None) -> None:  # type: ignore
         if sel := self._groups_list.curselection():  # type: ignore
             selected_range = sel[0]
         else:
-            # self._chan_list.set_data([])
-            # self._chan_list_model.data.clear()
-            # self._chan_list.update_all()
             return
 
         self._last_selected_group = sel[0]
@@ -131,13 +104,8 @@ class ChannelsPage(tk.Frame):
             for idx in range(range_start, range_start + 100)
         ]
         self._chan_list.set_data(data)
-        # self._chan_list.update_all()
 
         self._show_stats()
-
-        # if event is not None:
-        #     self._chan_list.yview(0)
-        #     self._chan_list.xview(0)
 
     def __on_channel_copy(self, _event: tk.Event) -> None:  # type: ignore
         sel = self._chan_list.selection()
@@ -205,13 +173,9 @@ class ChannelsPage(tk.Frame):
         return True
 
     def _show_stats(self) -> None:
-        active = 0  # sum(
-        # (
-        #     1
-        #     for c in self._chan_list_model.data
-        #     if c and not c.hide_channel
-        # ),
-        # )
+        active = sum(
+            1 for c in self._chan_list.data if c and not c.hide_channel
+        )
         self._parent.set_status(f"Active channels: {active}")  # type: ignore
 
     def __on_channel_bank_set(
