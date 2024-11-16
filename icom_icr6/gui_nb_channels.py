@@ -61,23 +61,14 @@ class ChannelsPage(tk.Frame):
         self._chan_list.on_record_selected = self.__on_channel_select
         self._chan_list.on_channel_bank_validate = self.__on_channel_bank_set
         self._chan_list.pack(side=tk.TOP, expand=True, fill=tk.BOTH, ipady=6)
-        # self._chan_list_model = gui_model.ChannelsListModel(self._radio_memory)
-        # ccframe, self._chan_list = build_list_model(
-        #     frame, self._chan_list_model
-        # )
-        # ccframe.pack(side=tk.TOP, expand=True, fill=tk.BOTH, ipady=6)
-
-        # self._chan_list.bind(
-        #     "<<TreeviewSelect>>", self.__on_channel_select, add="+"
-        # )
         # self._chan_list.bind("<Control-c>", self.__on_channel_copy)
         # self._chan_list.bind("<Control-v>", self.__on_channel_paste)
 
     def __on_channel_update(
-        self, recs: ty.Collection[gui_chanlist.Row]
+        self, action: str, rows: ty.Collection[gui_chanlist.Row]
     ) -> None:
-        for rec in recs:
-            _LOG.debug("__on_channel_update: %r", rec)
+        for rec in rows:
+            _LOG.debug("__on_channel_update: [%r]: %r", action, rec)
             chan = rec.channel
             self._radio_memory.set_channel(chan)
 
@@ -86,8 +77,8 @@ class ChannelsPage(tk.Frame):
         else:
             self._show_stats()
 
-    def __on_channel_select(self, recs: list[gui_chanlist.Row]) -> None:  # type: ignore
-        for rec in recs:
+    def __on_channel_select(self, rows: list[gui_chanlist.Row]) -> None:
+        for rec in rows:
             _LOG.debug("chan selected: %r", rec.channel)
 
     def __update_chan_list(self, _event: tk.Event | None = None) -> None:  # type: ignore

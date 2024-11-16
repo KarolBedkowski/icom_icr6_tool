@@ -12,6 +12,7 @@ from collections import UserList
 from tksheet import (
     EventDataDict,
     Sheet,
+    Span,
     functions,
     int_formatter,
     num2alpha,
@@ -22,30 +23,29 @@ from . import consts, model
 _LOG = logging.getLogger(__name__)
 
 
-COLUMNS = [
-    ("channel", "Num"),
-    ("freq", "Frequency"),
-    ("mode", "Mode"),
-    ("name", "Name"),
-    ("af", "AF"),
-    ("att", "ATT"),  # 5
-    ("ts", "Tuning Step"),
-    ("dup", "DUP"),
-    ("offset", "Offset"),
-    ("skip", "Skip"),
-    ("vsc", "VSC"),  # 10
-    ("tone_mode", "Tone"),
-    ("tsql_freq", "TSQL"),
-    ("dtsc", "DTSC"),
-    ("polarity", "Polarity"),
-    ("bank", "Bank"),  # 15
-    ("bank_pos", "Bank pos"),
-    ("canceller", "Canceller"),
-    ("canceller freq", "Canceller freq"),
-]
-
-
 class Row(UserList[object]):
+    COLUMNS = (
+        ("channel", "Num"),
+        ("freq", "Frequency"),
+        ("mode", "Mode"),
+        ("name", "Name"),
+        ("af", "AF"),
+        ("att", "ATT"),  # 5
+        ("ts", "Tuning Step"),
+        ("dup", "DUP"),
+        ("offset", "Offset"),
+        ("skip", "Skip"),
+        ("vsc", "VSC"),  # 10
+        ("tone_mode", "Tone"),
+        ("tsql_freq", "TSQL"),
+        ("dtsc", "DTSC"),
+        ("polarity", "Polarity"),
+        ("bank", "Bank"),  # 15
+        ("bank_pos", "Bank pos"),
+        ("canceller", "Canceller"),
+        ("canceller freq", "Canceller freq"),
+    )
+
     def __init__(self, channel: model.Channel) -> None:
         self.channel = channel
         super().__init__(self._from_channel(channel))
@@ -55,7 +55,7 @@ class Row(UserList[object]):
             return
 
         chan = self.channel
-        col = COLUMNS[idx][0]
+        col = self.COLUMNS[idx][0]
 
         if (not chan.freq or chan.hide_channel) and idx != 1:
             return
@@ -72,8 +72,8 @@ class Row(UserList[object]):
                     return
 
                 assert isinstance(val, int)
-                if not chan.freq:
-                    chan.mode = model.default_mode_for_freq(chan.freq)
+                if not chan.freq or chan.hide_channel:
+                    chan.mode = model.default_mode_for_freq(val)
 
                 chan.freq = val
                 chan.hide_channel = False
@@ -99,7 +99,7 @@ class Row(UserList[object]):
             return [channel.number, *([""] * 18)]
 
         data = channel.to_record()
-        return [data[col] for col, *_ in COLUMNS]
+        return [data[col] for col, *_ in self.COLUMNS]
 
     def delete(self) -> None:
         self.channel.hide_channel = True
@@ -122,6 +122,23 @@ def format_freq(freq: int, **_kwargs: object) -> str:
 
 
 @ty.runtime_checkable
+class RecordActionCallback(ty.Protocol):
+    def __call__(
+        self,
+        action: str,
+        rows: list[Row],
+    ) -> None: ...
+
+
+@ty.runtime_checkable
+class RecordSelctedCallback(ty.Protocol):
+    def __call__(
+        self,
+        rows: list[Row],
+    ) -> None: ...
+
+
+@ty.runtime_checkable
 class BankPosValidator(ty.Protocol):
     def __call__(
         self,
@@ -134,6 +151,8 @@ class BankPosValidator(ty.Protocol):
 
 
 class ChannelsList(tk.Frame):
+    _ROW_CLASS = Row
+
     def __init__(self, parent: tk.Widget) -> None:
         super().__init__(parent)
         self.sheet = Sheet(
@@ -146,30 +165,35 @@ class ChannelsList(tk.Frame):
         self.sheet.bind("<<SheetSelect>>", self._on_sheet_select)
         self.sheet.extra_bindings("begin_delete", self._on_delete)
 
-        self.columns = COLUMNS
+        self.columns = self._ROW_CLASS.COLUMNS
+        self.colmap = {
+            name: idx for idx, (name, *_) in enumerate(self.columns)
+        }
         self._configure()
-        self.on_record_update: (
-            ty.Callable[[ty.Collection[Row]], None] | None
-        ) = None
-        self.on_record_selected: ty.Callable[[list[Row]], None] | None = None
+
+        self.on_record_update: RecordActionCallback | None = None
+        self.on_record_selected: RecordSelctedCallback | None = None
         self.on_channel_bank_validate: BankPosValidator | None = None
 
     @property
-    def data(self) -> ty.Iterable[model.Channel]:
+    def data(self) -> ty.Iterable[model.Channel | None]:
         for r in self.sheet.data:
             yield r.channel
 
     def set_hide_canceller(self, *, hide: bool) -> None:
+        canc_columns = [
+            self.colmap[c] - 1 for c in ("canceller", "canceller freq")
+        ]
         if hide:
-            self.sheet.hide_columns((16, 17))
+            self.sheet.hide_columns(canc_columns)
         else:
-            self.sheet.show_columns((16, 17))
+            self.sheet.show_columns(canc_columns)
 
     def set_data(self, data: ty.Iterable[model.Channel]) -> None:
         self.sheet.set_sheet_data(list(map(Row, data)))
         self.sheet.set_all_column_widths()
         for row in range(len(self.sheet.data)):
-            self._update_row_states(row)
+            self.update_row_state(row)
 
     def selection(self) -> set[int]:
         return self.sheet.get_selected_rows(get_cells_as_rows=True)  # type: ignore
@@ -179,13 +203,18 @@ class ChannelsList(tk.Frame):
             self.sheet.select_row(r)
             self.sheet.set_xview(r)
 
-    def _setup_dropbox(self, col: int, values: list[str]) -> None:
+    def _col(self, column: str) -> Span:
+        return self.sheet[num2alpha(self.colmap[column])]
+
+    def _setup_dropbox(self, column: str, values: list[str]) -> None:
+        col = self.colmap[column]
         self.sheet[num2alpha(col)].dropdown(
             values=values,
             state="",
         ).align("center")
 
-    def _setup_dropbox_bank(self, col: int) -> None:
+    def _setup_dropbox_bank(self, column: str) -> None:
+        col = self.colmap[column]
         values: list[str] = ["", *consts.BANK_NAMES]
         self.sheet[num2alpha(col)].dropdown(
             values=values,
@@ -195,36 +224,36 @@ class ChannelsList(tk.Frame):
     def _configure(self) -> None:
         self.sheet.headers([c[0] for c in self.columns])
 
-        self.sheet[num2alpha(0)].format(int_formatter()).align("right")
-        self.sheet[num2alpha(1)].format(
+        self._col("channel").format(int_formatter()).align("right")
+        self._col("freq").format(
             int_formatter(
                 format_function=to_int,
                 to_str_function=format_freq,
                 invalid_value="",
             )
         ).align("right")
-        self._setup_dropbox(2, consts.MODES)
-        self.sheet[num2alpha(4)].checkbox().align("center")
-        self.sheet[num2alpha(5)].checkbox().align("center")
-        self._setup_dropbox(6, consts.STEPS)
-        self._setup_dropbox(7, consts.DUPLEX_DIRS)
-        self.sheet[num2alpha(8)].format(int_formatter(invalid_value="")).align(
+        self._setup_dropbox("mode", consts.MODES)
+        self._col("af").checkbox().align("center")
+        self._col("att").checkbox().align("center")
+        self._setup_dropbox("ts", consts.STEPS)
+        self._setup_dropbox("dup", consts.DUPLEX_DIRS)
+        self._col("offset").format(int_formatter(invalid_value="")).align(
             "right"
         )
-        self._setup_dropbox(9, consts.SKIPS)
-        self.sheet[num2alpha(10)].checkbox().align("center")
-        self._setup_dropbox(11, consts.TONE_MODES)
-        self._setup_dropbox(12, consts.CTCSS_TONES)
-        self._setup_dropbox(13, consts.DTCS_CODES)
-        self._setup_dropbox(14, consts.POLARITY)
-        self._setup_dropbox_bank(15)
+        self._setup_dropbox("skip", consts.SKIPS)
+        self._col("vsc").checkbox().align("center")
+        self._setup_dropbox("tone_mode", consts.TONE_MODES)
+        self._setup_dropbox("tsql_freq", consts.CTCSS_TONES)
+        self._setup_dropbox("dtsc", consts.DTCS_CODES)
+        self._setup_dropbox("polarity", consts.POLARITY)
+        self._setup_dropbox_bank("bank")
         # bank pos
-        self.sheet[num2alpha(16)].format(
-            int_formatter(invalid_value="")
-        ).align("center")
-        self._setup_dropbox(17, consts.CANCELLER)
+        self._col("bank_pos").format(int_formatter(invalid_value="")).align(
+            "center"
+        )
+        self._setup_dropbox("canceller", consts.CANCELLER)
         # canceller
-        self.sheet[num2alpha(18)].format(
+        self._col("canceller freq").format(
             int_formatter(invalid_value="")
         ).align("right")
 
@@ -241,10 +270,10 @@ class ChannelsList(tk.Frame):
         data = [self.sheet.data[r] for (r, _c) in event.cells.table]
 
         for r, _c in event.cells.table:
-            self._update_row_states(r)
+            self.update_row_state(r)
 
         if data and self.on_record_update:
-            self.on_record_update(data)
+            self.on_record_update("update", data)
 
     def _on_validate_edits(self, event: EventDataDict) -> object:
         if event.eventname != "end_edit_table":
@@ -289,8 +318,6 @@ class ChannelsList(tk.Frame):
                         )
 
                 case "bank_pos":
-                    # TODO: validate
-                    # TODO: refresh all records
                     value = max(min(int(value), 99), 0)
                     if self.on_channel_bank_validate:
                         value = self.on_channel_bank_validate(
@@ -324,55 +351,60 @@ class ChannelsList(tk.Frame):
 
     def _on_delete(self, event: EventDataDict) -> None:
         data = []
+
         if event.selected.type_ == "rows":
             box = event.selected.box
             for r in range(box.from_r, box.upto_r):
                 row = self.sheet.data[r]
                 row.delete()
                 data.append(row)
-                self._update_row_states(r)
+                self.update_row_state(r)
+
+            if data and self.on_record_update:
+                self.on_record_update("delete", data)
 
         elif event.selected.type_ == "cells":
             r = event.selected.row
             self.sheet[r, event.selected.column + 1].data = ""
-            self._update_row_states(r)
+            self.update_row_state(r)
             data.append(self.sheet.data[r])
 
-        if data and self.on_record_update:
-            self.on_record_update(data)
+            if data and self.on_record_update:
+                self.on_record_update("update", data)
 
-    def _update_row_states(self, row: int) -> None:
+    def update_row_state(self, row: int) -> None:
         """Set state of other cells in row (readony)."""
         data_row = self.sheet.data[row]
         chan = data_row.channel
-        self.sheet.highlight_cells(
-            row, column=8, fg="black" if chan.duplex else "gray"
-        )
 
         row_is_readonly = not chan.freq or chan.hide_channel
-        for c in range(2, len(COLUMNS)):
+        for c in range(2, len(self.columns)):
             functions.set_readonly(
                 self.sheet.MT.cell_options, (row, c), readonly=row_is_readonly
             )
 
-        self._set_cell_ro(row, 12, chan.tone_mode not in (1, 2))
+        self._set_cell_ro(row, "offset", not chan.duplex)
+        self._set_cell_ro(row, "tsql_freq", chan.tone_mode not in (1, 2))
 
         dtsc = chan.tone_mode in (3, 4)
-        self._set_cell_ro(row, 13, not dtsc)
-        self._set_cell_ro(row, 14, not dtsc)
+        self._set_cell_ro(row, "dtsc", not dtsc)
+        self._set_cell_ro(row, "polarity", not dtsc)
 
-        self._set_cell_ro(row, 16, chan.bank == consts.BANK_NOT_SET)
-        self._set_cell_ro(row, 18, not chan.canceller)
-        self._set_cell_ro(row, 8, not chan.duplex)
+        self._set_cell_ro(row, "bank_pos", chan.bank == consts.BANK_NOT_SET)
+        self._set_cell_ro(row, "canceller", not chan.canceller)
+        self._set_cell_ro(row, "canceller freq", not chan.duplex)
 
         # ts
         self.sheet.set_dropdown_values(
             row,
-            6,
+            self.colmap["ts"],
             values=model.tuning_steps_for_freq(chan.freq),
         )
 
-    def _set_cell_ro(self, row: int, col: int, readonly: object) -> None:
+    def _set_cell_ro(self, row: int, col: int | str, readonly: object) -> None:
+        if isinstance(col, str):
+            col = self.colmap[col]
+
         ro = bool(readonly)
 
         self.sheet.highlight_cells(
