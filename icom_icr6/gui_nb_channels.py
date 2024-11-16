@@ -10,7 +10,6 @@ import typing as ty
 from tkinter import messagebox, ttk
 
 from . import consts, expimp, gui_chanlist, gui_model, model
-from .gui_widgets import build_list_model
 
 _LOG = logging.getLogger(__name__)
 
@@ -23,7 +22,8 @@ class ChannelsPage(tk.Frame):
         self._parent = parent
         self._radio_memory = radio_memory
         self._last_selected_group = 0
-        self._last_selected_chan: tuple[str, ...] = ()
+        self._last_selected_chan: tuple[int, ...] = ()
+        self.__need_full_refresh = False
 
         pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
         self._groups_list = tk.Listbox(pw, selectmode=tk.SINGLE)
@@ -83,6 +83,9 @@ class ChannelsPage(tk.Frame):
             _LOG.debug("__on_channel_update: %r", rec)
             chan = rec.channel
             self._radio_memory.set_channel(chan)
+
+        if self.__need_full_refresh:
+            self.__update_chan_list()
 
     def __on_channel_select(self, recs: list[gui_chanlist.Row]) -> None:  # type: ignore
         # if selection := self._chan_list.selection():
@@ -214,34 +217,43 @@ class ChannelsPage(tk.Frame):
         self._parent.set_status(f"Active channels: {active}")  # type: ignore
 
     def __on_channel_bank_set(
-        self, bank: int | str, channum: int, bank_pos: int
+        self,
+        bank: int | str,
+        channum: int,
+        bank_pos: int,
+        *,
+        try_set_free_slot: bool = False,
     ) -> int:
-        if isinstance(bank, str):
-            if bank == "":
-                return bank_pos
+        if bank in (consts.BANK_NOT_SET, ""):
+            return bank_pos
 
+        if isinstance(bank, str):
             bank = consts.BANK_NAMES.index(bank)
 
-        if bank == consts.BANK_NOT_SET:
-            return bank_pos
-
         bank_channels = self._radio_memory.get_bank_channels(bank)
-        if bank_channels[bank_pos] == channum:
+        dst_bank_pos = bank_channels[bank_pos]
+        if dst_bank_pos == channum:
+            # no changes
             return bank_pos
 
-        # selected slot is used by another channel
-        if channum in bank_channels:
-            # change channel bank pos
+        # is position empty
+        if dst_bank_pos is None:
             return bank_pos
 
-        # find unused next slot
-        pos = bank_channels.find_free_slot(bank_pos)
-        if pos is None:
-            # find first unused slot
-            pos = bank_channels.find_free_slot()
+        # selected bank pos is occupied by other chan
 
-        if pos is not None:
-            return pos
+        if try_set_free_slot:
+            # find unused next slot
+            pos = bank_channels.find_free_slot(bank_pos)
+            if pos is None:
+                # not found next, search from beginning
+                # find first unused slot
+                pos = bank_channels.find_free_slot()
+
+            if pos is not None:
+                return pos
 
         # not found unused slot - replace, require update other rows
+        # this may create duplicates !!!! FIXME: mark duplicates
+        self.__need_full_refresh = True
         return bank_pos

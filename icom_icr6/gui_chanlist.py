@@ -121,6 +121,18 @@ def format_freq(freq: int, **_kwargs: object) -> str:
     return f"{freq:_}".replace("_", " ")
 
 
+@ty.runtime_checkable
+class BankPosValidator(ty.Protocol):
+    def __call__(
+        self,
+        bank: int | str,
+        channum: int,
+        bank_pos: int,
+        *,
+        try_set_free_slot: bool = False,
+    ) -> int: ...
+
+
 class ChannelsList(tk.Frame):
     def __init__(self, parent: tk.Widget) -> None:
         super().__init__(parent)
@@ -140,9 +152,7 @@ class ChannelsList(tk.Frame):
             ty.Callable[[ty.Collection[Row]], None] | None
         ) = None
         self.on_record_selected: ty.Callable[[list[Row]], None] | None = None
-        self.on_channel_bank_validate: (
-            ty.Callable[[int | str, int, int], int] | None
-        ) = None
+        self.on_channel_bank_validate: BankPosValidator | None = None
 
     def set_data(self, data: ty.Iterable[model.Channel]) -> None:
         self.sheet.set_sheet_data(list(map(Row, data)))
@@ -260,7 +270,10 @@ class ChannelsList(tk.Frame):
                     if chan.bank != value and self.on_channel_bank_validate:
                         # change bank
                         row[16] = self.on_channel_bank_validate(
-                            value, chan.number, 0
+                            value,
+                            chan.number,
+                            0,
+                            try_set_free_slot=True,
                         )
 
                 case "bank_pos":
