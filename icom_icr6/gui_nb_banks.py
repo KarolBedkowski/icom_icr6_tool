@@ -9,7 +9,7 @@ import tkinter as tk
 import typing as ty
 from tkinter import messagebox, ttk
 
-from . import consts, expimp, gui_model, model
+from . import consts, expimp, gui_bankchanlist, gui_model, model
 from .gui_widgets import (
     NumEntryPopup,
     TableView2,
@@ -60,11 +60,9 @@ class BanksPage(tk.Frame):
         self._radio_memory = radio_memory
 
         # hide canceller in global models
-        cols = self._chan_list["columns"]
-        if not radio_memory.is_usa_model():
-            cols = [c for c in cols if c not in ("canc", "canc_freq")]
-
-        self._chan_list["displaycolumns"] = cols
+        self._chan_list.set_hide_canceller(
+            hide=not radio_memory.is_usa_model()
+        )
 
         self.__update_banks_list()
 
@@ -98,18 +96,16 @@ class BanksPage(tk.Frame):
         fields.pack(side=tk.TOP, fill=tk.X, ipady=6)
 
     def __create_chan_list(self, frame: tk.Frame) -> None:
-        self._chan_list_model = BankChannelsListModel(self._radio_memory)
-        ccframe, self._chan_list = build_list_model(
-            frame, self._chan_list_model
-        )
-        ccframe.pack(side=tk.TOP, expand=True, fill=tk.BOTH, ipady=6)
-
-        self._chan_list.bind(
-            "<<TreeviewSelect>>", self.__on_channel_select, add="+"
-        )
-        self._chan_list.bind("<Delete>", self.__on_channel_delete)
-        self._chan_list.bind("<Control-c>", self.__on_channel_copy)
-        self._chan_list.bind("<Control-v>", self.__on_channel_paste)
+        self._chan_list = gui_bankchanlist.ChannelsList(frame)
+        self._chan_list.on_new_channel = self.__on_new_channel_req
+        self._chan_list.on_change_channel = self.__on_change_channel_req
+        self._chan_list.on_record_update = self.__on_channel_update
+        # self._chan_list.on_record_update = self.__on_channel_update
+        # self._chan_list.on_record_selected = self.__on_channel_select
+        # self._chan_list.on_channel_bank_validate = self.__on_channel_bank_set
+        self._chan_list.pack(side=tk.TOP, expand=True, fill=tk.BOTH, ipady=6)
+        # self._chan_list.bind("<Control-c>", self.__on_channel_copy)
+        # self._chan_list.bind("<Control-v>", self.__on_channel_paste)
 
     def __update_banks_list(self) -> None:
         banks = self._banks_list
@@ -127,8 +123,7 @@ class BanksPage(tk.Frame):
             self._field_bank_name["state"] = "disabled"
             self._field_bank_link["state"] = "disabled"
             self._btn_update["state"] = "disabled"
-            self._chan_list_model.clear()
-            self._chan_list.update_all()
+            self._chan_list.set_data([])
             self._bank_name.set("")
 
     def __update_chan_list(self, event: tk.Event | None = None) -> None:  # type: ignore
@@ -137,10 +132,10 @@ class BanksPage(tk.Frame):
         if sel := self._banks_list.curselection():  # type: ignore
             selected_bank = sel[0]
         else:
-            self._chan_list_model.data.clear()
-            bcont.update_all()
+            self._chan_list.set_data([])
             return
 
+        self._chan_list.set_bank(selected_bank)
         self._last_selected_bank = selected_bank
 
         bank = self._radio_memory.get_bank(selected_bank)
@@ -150,18 +145,14 @@ class BanksPage(tk.Frame):
         self._bank_link.set_raw(bl[selected_bank])
 
         channels = self._radio_memory.get_bank_channels(selected_bank)
-        self._chan_list_model.data = [
-            self._radio_memory.get_channel(channum)
-            if channum is not None
-            else None
-            for channum in channels.channels
-        ]
-        self._chan_list_model.bank_num = selected_bank
-        bcont.update_all()
-
-        if event:
-            bcont.yview(0)
-            bcont.xview(0)
+        self._chan_list.set_data(
+            [
+                self._radio_memory.get_channel(channum)
+                if channum is not None
+                else None
+                for channum in channels.channels
+            ]
+        )
 
         self._field_bank_name["state"] = "normal"
         self._field_bank_link["state"] = "normal"
@@ -170,11 +161,7 @@ class BanksPage(tk.Frame):
 
     def _show_stats(self) -> None:
         active = sum(
-            (
-                1
-                for c in self._chan_list_model.data
-                if c and not c.hide_channel
-            ),
+            (1 for c in self._chan_list.data if c and not c.hide_channel),
         )
         self._parent.set_status(f"Active channels in bank: {active}")  # type: ignore
 
@@ -202,6 +189,16 @@ class BanksPage(tk.Frame):
         self._radio_memory.set_bank_links(bl)
 
         self.__update_banks_list()
+
+    def __on_channel_update(
+        self, action: str, rows: ty.Collection[gui_bankchanlist.BLRow]
+    ) -> None:
+        for rec in rows:
+            _LOG.debug("__on_channel_update: [%r]: %r", action, rec)
+            if chan := rec.channel:
+                self._radio_memory.set_channel(chan)
+
+        self.__update_chan_list()
 
     def __on_channel_select(self, _event: tk.Event) -> None:  # type: ignore
         sel = self._chan_list.selection()
@@ -334,6 +331,19 @@ class BanksPage(tk.Frame):
         chan.hide_channel = False
         self._radio_memory.set_channel(chan)
         return True
+
+    def __on_new_channel_req(self) -> model.Channel:
+        chan = self._radio_memory.find_first_hidden_channel()
+        if not chan:
+            raise ValueError
+
+        return chan
+
+    def __on_change_channel_req(
+        self, channum: int, bank_pos: int
+    ) -> model.Channel:
+        _LOG.debug("__on_change_channel_req: %r, %r", channum, bank_pos)
+        return self._radio_memory.get_channel(channum)
 
 
 class BankChannelsListModel(gui_model.ChannelsListModel):

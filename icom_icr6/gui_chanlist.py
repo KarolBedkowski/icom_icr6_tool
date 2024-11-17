@@ -12,7 +12,6 @@ from collections import UserList
 from tksheet import (
     EventDataDict,
     Sheet,
-    Span,
     functions,
     int_formatter,
     num2alpha,
@@ -21,34 +20,40 @@ from tksheet import (
 from . import consts, model
 
 _LOG = logging.getLogger(__name__)
+_BANKS = ["", *consts.BANK_NAMES]
 
 
 class Row(UserList[object]):
     COLUMNS = (
-        ("channel", "Num"),
-        ("freq", "Frequency"),
-        ("mode", "Mode"),
-        ("name", "Name"),
-        ("af", "AF"),
-        ("att", "ATT"),  # 5
-        ("ts", "Tuning Step"),
-        ("dup", "DUP"),
-        ("offset", "Offset"),
-        ("skip", "Skip"),
-        ("vsc", "VSC"),  # 10
-        ("tone_mode", "Tone"),
-        ("tsql_freq", "TSQL"),
-        ("dtsc", "DTSC"),
-        ("polarity", "Polarity"),
-        ("bank", "Bank"),  # 15
-        ("bank_pos", "Bank pos"),
-        ("canceller", "Canceller"),
-        ("canceller freq", "Canceller freq"),
+        ("channel", "Num", "int"),
+        ("freq", "Frequency", "freq"),
+        ("mode", "Mode", consts.MODES),
+        ("name", "Name", "str"),
+        ("af", "AF", "bool"),
+        ("att", "ATT", "bool"),  # 5
+        ("ts", "Tuning Step", consts.STEPS),
+        ("dup", "DUP", consts.DUPLEX_DIRS),
+        ("offset", "Offset", "freq"),
+        ("skip", "Skip", consts.SKIPS),
+        ("vsc", "VSC", "bool"),  # 10
+        ("tone_mode", "Tone", consts.TONE_MODES),
+        ("tsql_freq", "TSQL", consts.CTCSS_TONES),
+        ("dtsc", "DTSC", consts.DTCS_CODES),
+        ("polarity", "Polarity", consts.POLARITY),
+        ("bank", "Bank", _BANKS),  # 15
+        ("bank_pos", "Bank pos", "int"),
+        ("canceller", "Canceller", consts.CANCELLER),
+        ("canceller freq", "Canceller freq", "int"),
     )
 
     def __init__(self, channel: model.Channel) -> None:
         self.channel = channel
         super().__init__(self._from_channel(channel))
+
+    def __hash__(self) -> int:
+        return hash(
+            self.__class__.__name__ + str(self.data[0] if self.data else None)
+        )
 
     def __setitem__(self, idx: int, val: object) -> None:
         if val == self.data[idx]:
@@ -65,18 +70,14 @@ class Row(UserList[object]):
                 return
 
             case "freq":  # freq
-                if not val:
-                    chan.freq = 0
-                    chan.hide_channel = True
-                    self.data = self._from_channel(chan)
-                    return
+                if val:
+                    assert isinstance(val, int)
 
-                assert isinstance(val, int)
-                if not chan.freq or chan.hide_channel:
-                    chan.mode = model.default_mode_for_freq(val)
+                    if not chan.freq or chan.hide_channel:
+                        chan.mode = model.default_mode_for_freq(val)
 
-                chan.freq = val
-                chan.hide_channel = False
+                chan.freq = val or 0  # type: ignore
+                chan.hide_channel = not val
                 self.data = self._from_channel(chan)
                 return
 
@@ -87,7 +88,8 @@ class Row(UserList[object]):
         try:
             chan.from_record({col: val})
         except Exception:
-            _LOG.exception("from record error: %r=%r", col, val)
+            _LOG.exception("update chan from record error: %r=%r", col, val)
+            return
 
         super().__setitem__(idx, val)
 
@@ -104,6 +106,7 @@ class Row(UserList[object]):
     def delete(self) -> None:
         self.channel.hide_channel = True
         self.channel.freq = 0
+        self.channel.bank = consts.BANK_NOT_SET
         self.data = self._from_channel(self.channel)
 
 
@@ -126,7 +129,7 @@ class RecordActionCallback(ty.Protocol):
     def __call__(
         self,
         action: str,
-        rows: list[Row],
+        rows: ty.Collection[Row],
     ) -> None: ...
 
 
@@ -150,7 +153,10 @@ class BankPosValidator(ty.Protocol):
     ) -> int: ...
 
 
-class ChannelsList(tk.Frame):
+T = ty.TypeVar("T", bound=UserList[object])
+
+
+class ChannelsList(tk.Frame, ty.Generic[T]):
     _ROW_CLASS = Row
 
     def __init__(self, parent: tk.Widget) -> None:
@@ -196,81 +202,68 @@ class ChannelsList(tk.Frame):
             self.update_row_state(row)
 
     def selection(self) -> set[int]:
+        """Get selected rows."""
         return self.sheet.get_selected_rows(get_cells_as_rows=True)  # type: ignore
 
     def selection_set(self, sel: ty.Iterable[int]) -> None:
+        """Set selection on `sel` rows"""
         for r in sel:
             self.sheet.select_row(r)
             self.sheet.set_xview(r)
 
-    def _col(self, column: str) -> Span:
-        return self.sheet[num2alpha(self.colmap[column])]
+    # def _col(self, column: str) -> Span:
+    #     return self.sheet[num2alpha(self.colmap[column])]
 
-    def _setup_dropbox(self, column: str, values: list[str]) -> None:
-        col = self.colmap[column]
-        self.sheet[num2alpha(col)].dropdown(
-            values=values,
-            state="",
-        ).align("center")
+    # def _setup_dropbox(self, column: str, values: list[str]) -> None:
+    #     col = self.colmap[column]
+    #     self.sheet[num2alpha(col)].dropdown(
+    #         values=values,
+    #         state="",
+    #     ).align("center")
 
-    def _setup_dropbox_bank(self, column: str) -> None:
-        col = self.colmap[column]
-        values: list[str] = ["", *consts.BANK_NAMES]
-        self.sheet[num2alpha(col)].dropdown(
-            values=values,
-            state="",
-        ).align("center")
+    # def _setup_dropbox_bank(self, column: str) -> None:
+    #     col = self.colmap[column]
+    #     values: list[str] = ["", *consts.BANK_NAMES]
+    #     self.sheet[num2alpha(col)].dropdown(
+    #         values=values,
+    #         state="",
+    #     ).align("center")
 
     def _configure(self) -> None:
-        self.sheet.headers([c[0] for c in self.columns])
+        self.sheet.headers([c[1] for c in self.columns])
 
-        self._col("channel").format(int_formatter()).align("right")
-        self._col("freq").format(
-            int_formatter(
-                format_function=to_int,
-                to_str_function=format_freq,
-                invalid_value="",
-            )
-        ).align("right")
-        self._setup_dropbox("mode", consts.MODES)
-        self._col("af").checkbox().align("center")
-        self._col("att").checkbox().align("center")
-        self._setup_dropbox("ts", consts.STEPS)
-        self._setup_dropbox("dup", consts.DUPLEX_DIRS)
-        self._col("offset").format(int_formatter(invalid_value="")).align(
-            "right"
-        )
-        self._setup_dropbox("skip", consts.SKIPS)
-        self._col("vsc").checkbox().align("center")
-        self._setup_dropbox("tone_mode", consts.TONE_MODES)
-        self._setup_dropbox("tsql_freq", consts.CTCSS_TONES)
-        self._setup_dropbox("dtsc", consts.DTCS_CODES)
-        self._setup_dropbox("polarity", consts.POLARITY)
-        self._setup_dropbox_bank("bank")
-        # bank pos
-        self._col("bank_pos").format(int_formatter(invalid_value="")).align(
-            "center"
-        )
-        self._setup_dropbox("canceller", consts.CANCELLER)
-        # canceller
-        self._col("canceller freq").format(
-            int_formatter(invalid_value="")
-        ).align("right")
+        for idx, (colname, _c, values) in enumerate(self.columns):
+            col = self.sheet[num2alpha(idx)]
+            if values == "str":
+                continue
+            if values == "int":
+                col.format(int_formatter(invalid_value="")).align("right")
+            elif values == "bool":
+                col.checkbox().align("center")
+            elif values == "freq":
+                col.format(
+                    int_formatter(
+                        format_function=to_int,
+                        to_str_function=format_freq,
+                        invalid_value="",
+                    )
+                ).align("right")
+            elif isinstance(values, (list, tuple)):
+                col.dropdown(values=values, state="").align("center")
+            else:
+                _LOG.error("unknown column %d: %s", idx, colname)
 
         self.sheet.row_index(0)
         self.sheet.hide_columns(0)
 
     def _on_sheet_modified(self, event: EventDataDict) -> None:
-        # if event.eventname == "edit_table":
-        #    return
-
         _LOG.debug("_on_sheet_modified: %r", event)
 
-        # TODO: distinct
-        data = [self.sheet.data[r] for (r, _c) in event.cells.table]
+        data: set[Row] = set()
 
         for r, _c in event.cells.table:
             self.update_row_state(r)
+            data.add(self.sheet.data[r])
 
         if data and self.on_record_update:
             self.on_record_update("update", data)
@@ -343,7 +336,7 @@ class ChannelsList(tk.Frame):
             ]
             self.on_record_selected(rows)
 
-    def selected_rows(self) -> list[Row]:
+    def selected_rows(self) -> list[T]:
         return [
             self.sheet.data[r]
             for r in self.sheet.get_selected_rows(get_cells_as_rows=True)
@@ -377,11 +370,14 @@ class ChannelsList(tk.Frame):
         data_row = self.sheet.data[row]
         chan = data_row.channel
 
-        row_is_readonly = not chan.freq or chan.hide_channel
+        row_is_readonly = not chan or not chan.freq or chan.hide_channel
         for c in range(2, len(self.columns)):
             functions.set_readonly(
                 self.sheet.MT.cell_options, (row, c), readonly=row_is_readonly
             )
+
+        if not chan:
+            return
 
         self._set_cell_ro(row, "offset", not chan.duplex)
         self._set_cell_ro(row, "tsql_freq", chan.tone_mode not in (1, 2))
@@ -401,14 +397,15 @@ class ChannelsList(tk.Frame):
             values=model.tuning_steps_for_freq(chan.freq),
         )
 
-    def _set_cell_ro(self, row: int, col: int | str, readonly: object) -> None:
-        if isinstance(col, str):
-            col = self.colmap[col]
+    def _set_cell_ro(self, row: int, colname: str, readonly: object) -> None:
+        col = self.colmap.get(colname)
+        if not col:
+            return
 
         ro = bool(readonly)
 
         self.sheet.highlight_cells(
-            row, column=col, fg="gray" if ro else "black"
+            row, column=col, fg="#d0d0d0" if ro else "black"
         )
         functions.set_readonly(
             self.sheet.MT.cell_options, (row, col), readonly=ro
