@@ -127,12 +127,9 @@ class BanksPage(tk.Frame):
             self._bank_name.set("")
 
     def __update_chan_list(self, event: tk.Event | None = None) -> None:  # type: ignore
-        bcont = self._chan_list
-
         if sel := self._banks_list.curselection():  # type: ignore
             selected_bank = sel[0]
         else:
-            self._chan_list.set_data([])
             return
 
         self._chan_list.set_bank(selected_bank)
@@ -198,6 +195,7 @@ class BanksPage(tk.Frame):
             if chan := rec.channel:
                 self._radio_memory.set_channel(chan)
 
+        # TODO: partial update
         self.__update_chan_list()
 
     def __on_channel_select(self, _event: tk.Event) -> None:  # type: ignore

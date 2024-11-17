@@ -207,6 +207,10 @@ class Channel:
 
     debug_info: dict[str, object] | None = None
 
+    @property
+    def active(self) -> bool:
+        return self.freq != 0 and not self.hide_channel
+
     def delete(self) -> None:
         self.freq = 0
         self.hide_channel = True

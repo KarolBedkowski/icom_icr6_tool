@@ -82,6 +82,9 @@ class BLRow(UserList[object]):
                     if not chan.freq or chan.hide_channel:
                         chan.mode = model.default_mode_for_freq(val)
 
+                else:
+                    chan.bank = consts.BANK_NOT_SET
+
                 chan.freq = val or 0  # type: ignore
                 chan.hide_channel = not val
                 self.data = self._from_channel(chan)
@@ -136,7 +139,7 @@ class ChannelsList(gui_chanlist.ChannelsList[BLRow]):
     def set_bank(self, bank: int | None) -> None:
         self.bank = bank
 
-    def set_data(self, data: ty.Iterable[model.Channel]) -> None:
+    def set_data(self, data: ty.Iterable[model.Channel | None]) -> None:
         self.sheet.set_sheet_data(
             [BLRow(idx, chan) for idx, chan in enumerate(data)]
         )

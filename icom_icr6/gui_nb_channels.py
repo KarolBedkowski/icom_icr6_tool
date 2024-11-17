@@ -15,6 +15,8 @@ _LOG = logging.getLogger(__name__)
 
 
 class ChannelsPage(tk.Frame):
+    _chan_list: gui_chanlist.ChannelsList[gui_chanlist.Row]
+
     def __init__(
         self, parent: tk.Widget, radio_memory: model.RadioMemory
     ) -> None:
@@ -97,6 +99,7 @@ class ChannelsPage(tk.Frame):
         self._chan_list.set_data(data)
 
         self._show_stats()
+        self.__need_full_refresh = False
 
     def __on_channel_copy(self, _event: tk.Event) -> None:  # type: ignore
         sel = self._chan_list.selection()
