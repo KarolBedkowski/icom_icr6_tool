@@ -968,6 +968,9 @@ class RadioMemory:
 
     def set_channel(self, chan: Channel) -> None:
         _LOG.debug("set_channel: %r", chan)
+        if not chan.freq or chan.hide_channel:
+            chan.bank = consts.BANK_NOT_SET
+
         chan.validate()
         idx = chan.number
 
@@ -1043,6 +1046,9 @@ class RadioMemory:
         )
 
     def _set_channel_flags(self, cf: ChannelFlags) -> None:
+        if cf.hide_channel:
+            cf.bank = consts.BANK_NOT_SET
+
         cflags_start = cf.channum * 2 + 0x5F80
         mv = memoryview(self.mem)
         mem_flags = mv[cflags_start : cflags_start + 2]
