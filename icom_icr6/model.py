@@ -172,8 +172,14 @@ class ChannelFlags:
 
 
 @dataclass
-class Channel:
+class EmptyChannel:
     number: int
+    freq: int
+
+
+@dataclass
+class Channel(EmptyChannel):
+    #    number: int
 
     freq: int
     freq_flags: int
@@ -1102,6 +1108,22 @@ class RadioMemory:
         return ScanLink.from_data(
             idx, self.mem[start : start + 8], self.mem[estart : estart + 4]
         )
+
+    def clear_bank_pos(self, bank: int, bank_pos: int) -> bool:
+        _LOG.debug("clear_bank_pos: %d, %d", bank, bank_pos)
+        bc = self.get_bank_channels(bank)
+        channum = bc[bank_pos]
+        if channum is None:
+            _LOG.debug("clear_bank_pos: no chan in pos %d", bank_pos)
+            return False
+
+        _LOG.debug("clear_bank_pos: chan %d in pos %d", channum, bank_pos)
+        cf = self._get_channel_flags(channum)
+        cf.bank = consts.BANK_NOT_SET
+        cf.bank_pos = 0
+        self._set_channel_flags(cf)
+
+        return True
 
     def set_scan_link(self, sl: ScanLink) -> None:
         mv = memoryview(self.mem)

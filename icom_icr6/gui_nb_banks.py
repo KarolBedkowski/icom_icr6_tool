@@ -190,10 +190,45 @@ class BanksPage(tk.Frame):
     def __on_channel_update(
         self, action: str, rows: ty.Collection[gui_bankchanlist.BLRow]
     ) -> None:
+        if action == "delete" and not messagebox.askyesno(
+            "Delete channel",
+            "Delete channel configuration from bank?",
+            icon=messagebox.WARNING,
+        ):
+            self.__update_chan_list()
+            return
+
         for rec in rows:
-            _LOG.debug("__on_channel_update: [%r]: %r", action, rec)
+            _LOG.debug(
+                "__on_channel_update: [%r]: row=%r, chan=%r",
+                action,
+                rec,
+                rec.channel,
+            )
             if chan := rec.channel:
+                if not isinstance(chan, model.Channel):
+                    # add chan to bank
+                    if chan.number:
+                        chan = self._radio_memory.get_channel(chan.number)
+                    elif chan.freq:
+                        chan = self._radio_memory.find_first_hidden_channel()
+                        chan.freq = chan.freq
+                    else:
+                        raise ValueError
+
+                    chan.bank = self._last_selected_bank
+                    chan.bank_pos = rec.bank_pos
+
+                    if chan.hide_channel or not chan.freq:
+                        chan.freq = consts.MIN_FREQUENCY
+                        chan.hide_channel = False
+
                 self._radio_memory.set_channel(chan)
+            else:
+                # no chan = deleted
+                self._radio_memory.clear_bank_pos(
+                    self._last_selected_bank, rec.bank_pos
+                )
 
         # TODO: partial update
         self.__update_chan_list()

@@ -257,13 +257,15 @@ class ChannelsList(tk.Frame, ty.Generic[T]):
         self.sheet.hide_columns(0)
 
     def _on_sheet_modified(self, event: EventDataDict) -> None:
-        _LOG.debug("_on_sheet_modified: %r", event)
+        # _LOG.debug("_on_sheet_modified: %r", event)
 
         data: set[Row] = set()
 
         for r, _c in event.cells.table:
+            row = self.sheet.data[r]
+            _LOG.debug("_on_sheet_modified: row=%d, data=%r", r, row)
             self.update_row_state(r)
-            data.add(self.sheet.data[r])
+            data.add(row)
 
         if data and self.on_record_update:
             self.on_record_update("update", data)
@@ -272,15 +274,28 @@ class ChannelsList(tk.Frame, ty.Generic[T]):
         if event.eventname != "end_edit_table":
             return None
 
-        _LOG.debug("_on_validate_edits: %r", event)
+        # _LOG.debug("_on_validate_edits: %r", event)
 
         column = self.columns[event.column + 1]  # FIXME: visible cols
         row = self.sheet.data[event.row]
         chan = row.channel
         value = event.value
 
+        _LOG.debug(
+            "_on_validate_edits: row=%d, col=%s, value=%r, row=%r",
+            event.row,
+            column[0],
+            value,
+            row,
+        )
+
         try:
             match column[0]:
+                case "channel":
+                    value = int(value)
+                    if not (0 <= value <= consts.NUM_CHANNELS):
+                        return None
+
                 case "freq":
                     value = model.fix_frequency(int(value))
 
@@ -321,10 +336,11 @@ class ChannelsList(tk.Frame, ty.Generic[T]):
             _LOG.exception("_on_validate_edits: %r", value)
             return None
 
+        _LOG.debug("_on_validate_edits: result value=%r", value)
         return value
 
     def _on_sheet_select(self, event: EventDataDict) -> None:
-        _LOG.debug("_on_sheet_select: %r", event)
+        # _LOG.debug("_on_sheet_select: %r", event)
         if not event.selected:
             return
 
@@ -343,10 +359,9 @@ class ChannelsList(tk.Frame, ty.Generic[T]):
         ]
 
     def _on_delete(self, event: EventDataDict) -> None:
-        data = []
-
         if event.selected.type_ == "rows":
             box = event.selected.box
+            data = []
             for r in range(box.from_r, box.upto_r):
                 row = self.sheet.data[r]
                 row.delete()
@@ -358,9 +373,7 @@ class ChannelsList(tk.Frame, ty.Generic[T]):
 
         elif event.selected.type_ == "cells":
             r = event.selected.row
-            self.sheet[r, event.selected.column + 1].data = ""
-            self.update_row_state(r)
-            data.append(self.sheet.data[r])
+            data = [self.sheet.data[r]]
 
             if data and self.on_record_update:
                 self.on_record_update("update", data)

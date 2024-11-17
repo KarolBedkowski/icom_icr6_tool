@@ -8,6 +8,7 @@ import logging
 import tkinter as tk
 import typing as ty
 from collections import UserList
+from contextlib import suppress
 
 from tksheet import (
     EventDataDict,
@@ -46,7 +47,7 @@ class BLRow(UserList[object]):
 
     def __init__(self, bank_pos: int, channel: model.Channel | None) -> None:
         self.bank_pos = bank_pos
-        self.channel = channel
+        self.channel: model.Channel | model.EmptyChannel | None = channel
         super().__init__(self._from_channel(channel))
 
     def set_channel(self, channel: model.Channel) -> None:
@@ -58,15 +59,41 @@ class BLRow(UserList[object]):
             self.__class__.__name__ + str(self.data[0] if self.data else None)
         )
 
+    def _try_set_empty_chan(self, number: object, frequency: object) -> None:
+        with suppress(ValueError):
+            if number is not None:
+                self.channel = model.EmptyChannel(int(number), 0)  # type:ignore
+            elif frequency is not None:
+                self.channel = model.EmptyChannel(0, int(frequency))  # type: ignore
+
     def __setitem__(self, idx: int, val: object) -> None:
         if val == self.data[idx]:
             return
 
         chan = self.channel
+        col = self.COLUMNS[idx][0]
+
         if not chan:
+            if col == "channel":
+                self._try_set_empty_chan(val, None)
+            elif col == "freq":  # set freq in new channel
+                self._try_set_empty_chan(val, val)
+
             return
 
-        col = self.COLUMNS[idx][0]
+        if not isinstance(self.channel, model.Channel):
+            # do no update empty channels
+            return
+
+        if col == "number":
+            with suppress(ValueError):
+                if (channum := int(val)) != chan.number:  # type: ignore
+                    # change channel
+                    self.channel = model.EmptyChannel(channum, 0)
+
+            return
+
+        assert isinstance(chan, model.Channel)
 
         if (not chan.freq or chan.hide_channel) and idx != 1:
             return
@@ -115,6 +142,7 @@ class BLRow(UserList[object]):
 
     def delete(self) -> None:
         if chan := self.channel:
+            assert isinstance(chan, model.Channel)
             chan.bank = consts.BANK_NOT_SET
             self.data = self._from_channel(chan)
 
@@ -147,41 +175,8 @@ class ChannelsList(gui_chanlist.ChannelsList[BLRow]):
         for row in range(len(self.sheet.data)):
             self.update_row_state(row)
 
-    def _on_validate_edits(self, event: EventDataDict) -> object:
-        if event.eventname != "end_edit_table" or self.bank is None:
-            return None
-
-        _LOG.debug("_on_validate_edits: %r", event)
-
-        column = self.columns[event.column + 1]  # FIXME: visible cols
-        row = self.sheet.data[event.row]
-        chan = row.channel
-        value = event.value
-
-        _LOG.debug("_on_validate_edits: chan=%r", chan)
-
-        if chan is None:
-            match column[0]:
-                case "channel":
-                    assert self.on_change_channel
-                    chan = self.on_change_channel(int(value), event.row)
-
-                case "freq":
-                    assert self.on_new_channel
-                    # TODO: handle error
-                    chan = self.on_new_channel()
-                    chan.freq = int(value)
-                    chan.hide_channel = False
-                case _:
-                    return None
-
-            chan.bank = self.bank
-            chan.bank_pos = event.row
-            row.set_channel(chan)
-
-        return super()._on_validate_edits(event)
-
     def update_row_state(self, row: int) -> None:
+        super().update_row_state(row)
         functions.set_readonly(
             self.sheet.MT.cell_options, (row, 3), readonly=False
         )
