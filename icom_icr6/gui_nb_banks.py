@@ -232,7 +232,8 @@ class BanksPage(tk.Frame):
             chan.bank_pos = rec.bank_pos
 
             if chan.hide_channel or not chan.freq:
-                chan.freq = consts.MIN_FREQUENCY
+                chan.freq = model.fix_frequency(chan.freq)
+                chan.load_defaults()
                 chan.hide_channel = False
 
             self._radio_memory.set_channel(chan)

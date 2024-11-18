@@ -4,6 +4,7 @@
 
 """ """
 
+import itertools
 import logging
 import tkinter as tk
 import typing as ty
@@ -58,64 +59,49 @@ class BLRow(gui_chanlist.BaseRow):
             self.__class__.__name__ + str(self.data[0] if self.data else None)
         )
 
-    def __setitem__(self, idx: int, val: object, /) -> None:
+    def __setitem__(self, idx: int, val: object, /) -> None:  # type: ignore
         if val == self.data[idx]:
             return
 
         chan = self.channel
         col = self.COLUMNS[idx][0]
 
-        if chan is None:
-            with suppress(ValueError):
-                if col == "channel" and val is not None:
-                    self.new_channel = int(val)  # type: ignore
-                elif col == "freq" and val:  # set freq in new channel
-                    self.new_freq = int(val)  # type: ignore
-
-            return
-
-        if col == "channel":
-            # change channel
-            with suppress(ValueError):
-                if (channum := int(val)) != chan.number:  # type: ignore
-                    self.new_channel = channum
-
-            return
-
-        if (not chan.freq or chan.hide_channel) and idx != 1:
-            return
-
         match col:
-            case "bank_pos":
+            case "channel":
+                # change channel
+                with suppress(ValueError, TypeError):
+                    channum = int(val)  # type: ignore
+                    # valid channel number - change
+                    if not chan or channum != chan.number:
+                        self.new_channel = channum
+
                 return
 
             case "freq":  # freq
-                if val:
-                    assert isinstance(val, int)
+                try:
+                    freq = int(val)  # type: ignore
+                except (ValueError, TypeError):
+                    return
 
-                    if not chan.freq or chan.hide_channel:
-                        chan.mode = model.default_mode_for_freq(val)
+                # valid frequency
+                # if not chan - create new
+                if not chan or not chan.freq or chan.hide_channel:
+                    self.new_freq = freq
+                    return
 
-                else:
-                    chan.bank = consts.BANK_NOT_SET
+                # otherwise - update existing by standard way
 
-                chan.freq = val or 0  # type: ignore
-                chan.hide_channel = not val
-                self.data = self._from_channel(chan)
-                return
+        # if chan exists and is valid - update
+        if chan and chan.freq and not chan.hide_channel:
+            try:
+                chan.from_record({col: val})
+            except Exception:
+                _LOG.exception("from record error: %r=%r", col, val)
 
-        data = chan.to_record()
-        if data[col] == val:
-            return
-
-        try:
-            chan.from_record({col: val})
-        except Exception:
-            _LOG.exception("from record error: %r=%r", col, val)
-
-        super().__setitem__(idx, val)
+            super().__setitem__(idx, val)
 
     def _from_channel(self, channel: model.Channel | None) -> list[object]:
+        # valid channel
         if (
             channel
             and not channel.hide_channel
@@ -128,6 +114,7 @@ class BLRow(gui_chanlist.BaseRow):
                 *(data[col] for col, *_ in self.COLUMNS[1:]),
             ]
 
+        # empty channel
         return [
             self.bank_pos,
             self.new_channel if self.new_channel is not None else "",
@@ -162,7 +149,7 @@ class ChannelsList(gui_chanlist.ChannelsList[BLRow]):
 
     def set_data(self, data: ty.Iterable[model.Channel | None]) -> None:
         self.sheet.set_sheet_data(
-            [BLRow(idx, chan) for idx, chan in enumerate(data)]
+            list(itertools.starmap(BLRow, enumerate(data)))
         )
         self.sheet.set_all_column_widths()
         for row in range(len(self.sheet.data)):

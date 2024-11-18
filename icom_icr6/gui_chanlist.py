@@ -61,7 +61,7 @@ class Row(BaseRow):
             self.__class__.__name__ + str(self.data[0] if self.data else None)
         )
 
-    def __setitem__(self, idx: int, val: object, /) -> None:
+    def __setitem__(self, idx: int, val: object, /) -> None:  # type: ignore
         if val == self.data[idx]:
             return
 
@@ -80,7 +80,7 @@ class Row(BaseRow):
                     assert isinstance(val, int)
 
                     if not chan.freq or chan.hide_channel:
-                        chan.mode = model.default_mode_for_freq(val)
+                        chan.load_defaults(val)
 
                 chan.freq = val or 0  # type: ignore
                 chan.hide_channel = not val
@@ -130,15 +130,15 @@ def format_freq(freq: int, **_kwargs: object) -> str:
     return f"{freq:_}".replace("_", " ")
 
 
-T_co = ty.TypeVar("T_co", covariant=True)
+T_contra = ty.TypeVar("T_contra", contravariant=True)
 
 
 @ty.runtime_checkable
-class RecordActionCallback(ty.Protocol[T_co]):
+class RecordActionCallback(ty.Protocol[T_contra]):
     def __call__(
         self,
         action: str,
-        rows: ty.Collection[T_co],
+        rows: ty.Collection[T_contra],
     ) -> None: ...
 
 
@@ -166,7 +166,7 @@ T = ty.TypeVar("T", bound=BaseRow)
 
 
 class ChannelsList(tk.Frame, ty.Generic[T]):
-    _ROW_CLASS: type[T] = Row
+    _ROW_CLASS: type[T] = Row  # type: ignore
 
     def __init__(self, parent: tk.Widget) -> None:
         super().__init__(parent)
