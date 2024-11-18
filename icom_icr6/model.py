@@ -22,9 +22,6 @@ DEBUG = True
 MutableMemory = abc.MutableSequence[int] | memoryview
 
 
-SENTINAL = object()
-
-
 @dataclass
 class RadioModel:
     # Data format - 39B
@@ -172,14 +169,8 @@ class ChannelFlags:
 
 
 @dataclass
-class EmptyChannel:
+class Channel:
     number: int
-    freq: int
-
-
-@dataclass
-class Channel(EmptyChannel):
-    #    number: int
 
     freq: int
     freq_flags: int

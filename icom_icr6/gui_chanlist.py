@@ -23,7 +23,13 @@ _LOG = logging.getLogger(__name__)
 _BANKS = ["", *consts.BANK_NAMES]
 
 
-class Row(UserList[object]):
+class BaseRow(UserList[object]):
+    COLUMNS: ty.ClassVar[
+        ty.Sequence[tuple[str, str, str | ty.Collection[str]]]
+    ] = ()
+
+
+class Row(BaseRow):
     COLUMNS = (
         ("channel", "Num", "int"),
         ("freq", "Frequency", "freq"),
@@ -55,7 +61,7 @@ class Row(UserList[object]):
             self.__class__.__name__ + str(self.data[0] if self.data else None)
         )
 
-    def __setitem__(self, idx: int, val: object) -> None:
+    def __setitem__(self, idx: int, val: object, /) -> None:
         if val == self.data[idx]:
             return
 
@@ -124,17 +130,20 @@ def format_freq(freq: int, **_kwargs: object) -> str:
     return f"{freq:_}".replace("_", " ")
 
 
+T_co = ty.TypeVar("T_co", covariant=True)
+
+
 @ty.runtime_checkable
-class RecordActionCallback(ty.Protocol):
+class RecordActionCallback(ty.Protocol[T_co]):
     def __call__(
         self,
         action: str,
-        rows: ty.Collection[Row],
+        rows: ty.Collection[T_co],
     ) -> None: ...
 
 
 @ty.runtime_checkable
-class RecordSelctedCallback(ty.Protocol):
+class RecordSelectedCallback(ty.Protocol):
     def __call__(
         self,
         rows: list[Row],
@@ -153,11 +162,11 @@ class BankPosValidator(ty.Protocol):
     ) -> int: ...
 
 
-T = ty.TypeVar("T", bound=UserList[object])
+T = ty.TypeVar("T", bound=BaseRow)
 
 
 class ChannelsList(tk.Frame, ty.Generic[T]):
-    _ROW_CLASS = Row
+    _ROW_CLASS: type[T] = Row
 
     def __init__(self, parent: tk.Widget) -> None:
         super().__init__(parent)
@@ -177,8 +186,8 @@ class ChannelsList(tk.Frame, ty.Generic[T]):
         }
         self._configure()
 
-        self.on_record_update: RecordActionCallback | None = None
-        self.on_record_selected: RecordSelctedCallback | None = None
+        self.on_record_update: RecordActionCallback[T] | None = None
+        self.on_record_selected: RecordSelectedCallback | None = None
         self.on_channel_bank_validate: BankPosValidator | None = None
 
     @property

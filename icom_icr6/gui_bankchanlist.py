@@ -7,23 +7,16 @@
 import logging
 import tkinter as tk
 import typing as ty
-from collections import UserList
 from contextlib import suppress
 
-from tksheet import (
-    EventDataDict,
-    Sheet,
-    functions,
-    int_formatter,
-    num2alpha,
-)
+from tksheet import functions
 
 from . import consts, gui_chanlist, model
 
 _LOG = logging.getLogger(__name__)
 
 
-class BLRow(UserList[object]):
+class BLRow(gui_chanlist.BaseRow):
     COLUMNS = (
         ("bank_pos", "Pos", "int"),
         ("channel", "Channel", "int"),
@@ -47,7 +40,13 @@ class BLRow(UserList[object]):
 
     def __init__(self, bank_pos: int, channel: model.Channel | None) -> None:
         self.bank_pos = bank_pos
-        self.channel: model.Channel | model.EmptyChannel | None = channel
+
+        # channel to set
+        self.new_channel: int | None = None
+        # new freq to set (if not channel, find free channel and set)
+        self.new_freq: int | None = None
+        self.channel = channel
+
         super().__init__(self._from_channel(channel))
 
     def set_channel(self, channel: model.Channel) -> None:
@@ -59,41 +58,29 @@ class BLRow(UserList[object]):
             self.__class__.__name__ + str(self.data[0] if self.data else None)
         )
 
-    def _try_set_empty_chan(self, number: object, frequency: object) -> None:
-        with suppress(ValueError):
-            if number is not None:
-                self.channel = model.EmptyChannel(int(number), 0)  # type:ignore
-            elif frequency is not None:
-                self.channel = model.EmptyChannel(0, int(frequency))  # type: ignore
-
-    def __setitem__(self, idx: int, val: object) -> None:
+    def __setitem__(self, idx: int, val: object, /) -> None:
         if val == self.data[idx]:
             return
 
         chan = self.channel
         col = self.COLUMNS[idx][0]
 
-        if not chan:
-            if col == "channel":
-                self._try_set_empty_chan(val, None)
-            elif col == "freq":  # set freq in new channel
-                self._try_set_empty_chan(val, val)
+        if chan is None:
+            with suppress(ValueError):
+                if col == "channel" and val is not None:
+                    self.new_channel = int(val)  # type: ignore
+                elif col == "freq" and val:  # set freq in new channel
+                    self.new_freq = int(val)  # type: ignore
 
             return
 
-        if not isinstance(self.channel, model.Channel):
-            # do no update empty channels
-            return
-
-        if col == "number":
+        if col == "channel":
+            # change channel
             with suppress(ValueError):
                 if (channum := int(val)) != chan.number:  # type: ignore
-                    # change channel
-                    self.channel = model.EmptyChannel(channum, 0)
+                    self.new_channel = channum
 
             return
-
-        assert isinstance(chan, model.Channel)
 
         if (not chan.freq or chan.hide_channel) and idx != 1:
             return
@@ -130,15 +117,23 @@ class BLRow(UserList[object]):
 
     def _from_channel(self, channel: model.Channel | None) -> list[object]:
         if (
-            not channel
-            or channel.hide_channel
-            or not channel.freq
-            or channel.bank == consts.BANK_NOT_SET
+            channel
+            and not channel.hide_channel
+            and channel.freq
+            and channel.bank != consts.BANK_NOT_SET
         ):
-            return [self.bank_pos, *([""] * 17)]
+            data = channel.to_record()
+            return [
+                self.bank_pos,
+                *(data[col] for col, *_ in self.COLUMNS[1:]),
+            ]
 
-        data = channel.to_record()
-        return [self.bank_pos, *(data[col] for col, *_ in self.COLUMNS[1:])]
+        return [
+            self.bank_pos,
+            self.new_channel if self.new_channel is not None else "",
+            self.new_freq or "",
+            *([""] * 15),
+        ]
 
     def delete(self) -> None:
         if chan := self.channel:
@@ -160,8 +155,6 @@ class ChannelsList(gui_chanlist.ChannelsList[BLRow]):
 
     def __init__(self, parent: tk.Widget) -> None:
         super().__init__(parent)
-        self.on_new_channel: NewChannelCallback | None = None
-        self.on_change_channel: ChangeChannelCallback | None = None
         self.bank: int | None = None
 
     def set_bank(self, bank: int | None) -> None:
@@ -178,10 +171,5 @@ class ChannelsList(gui_chanlist.ChannelsList[BLRow]):
     def update_row_state(self, row: int) -> None:
         super().update_row_state(row)
         functions.set_readonly(
-            self.sheet.MT.cell_options, (row, 3), readonly=False
+            self.sheet.MT.cell_options, (row, 2), readonly=False
         )
-
-    # def update_row_state(self, row: int) -> None:
-    #     """Set state of other cells in row (readony)."""
-    #     data_row = self.sheet.data[row]
-    #     chan = data_row.channel

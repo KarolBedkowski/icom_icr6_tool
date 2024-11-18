@@ -37,7 +37,6 @@ class BanksPage(tk.Frame):
         self._bank_link = gui_model.BoolVar()
         self._radio_memory = radio_memory
         self._last_selected_bank = 0
-        self._last_selected_chan: tuple[str, ...] = ()
 
         pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
         banks = self._banks_list = tk.Listbox(pw, selectmode=tk.SINGLE)
@@ -71,9 +70,6 @@ class BanksPage(tk.Frame):
 
         self.__update_chan_list()
 
-        if activate:
-            self._chan_list.selection_set(self._last_selected_chan)
-
     def __create_bank_fields(self, frame: tk.Frame) -> None:
         fields = tk.Frame(frame)
         fields.columnconfigure(0, weight=0)
@@ -97,8 +93,6 @@ class BanksPage(tk.Frame):
 
     def __create_chan_list(self, frame: tk.Frame) -> None:
         self._chan_list = gui_bankchanlist.ChannelsList(frame)
-        self._chan_list.on_new_channel = self.__on_new_channel_req
-        self._chan_list.on_change_channel = self.__on_change_channel_req
         self._chan_list.on_record_update = self.__on_channel_update
         # self._chan_list.on_record_update = self.__on_channel_update
         # self._chan_list.on_record_selected = self.__on_channel_select
@@ -162,15 +156,15 @@ class BanksPage(tk.Frame):
         )
         self._parent.set_status(f"Active channels in bank: {active}")  # type: ignore
 
-    def _get_selections(self) -> tuple[int | None, int | None]:
-        """selected bank, selected bank pos."""
-        sel_bank = self._banks_list.curselection()  # type: ignore
-        sel_pos = self._chan_list.selection()
+    # def _get_selections(self) -> tuple[int | None, int | None]:
+    #     """selected bank, selected bank pos."""
+    #     sel_bank = self._banks_list.curselection()  # type: ignore
+    #     sel_pos = self._chan_list.selection()
 
-        return (
-            (sel_bank[0] if sel_bank else None),
-            (int(sel_pos[0]) if sel_pos else None),
-        )
+    #     return (
+    #         (sel_bank[0] if sel_bank else None),
+    #         (int(sel_pos[0]) if sel_pos else None),
+    #     )
 
     def __on_bank_update(self) -> None:
         if sel := self._banks_list.curselection():  # type: ignore
@@ -198,6 +192,8 @@ class BanksPage(tk.Frame):
             self.__update_chan_list()
             return
 
+        chan: model.Channel | None
+
         for rec in rows:
             _LOG.debug(
                 "__on_channel_update: [%r]: row=%r, chan=%r",
@@ -205,178 +201,174 @@ class BanksPage(tk.Frame):
                 rec,
                 rec.channel,
             )
-            if chan := rec.channel:
-                if not isinstance(chan, model.Channel):
-                    # add chan to bank
-                    if chan.number:
-                        chan = self._radio_memory.get_channel(chan.number)
-                    elif chan.freq:
-                        chan = self._radio_memory.find_first_hidden_channel()
-                        chan.freq = chan.freq
-                    else:
-                        raise ValueError
+            if rec.new_channel is not None:
+                if old_chan := rec.channel:
+                    # clear old chan
+                    old_chan.clear_bank()
+                    self._radio_memory.set_channel(old_chan)
 
-                    chan.bank = self._last_selected_bank
-                    chan.bank_pos = rec.bank_pos
+                # add chan to bank
+                chan = self._radio_memory.get_channel(rec.new_channel)
 
-                    if chan.hide_channel or not chan.freq:
-                        chan.freq = consts.MIN_FREQUENCY
-                        chan.hide_channel = False
+            elif rec.new_freq:
+                chan = self._radio_memory.find_first_hidden_channel()
+                if not chan:
+                    continue
 
-                self._radio_memory.set_channel(chan)
+                chan.freq = rec.new_freq
+                chan.mode = model.default_mode_for_freq(chan.freq)
+
+            elif rec.channel:
+                chan = rec.channel
+
             else:
                 # no chan = deleted
                 self._radio_memory.clear_bank_pos(
                     self._last_selected_bank, rec.bank_pos
                 )
+                continue
+
+            chan.bank = self._last_selected_bank
+            chan.bank_pos = rec.bank_pos
+
+            if chan.hide_channel or not chan.freq:
+                chan.freq = consts.MIN_FREQUENCY
+                chan.hide_channel = False
+
+            self._radio_memory.set_channel(chan)
 
         # TODO: partial update
         self.__update_chan_list()
 
-    def __on_channel_select(self, _event: tk.Event) -> None:  # type: ignore
-        sel = self._chan_list.selection()
-        if not sel:
-            return
+    # def __on_channel_select(self, _event: tk.Event) -> None:  # type: ignore
+    #     sel = self._chan_list.selection()
+    #     if not sel:
+    #         return
 
-        self._last_selected_chan = sel
+    #     bank_pos = int(sel[0])
+    #     selected_bank: int = int(self._banks_list.curselection()[0])  # type: ignore
+    #     channels = self._radio_memory.get_bank_channels(selected_bank)
+    #     if channum := channels[bank_pos]:
+    #         chan = self._radio_memory.get_channel(channum)
+    #         _LOG.debug("selected: %r", chan)
 
-        bank_pos = int(sel[0])
-        selected_bank: int = int(self._banks_list.curselection()[0])  # type: ignore
-        channels = self._radio_memory.get_bank_channels(selected_bank)
-        if channum := channels[bank_pos]:
-            chan = self._radio_memory.get_channel(channum)
-            _LOG.debug("selected: %r", chan)
+    # def __on_channel_delete(self, _event: tk.Event) -> None:  # type: ignore
+    #     sel = self._chan_list.selection()
+    #     if not sel:
+    #         return
 
-    def __on_channel_delete(self, _event: tk.Event) -> None:  # type: ignore
-        sel = self._chan_list.selection()
-        if not sel:
-            return
+    #     if not messagebox.askyesno(
+    #         "Delete channel",
+    #         "Delete channel configuration from bank?",
+    #         icon=messagebox.WARNING,
+    #     ):
+    #         return
 
-        if not messagebox.askyesno(
-            "Delete channel",
-            "Delete channel configuration from bank?",
-            icon=messagebox.WARNING,
-        ):
-            return
+    #     selected_bank: int = int(self._banks_list.curselection()[0])  # type: ignore
+    #     bank_channels = self._radio_memory.get_bank_channels(selected_bank)
 
-        selected_bank: int = int(self._banks_list.curselection()[0])  # type: ignore
-        bank_channels = self._radio_memory.get_bank_channels(selected_bank)
+    #     for sel_pos in sel:
+    #         if channnum := bank_channels[int(sel_pos)]:
+    #             chan = self._radio_memory.get_channel(channnum)
+    #             chan.clear_bank()
+    #             self._radio_memory.set_channel(chan)
 
-        for sel_pos in sel:
-            if channnum := bank_channels[int(sel_pos)]:
-                chan = self._radio_memory.get_channel(channnum)
-                chan.clear_bank()
-                self._radio_memory.set_channel(chan)
+    #     self.__update_chan_list()
+    #     self._chan_list.selection_set(sel[0])
 
-        self.__update_chan_list()
-        self._chan_list.selection_set(sel[0])
+    # def __on_channel_copy(self, _event: tk.Event) -> None:  # type: ignore
+    #     sel = self._chan_list.selection()
+    #     if not sel:
+    #         return
 
-    def __on_channel_copy(self, _event: tk.Event) -> None:  # type: ignore
-        sel = self._chan_list.selection()
-        if not sel:
-            return
+    #     selected_bank: int = int(self._banks_list.curselection()[0])  # type: ignore
+    #     bank_channels = self._radio_memory.get_bank_channels(selected_bank)
 
-        selected_bank: int = int(self._banks_list.curselection()[0])  # type: ignore
-        bank_channels = self._radio_memory.get_bank_channels(selected_bank)
+    #     selected_channels = (
+    #         self._radio_memory.get_channel(channum)
+    #         if (channum := bank_channels[int(bank_pos)]) is not None
+    #         else None
+    #         for bank_pos in sel
+    #     )
 
-        selected_channels = (
-            self._radio_memory.get_channel(channum)
-            if (channum := bank_channels[int(bank_pos)]) is not None
-            else None
-            for bank_pos in sel
-        )
+    #     clip = gui_model.Clipboard.instance()
+    #     clip.put(expimp.export_channel_str(selected_channels))
 
-        clip = gui_model.Clipboard.instance()
-        clip.put(expimp.export_channel_str(selected_channels))
+    # def __on_channel_paste(self, _event: tk.Event) -> None:  # type: ignore
+    #     selected_bank, bank_pos = self._get_selections()
+    #     if selected_bank is None or bank_pos is None:
+    #         return
 
-    def __on_channel_paste(self, _event: tk.Event) -> None:  # type: ignore
-        selected_bank, bank_pos = self._get_selections()
-        if selected_bank is None or bank_pos is None:
-            return
+    #     clip = gui_model.Clipboard.instance()
 
-        clip = gui_model.Clipboard.instance()
+    #     try:
+    #         rows = list(expimp.import_channels_str(ty.cast(str, clip.get())))
+    #     except Exception:
+    #         _LOG.exception("import from clipboard error")
+    #         return
 
-        try:
-            rows = list(expimp.import_channels_str(ty.cast(str, clip.get())))
-        except Exception:
-            _LOG.exception("import from clipboard error")
-            return
+    #     bank_channels = self._radio_memory.get_bank_channels(selected_bank)
 
-        bank_channels = self._radio_memory.get_bank_channels(selected_bank)
+    #     # special case - when in clipboard is one record and selected  many-
+    #     # duplicate
+    #     sel = self._chan_list.selection()
+    #     if len(sel) > 1 and len(rows) == 1:
+    #         row = rows[0]
+    #         for spos in sel:
+    #             if not self.__paste_channel(
+    #                 row, int(spos), selected_bank, bank_channels
+    #             ):
+    #                 break
 
-        # special case - when in clipboard is one record and selected  many-
-        # duplicate
-        sel = self._chan_list.selection()
-        if len(sel) > 1 and len(rows) == 1:
-            row = rows[0]
-            for spos in sel:
-                if not self.__paste_channel(
-                    row, int(spos), selected_bank, bank_channels
-                ):
-                    break
+    #     else:
+    #         for pos, row in enumerate(rows, bank_pos):
+    #             if not self.__paste_channel(
+    #                 row, pos, selected_bank, bank_channels
+    #             ):
+    #                 break
 
-        else:
-            for pos, row in enumerate(rows, bank_pos):
-                if not self.__paste_channel(
-                    row, pos, selected_bank, bank_channels
-                ):
-                    break
+    #             if pos % 100 == 99:  # noQa: PLR2004
+    #                 break
 
-                if pos % 100 == 99:  # noQa: PLR2004
-                    break
+    #     self.__update_chan_list()
 
-        self.__update_chan_list()
+    # def __paste_channel(
+    #     self,
+    #     row: dict[str, object],
+    #     pos: int,
+    #     selected_bank: int,
+    #     bank_channels: model.BankChannels,
+    # ) -> bool:
+    #     if not row.get("freq"):
+    #         return True
 
-    def __paste_channel(
-        self,
-        row: dict[str, object],
-        pos: int,
-        selected_bank: int,
-        bank_channels: model.BankChannels,
-    ) -> bool:
-        if not row.get("freq"):
-            return True
+    #     chan_num = bank_channels[pos]
+    #     if chan_num:
+    #         chan = self._radio_memory.get_channel(chan_num)
+    #     else:
+    #         chan = self._radio_memory.find_first_hidden_channel()  # type: ignore
+    #         if not chan:
+    #             _LOG.warn("no hidden channel found")
+    #             return False
 
-        chan_num = bank_channels[pos]
-        if chan_num:
-            chan = self._radio_memory.get_channel(chan_num)
-        else:
-            chan = self._radio_memory.find_first_hidden_channel()  # type: ignore
-            if not chan:
-                _LOG.warn("no hidden channel found")
-                return False
+    #     chan = chan.clone()
+    #     # replace channel
+    #     try:
+    #         chan.from_record(row)
+    #         chan.validate()
+    #     except ValueError:
+    #         _LOG.exception("import from clipboard error")
+    #         _LOG.error("chan_num=%d, row=%r", chan_num, row)
+    #         return False
 
-        chan = chan.clone()
-        # replace channel
-        try:
-            chan.from_record(row)
-            chan.validate()
-        except ValueError:
-            _LOG.exception("import from clipboard error")
-            _LOG.error("chan_num=%d, row=%r", chan_num, row)
-            return False
+    #         # replace
+    #     _LOG.debug("replacing channel: %r", chan)
 
-            # replace
-        _LOG.debug("replacing channel: %r", chan)
-
-        chan.bank = selected_bank
-        chan.bank_pos = pos
-        chan.hide_channel = False
-        self._radio_memory.set_channel(chan)
-        return True
-
-    def __on_new_channel_req(self) -> model.Channel:
-        chan = self._radio_memory.find_first_hidden_channel()
-        if not chan:
-            raise ValueError
-
-        return chan
-
-    def __on_change_channel_req(
-        self, channum: int, bank_pos: int
-    ) -> model.Channel:
-        _LOG.debug("__on_change_channel_req: %r, %r", channum, bank_pos)
-        return self._radio_memory.get_channel(channum)
+    #     chan.bank = selected_bank
+    #     chan.bank_pos = pos
+    #     chan.hide_channel = False
+    #     self._radio_memory.set_channel(chan)
+    #     return True
 
 
 class BankChannelsListModel(gui_model.ChannelsListModel):
