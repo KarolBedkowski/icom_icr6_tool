@@ -109,12 +109,6 @@ class Row(BaseRow):
         data = channel.to_record()
         return [data[col] for col, *_ in self.COLUMNS]
 
-    def delete(self) -> None:
-        self.channel.hide_channel = True
-        self.channel.freq = 0
-        self.channel.bank = consts.BANK_NOT_SET
-        self.data = self._from_channel(self.channel)
-
 
 def to_int(o: object, **_kwargs: object) -> int:
     if isinstance(o, int):
@@ -370,12 +364,7 @@ class ChannelsList(tk.Frame, ty.Generic[T]):
     def _on_delete(self, event: EventDataDict) -> None:
         if event.selected.type_ == "rows":
             box = event.selected.box
-            data = []
-            for r in range(box.from_r, box.upto_r):
-                row = self.sheet.data[r]
-                row.delete()
-                data.append(row)
-                self.update_row_state(r)
+            data = [self.sheet.data[r] for r in range(box.from_r, box.upto_r)]
 
             if data and self.on_record_update:
                 self.on_record_update("delete", data)

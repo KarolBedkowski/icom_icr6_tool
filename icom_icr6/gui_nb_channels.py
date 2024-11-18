@@ -69,8 +69,36 @@ class ChannelsPage(tk.Frame):
     def __on_channel_update(
         self, action: str, rows: ty.Collection[gui_chanlist.Row]
     ) -> None:
+        match action:
+            case "delete":
+                self.__do_delete_channels(rows)
+
+            case "update":
+                self.__do_update_channels(rows)
+
+    def __do_delete_channels(
+        self, rows: ty.Collection[gui_chanlist.Row]
+    ) -> None:
+        if not messagebox.askyesno(
+            "Delete channel",
+            "Delete channel configuration?",
+            icon=messagebox.WARNING,
+        ):
+            return
+
         for rec in rows:
-            _LOG.debug("__on_channel_update: [%r]: %r", action, rec)
+            _LOG.debug("__do_delete_channels: %r", rec)
+            if chan := rec.channel:
+                chan.delete()
+                self._radio_memory.set_channel(chan)
+
+        self.__update_chan_list()
+
+    def __do_update_channels(
+        self, rows: ty.Collection[gui_chanlist.Row]
+    ) -> None:
+        for rec in rows:
+            _LOG.debug("__do_update_channels: %r", rec)
             self._radio_memory.set_channel(rec.channel)
 
         if self.__need_full_refresh:

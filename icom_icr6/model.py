@@ -211,6 +211,7 @@ class Channel:
     def delete(self) -> None:
         self.freq = 0
         self.hide_channel = True
+        self.bank = consts.BANK_NOT_SET
 
     def clear_bank(self) -> None:
         self.bank = consts.BANK_NOT_SET

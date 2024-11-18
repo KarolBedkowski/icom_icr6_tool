@@ -122,12 +122,6 @@ class BLRow(gui_chanlist.BaseRow):
             *([""] * 15),
         ]
 
-    def delete(self) -> None:
-        if chan := self.channel:
-            assert isinstance(chan, model.Channel)
-            chan.bank = consts.BANK_NOT_SET
-            self.data = self._from_channel(chan)
-
 
 class NewChannelCallback(ty.Protocol):
     def __call__(self) -> model.Channel: ...
