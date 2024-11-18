@@ -18,7 +18,10 @@ name = "icom_icr6"
 license = { text = "GPL-3.0-or-later" }
 readme = "README.rst"
 requires-python = ">=3.11"
-dependencies = ["pyserial"]
+dependencies = [
+  "pyserial",
+  "tksheet>7",
+  ]
 dynamic = ["version"]
 
 [project.optional-dependencies]
@@ -166,3 +169,4 @@ stackprinter = "stackprinter"
 icecream = "icecream"
 freezegun = "freezegun"
 pyserial = "serial"
+"tksheet" = "tksheet"
