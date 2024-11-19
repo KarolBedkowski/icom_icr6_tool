@@ -71,14 +71,12 @@ def export_channel_str(
     return output.getvalue()
 
 
-def import_channels_str(
-    data: str, *, with_bank: bool = True
-) -> ty.Iterable[dict[str, object]]:
-    fields = CHANNEL_FIELDS_W_BANKS if with_bank else CHANNEL_FIELDS
+def import_channels_str(data: str) -> ty.Iterable[dict[str, object]]:
     inp = io.StringIO(data)
     reader = csv.DictReader(inp)
     for row in reader:
-        if not all(f in row for f in fields):
+        # do not require bank information on import
+        if not all(f in row for f in CHANNEL_FIELDS):
             raise ValueError
 
         yield row
