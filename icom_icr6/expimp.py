@@ -11,7 +11,7 @@ from pathlib import Path
 
 from . import model
 
-_CHANNEL_FIELDS = (
+CHANNEL_FIELDS_W_BANKS = (
     "channel",
     "freq",
     "mode",
@@ -33,12 +33,36 @@ _CHANNEL_FIELDS = (
     "bank_pos",
 )
 
+CHANNEL_FIELDS = (
+    "channel",
+    "freq",
+    "mode",
+    "name",
+    "af",
+    "att",
+    "ts",
+    "dup",
+    "offset",
+    "skip",
+    "vsc",
+    "tone_mode",
+    "tsql_freq",
+    "dtsc",
+    "polarity",
+    "cf",
+    "c",
+)
 
-def export_channel_str(channels: ty.Iterable[model.Channel | None]) -> str:
+
+def export_channel_str(
+    channels: ty.Iterable[model.Channel | None], *, with_bank: bool = True
+) -> str:
+    fields = CHANNEL_FIELDS_W_BANKS if with_bank else CHANNEL_FIELDS
+
     output = io.StringIO()
     writer = csv.DictWriter(
         output,
-        fieldnames=_CHANNEL_FIELDS,
+        fieldnames=fields,
         quoting=csv.QUOTE_NONNUMERIC,
         extrasaction="ignore",
     )
@@ -47,23 +71,30 @@ def export_channel_str(channels: ty.Iterable[model.Channel | None]) -> str:
     return output.getvalue()
 
 
-def import_channels_str(data: str) -> ty.Iterable[dict[str, object]]:
+def import_channels_str(
+    data: str, *, with_bank: bool = True
+) -> ty.Iterable[dict[str, object]]:
+    fields = CHANNEL_FIELDS_W_BANKS if with_bank else CHANNEL_FIELDS
     inp = io.StringIO(data)
     reader = csv.DictReader(inp)
     for row in reader:
-        if not all(f in row for f in _CHANNEL_FIELDS):
+        if not all(f in row for f in fields):
             raise ValueError
 
         yield row
 
 
 def export_channels_file(
-    channels: ty.Iterable[model.Channel], output: Path
+    channels: ty.Iterable[model.Channel],
+    output: Path,
+    *,
+    with_bank: bool = True,
 ) -> None:
+    fields = CHANNEL_FIELDS_W_BANKS if with_bank else CHANNEL_FIELDS
     with output.open("w") as out:
         writer = csv.DictWriter(
             out,
-            fieldnames=_CHANNEL_FIELDS,
+            fieldnames=fields,
             quoting=csv.QUOTE_NONNUMERIC,
             extrasaction="ignore",
         )
