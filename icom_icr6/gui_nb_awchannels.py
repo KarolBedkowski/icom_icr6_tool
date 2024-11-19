@@ -8,7 +8,7 @@ import logging
 import tkinter as tk
 import typing as ty
 
-from . import consts, expimp, gui_model, model
+from . import consts, expimp, gui_awchannlist, gui_model, model
 from .gui_widgets import (
     TableView2,
     TableViewColumn,
@@ -37,66 +37,58 @@ class AutoWriteChannelsPage(tk.Frame):
         self._radio_memory = radio_memory
 
         # hide canceller in global models
-        cols = self._chan_list["columns"]
-        if not radio_memory.is_usa_model():
-            cols = [c for c in cols if c not in ("canc", "canc_freq")]
-
-        self._chan_list["displaycolumns"] = cols
+        self._chan_list.set_hide_canceller(
+            hide=not radio_memory.is_usa_model()
+        )
 
         self.__update_channels_list(None)
 
     def _create_channel_list(self, frame: tk.Frame) -> None:
-        self._chan_list_model = RWChannelsListModel(self._radio_memory)
-        ccframe, self._chan_list = build_list_model(
-            frame, self._chan_list_model
+        self._chan_list = gui_awchannlist.ChannelsList(frame)
+        self._chan_list.pack(
+            expand=True, fill=tk.BOTH, side=tk.TOP, padx=12, pady=12
         )
-        ccframe.pack(expand=True, fill=tk.BOTH, side=tk.TOP, padx=12, pady=12)
+        # self._chan_list.bind(
+        #     "<<TreeviewSelect>>", self.__on_channel_select, add="+"
+        # )
+        # self._chan_list.bind("<Control-c>", self.__on_channel_copy)
 
-        self._chan_list.bind(
-            "<<TreeviewSelect>>", self.__on_channel_select, add="+"
-        )
-        self._chan_list.bind("<Control-c>", self.__on_channel_copy)
-
-    def __update_channels_list(self, event: tk.Event | None) -> None:  # type: ignore
+    def __update_channels_list(self, _event: tk.Event | None) -> None:  # type: ignore
         data = sorted(self._radio_memory.get_autowrite_channels())
         for idx, ch in enumerate(data):
             ch.number = idx
 
-        self._chan_list_model.data = data  # type: ignore
-        self._chan_list.update_all()
+        self._chan_list.set_data(data)  # type: ignore
         self._show_stats()
 
-        if event is not None:
-            self._chan_list.yview(0)
-            self._chan_list.xview(0)
+    # def __on_channel_select(self, _event: tk.Event) -> None:  # type: ignore
+    #     sel = self._chan_list.selection()
+    #     if not sel:
+    #         return
 
-    def __on_channel_select(self, _event: tk.Event) -> None:  # type: ignore
-        sel = self._chan_list.selection()
-        if not sel:
-            return
+    #     chan_num = int(sel[0])
+    #     chan = self._chan_list_model.data[chan_num]
+    #     _LOG.debug("chan: %r", chan)
 
-        chan_num = int(sel[0])
-        chan = self._chan_list_model.data[chan_num]
-        _LOG.debug("chan: %r", chan)
+    # def __on_channel_copy(self, _event: tk.Event) -> None:  # type: ignore
+    #     sel = self._chan_list.selection()
+    #     if not sel:
+    #         return
 
-    def __on_channel_copy(self, _event: tk.Event) -> None:  # type: ignore
-        sel = self._chan_list.selection()
-        if not sel:
-            return
-
-        # copy only not-empty data
-        channels = (
-            chan
-            for chan_num in sel
-            if (chan := self._chan_list_model.data[int(chan_num)])
-        )
-        clip = gui_model.Clipboard.instance()
-        clip.put(expimp.export_channel_str(channels))
+    #     # copy only not-empty data
+    #     channels = (
+    #         chan
+    #         for chan_num in sel
+    #         if (chan := self._chan_list_model.data[int(chan_num)])
+    #     )
+    #     clip = gui_model.Clipboard.instance()
+    #     clip.put(expimp.export_channel_str(channels))
 
     def _show_stats(self) -> None:
-        self._parent.set_status(  # type: ignore
-            f"Channels: {len(self._chan_list_model.data)}"
+        active = sum(
+            1 for c in self._chan_list.data if c and not c.hide_channel
         )
+        self._parent.set_status(f"Channels: {active}")
 
 
 class RWChannelsListModel(gui_model.ChannelsListModel):
