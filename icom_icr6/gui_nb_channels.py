@@ -63,8 +63,8 @@ class ChannelsPage(tk.Frame):
         self._chan_list.on_record_selected = self.__on_channel_select
         self._chan_list.on_channel_bank_validate = self.__on_channel_bank_set
         self._chan_list.pack(side=tk.TOP, expand=True, fill=tk.BOTH, ipady=6)
-        # self._chan_list.bind("<Control-c>", self.__on_channel_copy)
-        # self._chan_list.bind("<Control-v>", self.__on_channel_paste)
+        self._chan_list.sheet.bind("<Control-c>", self.__on_channel_copy)
+        self._chan_list.sheet.bind("<Control-v>", self.__on_channel_paste)
 
     def __on_channel_update(
         self, action: str, rows: ty.Collection[gui_chanlist.Row]
@@ -128,70 +128,72 @@ class ChannelsPage(tk.Frame):
         self._show_stats()
         self.__need_full_refresh = False
 
-    # def __on_channel_copy(self, _event: tk.Event) -> None:  # type: ignore
-    #     sel = self._chan_list.selection()
-    #     if not sel:
-    #         return
+    def __on_channel_copy(self, _event: tk.Event) -> None:  # type: ignore
+        rows = self._chan_list.selected_rows()
+        if not rows:
+            return
 
-    #     channels = (
-    #         self._radio_memory.get_channel(int(chan_num)) for chan_num in sel
-    #     )
-    #     clip = gui_model.Clipboard.instance()
-    #     clip.put(expimp.export_channel_str(channels))
+        channels = (chan for row in rows if (chan := row.channel))
+        clip = gui_model.Clipboard.instance()
+        clip.put(expimp.export_channel_str(channels))
 
-    # def __on_channel_paste(self, _event: tk.Event) -> None:  # type: ignore
-    #     sel = self._chan_list.selection()
-    #     if not sel:
-    #         return
+    def __on_channel_paste(self, _event: tk.Event) -> None:  # type: ignore
+        sel = self._chan_list.selection()
+        if not sel:
+            return
 
-    #     clip = gui_model.Clipboard.instance()
+        clip = gui_model.Clipboard.instance()
 
-    #     try:
-    #         rows = list(expimp.import_channels_str(ty.cast(str, clip.get())))
-    #     except Exception:
-    #         _LOG.exception("import from clipboard error")
-    #         return
+        try:
+            rows = list(expimp.import_channels_str(ty.cast(str, clip.get())))
+        except Exception:
+            _LOG.exception("import from clipboard error")
+            return
 
-    #     # special case - when in clipboard is one record and selected  many-
-    #     # duplicate
-    #     if len(sel) > 1 and len(rows) == 1:
-    #         row = rows[0]
-    #         for spos in sel:
-    #             if not self.__paste_channel(row, int(spos)):
-    #                 break
+        range_start = self._last_selected_group * 100
 
-    #     else:
-    #         start_num = int(sel[0])
-    #         for chan_num, row in enumerate(rows, start_num):
-    #             if not self.__paste_channel(row, chan_num):
-    #                 break
-    #             # stop on range boundary
-    #             if chan_num % 100 == 99:  # noQa: PLR2004
-    #                 break
+        # special case - when in clipboard is one record and selected  many-
+        # duplicate
+        if len(sel) > 1 and len(rows) == 1:
+            row = rows[0]
+            for spos in sel:
+                if not self.__paste_channel(row, spos + range_start):
+                    break
 
-    #     self.__update_chan_list()
+        else:
+            start_num = sel[0] + range_start
+            for chan_num, row in enumerate(rows, start_num):
+                if not self.__paste_channel(row, chan_num):
+                    break
+                # stop on range boundary
+                if chan_num % 100 == 99:  # noqa: PLR2004
+                    break
 
-    # def __paste_channel(self, row: dict[str, object], chan_num: int) -> bool:
-    #     chan = self._radio_memory.get_channel(chan_num).clone()
-    #     # do not clean existing rows
-    #     if not row.get("freq"):
-    #         return True
+        self.__update_chan_list()
 
-    #     try:
-    #         chan.from_record(row)
-    #         chan.validate()
-    #     except ValueError:
-    #         _LOG.exception("import from clipboard error")
-    #         _LOG.error("chan_num=%d, row=%r", chan_num, row)
-    #         return False
+    def __paste_channel(self, row: dict[str, object], chan_num: int) -> bool:
+        _LOG.debug("__paste_channel chan_num=%d, row=%r", chan_num, row)
+        chan = self._radio_memory.get_channel(chan_num).clone()
+        # do not clean existing rows
+        if not row.get("freq"):
+            _LOG.debug("paste empty row to not empty")
+            return True
 
-    #     chan.hide_channel = False
-    #     # do not set bank on paste
-    #     chan.bank = consts.BANK_NOT_SET
-    #     chan.bank_pos = 0
-    #     self._radio_memory.set_channel(chan)
+        try:
+            chan.from_record(row)
+            chan.validate()
+        except ValueError:
+            _LOG.exception("import from clipboard error")
+            _LOG.error("chan_num=%d, row=%r", chan_num, row)
+            return False
 
-    #     return True
+        chan.hide_channel = False
+        # do not set bank on paste
+        chan.bank = consts.BANK_NOT_SET
+        chan.bank_pos = 0
+        self._radio_memory.set_channel(chan)
+
+        return True
 
     def _show_stats(self) -> None:
         active = sum(
