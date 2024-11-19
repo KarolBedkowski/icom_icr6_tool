@@ -518,13 +518,16 @@ class Channel:
         if (p := data.get("polarity")) is not None:
             self.polarity = get_index_or_default(consts.POLARITY, p)
 
-        if bank := data.get("bank"):
-            self.bank = get_index_or_default(
-                consts.BANK_NAMES, bank, consts.BANK_NOT_SET
-            )
-
-        if (bp := data.get("bank_pos")) is not None:
-            self.bank_pos = int(bp)  # type: ignore
+        if (bank := data.get("bank")) and (
+            bp := data.get("bank_pos")
+        ) is not None:
+            try:
+                self.bank_pos = int(bp)  # type: ignore
+                self.bank = get_index_or_default(
+                    consts.BANK_NAMES, bank, consts.BANK_NOT_SET
+                )
+            except ValueError:
+                self.bank = consts.BANK_NOT_SET
 
     def load_defaults(self, freq: int | None = None) -> None:
         if freq is None:
