@@ -14,7 +14,6 @@ from .gui_widgets import (
     TableViewColumn,
     TableViewModelRow,
     UpdateCellResult,
-    build_list_model,
 )
 
 _LOG = logging.getLogger(__name__)
@@ -48,47 +47,31 @@ class AutoWriteChannelsPage(tk.Frame):
         self._chan_list.pack(
             expand=True, fill=tk.BOTH, side=tk.TOP, padx=12, pady=12
         )
-        # self._chan_list.bind(
-        #     "<<TreeviewSelect>>", self.__on_channel_select, add="+"
-        # )
-        # self._chan_list.bind("<Control-c>", self.__on_channel_copy)
+        self._chan_list.sheet.bind("<Control-c>", self.__on_channel_copy)
 
     def __update_channels_list(self, _event: tk.Event | None) -> None:  # type: ignore
         data = sorted(self._radio_memory.get_autowrite_channels())
         for idx, ch in enumerate(data):
             ch.number = idx
 
-        self._chan_list.set_data(data)  # type: ignore
+        self._chan_list.set_data(data)
         self._show_stats()
 
-    # def __on_channel_select(self, _event: tk.Event) -> None:  # type: ignore
-    #     sel = self._chan_list.selection()
-    #     if not sel:
-    #         return
+    def __on_channel_copy(self, _event: tk.Event) -> None:  # type: ignore
+        rows = self._chan_list.selected_rows()
+        if not rows:
+            return
 
-    #     chan_num = int(sel[0])
-    #     chan = self._chan_list_model.data[chan_num]
-    #     _LOG.debug("chan: %r", chan)
-
-    # def __on_channel_copy(self, _event: tk.Event) -> None:  # type: ignore
-    #     sel = self._chan_list.selection()
-    #     if not sel:
-    #         return
-
-    #     # copy only not-empty data
-    #     channels = (
-    #         chan
-    #         for chan_num in sel
-    #         if (chan := self._chan_list_model.data[int(chan_num)])
-    #     )
-    #     clip = gui_model.Clipboard.instance()
-    #     clip.put(expimp.export_channel_str(channels))
+        # copy only not-empty data
+        channels = (chan for row in rows if (chan := row.channel))
+        clip = gui_model.Clipboard.instance()
+        clip.put(expimp.export_channel_str(channels, with_bank=False))
 
     def _show_stats(self) -> None:
         active = sum(
             1 for c in self._chan_list.data if c and not c.hide_channel
         )
-        self._parent.set_status(f"Channels: {active}")
+        self._parent.set_status(f"Channels: {active}")  # type: ignore
 
 
 class RWChannelsListModel(gui_model.ChannelsListModel):
