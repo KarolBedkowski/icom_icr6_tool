@@ -204,9 +204,11 @@ class ChannelsList(tk.Frame, ty.Generic[T]):
         for row in range(len(self.sheet.data)):
             self.update_row_state(row)
 
-    def selection(self) -> set[int]:
+    def selection(self) -> tuple[int, ...]:
         """Get selected rows."""
-        return self.sheet.get_selected_rows(get_cells_as_rows=True)  # type: ignore
+        return self.sheet.get_selected_rows(  # type: ignore
+            get_cells_as_rows=True, return_tuple=True
+        )
 
     def selection_set(self, sel: ty.Iterable[int]) -> None:
         """Set selection on `sel` rows"""
