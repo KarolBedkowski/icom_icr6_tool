@@ -11,12 +11,6 @@ from tkinter import messagebox, ttk
 
 from . import consts, expimp, gui_bankchanlist, gui_model, model
 from .gui_widgets import (
-    NumEntryPopup,
-    TableView2,
-    TableViewColumn,
-    TableViewModelRow,
-    UpdateCellResult,
-    build_list_model,
     new_checkbox,
     new_entry,
 )
@@ -93,17 +87,14 @@ class BanksPage(tk.Frame):
 
     def __create_chan_list(self, frame: tk.Frame) -> None:
         self._chan_list = gui_bankchanlist.ChannelsList(frame)
-        self._chan_list.on_record_update = self.__on_channel_update
-        # self._chan_list.on_record_update = self.__on_channel_update
-        # self._chan_list.on_record_selected = self.__on_channel_select
-        # self._chan_list.on_channel_bank_validate = self.__on_channel_bank_set
         self._chan_list.pack(side=tk.TOP, expand=True, fill=tk.BOTH, ipady=6)
+
+        self._chan_list.on_record_update = self.__on_channel_update
         self._chan_list.sheet.bind("<Control-c>", self.__on_channel_copy)
         self._chan_list.sheet.bind("<Control-v>", self.__on_channel_paste)
 
     def __update_banks_list(self) -> None:
         banks = self._banks_list
-        sel = banks.curselection()  # type: ignore
 
         banks.delete(0, banks.size())
         for idx, bname in enumerate(consts.BANK_NAMES):
@@ -111,8 +102,8 @@ class BanksPage(tk.Frame):
             name = f"{bname}: {bank.name}" if bank.name else bname
             banks.insert(tk.END, name)
 
-        if sel:
-            banks.selection_set(sel[0])
+        if (selected_bank := self.selected_bank) is not None:
+            banks.selection_set(selected_bank)
         else:
             self._field_bank_name["state"] = "disabled"
             self._field_bank_link["state"] = "disabled"
@@ -120,11 +111,8 @@ class BanksPage(tk.Frame):
             self._chan_list.set_data([])
             self._bank_name.set("")
 
-    def __update_chan_list(self, event: tk.Event | None = None) -> None:  # type: ignore
-        if sel := self._banks_list.curselection():  # type: ignore
-            selected_bank = sel[0]
-        else:
-            return
+    def __update_chan_list(self, _event: tk.Event | None = None) -> None:  # type: ignore
+        selected_bank = self.selected_bank or 0
 
         self._chan_list.set_bank(selected_bank)
         self._last_selected_bank = selected_bank
@@ -156,7 +144,8 @@ class BanksPage(tk.Frame):
         )
         self._parent.set_status(f"Active channels in bank: {active}")  # type: ignore
 
-    def _get_selected_bank(self) -> int | None:
+    @property
+    def selected_bank(self) -> int | None:
         """selected bank"""
 
         if sel_bank := self._banks_list.curselection():  # type: ignore
@@ -164,20 +153,9 @@ class BanksPage(tk.Frame):
 
         return None
 
-    # def _get_selections(self) -> tuple[int | None, int | None]:
-    #     """selected bank, selected bank pos."""
-    #     sel_bank = self._banks_list.curselection()  # type: ignore
-    #     sel_pos = self._chan_list.selection()
-
-    #     return (
-    #         (sel_bank[0] if sel_bank else None),
-    #         (int(sel_pos[0]) if sel_pos else None),
-    #     )
-
     def __on_bank_update(self) -> None:
-        if sel := self._banks_list.curselection():  # type: ignore
-            selected_bank = sel[0]
-        else:
+        selected_bank = self.selected_bank
+        if not selected_bank:
             return
 
         bank = self._radio_memory.get_bank(selected_bank)
@@ -212,7 +190,7 @@ class BanksPage(tk.Frame):
 
         for rec in rows:
             _LOG.debug(
-                "__do_delete_channels: [%r]: row=%r, chan=%r",
+                "__do_delete_channels: row=%r, chan=%r",
                 rec,
                 rec.channel,
             )
@@ -227,9 +205,13 @@ class BanksPage(tk.Frame):
     ) -> None:
         chan: model.Channel | None
 
+        selected_bank = self.selected_bank
+        if selected_bank is None:
+            return
+
         for rec in rows:
             _LOG.debug(
-                "__do_update_channels: [%r]: row=%r, chan=%r",
+                "__do_update_channels: row=%r, chan=%r",
                 rec,
                 rec.channel,
             )
@@ -255,12 +237,10 @@ class BanksPage(tk.Frame):
 
             else:
                 # no chan = deleted
-                self._radio_memory.clear_bank_pos(
-                    self._last_selected_bank, rec.bank_pos
-                )
+                self._radio_memory.clear_bank_pos(selected_bank, rec.bank_pos)
                 continue
 
-            chan.bank = self._last_selected_bank
+            chan.bank = selected_bank
             chan.bank_pos = rec.bank_pos
 
             if chan.hide_channel or not chan.freq:
@@ -270,7 +250,6 @@ class BanksPage(tk.Frame):
 
             self._radio_memory.set_channel(chan)
 
-        # TODO: partial update
         self.__update_chan_list()
 
     def __on_channel_copy(self, _event: tk.Event) -> None:  # type: ignore
@@ -283,7 +262,7 @@ class BanksPage(tk.Frame):
         clip.put(expimp.export_channel_str(channels))
 
     def __on_channel_paste(self, _event: tk.Event) -> None:  # type: ignore
-        selected_bank = self._get_selected_bank()
+        selected_bank = self.selected_bank
         if selected_bank is None:
             return
 
@@ -360,7 +339,6 @@ class BanksPage(tk.Frame):
         chan.hide_channel = False
         self._radio_memory.set_channel(chan)
         return True
-
 
 
 def validate_bank_name(name: str | None) -> bool:

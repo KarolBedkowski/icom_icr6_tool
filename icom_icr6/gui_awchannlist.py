@@ -8,7 +8,6 @@ import logging
 import typing as ty
 
 from tksheet import (
-    formatter,
     int_formatter,
     num2alpha,
 )
@@ -96,10 +95,13 @@ class ChannelsList(gui_chanlist.ChannelsList[AWCRow]):
             col = self.sheet[num2alpha(idx)]
             if values == "str":
                 continue
+
             if values == "int":
                 col.format(int_formatter(invalid_value="")).align("right")
+
             elif values == "bool":
                 col.checkbox().align("center")
+
             elif values == "freq":
                 col.format(
                     int_formatter(
@@ -108,9 +110,11 @@ class ChannelsList(gui_chanlist.ChannelsList[AWCRow]):
                         invalid_value="",
                     )
                 ).align("right")
+
             elif isinstance(values, (list, tuple)):
                 # show dict-ed value as string
                 col.align("center")
+
             else:
                 _LOG.error("unknown column %d: %s", idx, colname)
 
