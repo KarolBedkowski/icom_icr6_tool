@@ -176,7 +176,7 @@ class ScanLinksPage(tk.Frame):
                     gui_model.format_freq(se.start),
                     gui_model.format_freq(se.end),
                     consts.STEPS[se.tuning_step],
-                    consts.MODES[se.mode],
+                    consts.MODES_SCAN_EDGES[se.mode],
                     "ATT" if se.attenuator else "",
                 )
             else:
