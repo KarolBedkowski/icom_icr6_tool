@@ -89,7 +89,7 @@ class BanksPage(tk.Frame):
         self._chan_list = gui_bankchanlist.ChannelsList(frame)
         self._chan_list.pack(side=tk.TOP, expand=True, fill=tk.BOTH, ipady=6)
 
-        self._chan_list.on_record_update = self.__on_channel_update
+        self._chan_list.on_record_update = self.__on_channel_update  # type: ignore
         self._chan_list.sheet.bind("<Control-c>", self.__on_channel_copy)
         self._chan_list.sheet.bind("<Control-v>", self.__on_channel_paste)
 

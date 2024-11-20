@@ -12,12 +12,12 @@ from contextlib import suppress
 
 from tksheet import functions
 
-from . import consts, gui_chanlist, model
+from . import consts, gui_chanlist, gui_genericlist, model
 
 _LOG = logging.getLogger(__name__)
 
 
-class BLRow(gui_chanlist.BaseRow):
+class BLRow(gui_genericlist.BaseRow):
     COLUMNS = (
         ("bank_pos", "Pos", "int"),
         ("channel", "Channel", "int"),
@@ -131,7 +131,7 @@ class ChangeChannelCallback(ty.Protocol):
     def __call__(self, channum: int, bank_pos: int) -> model.Channel: ...
 
 
-class ChannelsList(gui_chanlist.ChannelsList[BLRow]):
+class ChannelsList(gui_chanlist.ChannelsList):
     _ROW_CLASS = BLRow
 
     def __init__(self, parent: tk.Widget) -> None:

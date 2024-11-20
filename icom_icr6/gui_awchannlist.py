@@ -12,12 +12,12 @@ from tksheet import (
     num2alpha,
 )
 
-from . import consts, gui_chanlist, model
+from . import consts, gui_chanlist, gui_genericlist, model
 
 _LOG = logging.getLogger(__name__)
 
 
-class AWCRow(gui_chanlist.BaseRow):
+class AWCRow(gui_genericlist.BaseRow):
     COLUMNS = (
         ("channel", "Number", "int"),
         ("freq", "Frequency", "freq"),
@@ -64,7 +64,7 @@ class AWCRow(gui_chanlist.BaseRow):
         return [""] * 16
 
 
-class ChannelsList(gui_chanlist.ChannelsList[AWCRow]):
+class ChannelsList(gui_chanlist.ChannelsList):
     _ROW_CLASS = AWCRow
 
     def set_data(self, data: ty.Iterable[model.Channel | None]) -> None:
@@ -105,8 +105,8 @@ class ChannelsList(gui_chanlist.ChannelsList[AWCRow]):
             elif values == "freq":
                 col.format(
                     int_formatter(
-                        format_function=gui_chanlist.to_int,
-                        to_str_function=gui_chanlist.format_freq,
+                        format_function=gui_genericlist.to_int,
+                        to_str_function=gui_genericlist.format_freq,
                         invalid_value="",
                     )
                 ).align("right")

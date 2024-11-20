@@ -78,7 +78,7 @@ class ScanEdgePage(tk.Frame):
             return
 
         for se_num in sel:
-            se = self._radio_memory.get_scan_edge(int(se_num))
+            se = self._radio_memory.get_scan_edge(se_num)
             se.delete()
             self._radio_memory.set_scan_edge(se)
 
@@ -98,7 +98,7 @@ class ScanEdgePage(tk.Frame):
         if not sel:
             return
 
-        ses = (self._radio_memory.get_scan_edge(int(se_num)) for se_num in sel)
+        ses = (self._radio_memory.get_scan_edge(se_num) for se_num in sel)
         clip = gui_model.Clipboard.instance()
         clip.put(expimp.export_scan_edges_str(ses))
 
@@ -120,11 +120,11 @@ class ScanEdgePage(tk.Frame):
         if len(sel) > 1 and len(rows) == 1:
             row = rows[0]
             for spos in sel:
-                if not self.__paste_se(row, int(spos)):
+                if not self.__paste_se(row, spos):
                     break
 
         else:
-            start_num = int(sel[0])
+            start_num = sel[0]
             for se_num, row in enumerate(rows, start_num):
                 if not self.__paste_se(row, se_num):
                     break

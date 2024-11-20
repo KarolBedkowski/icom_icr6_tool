@@ -15,7 +15,7 @@ _LOG = logging.getLogger(__name__)
 
 
 class ChannelsPage(tk.Frame):
-    _chan_list: gui_chanlist.ChannelsList[gui_chanlist.Row]
+    _chan_list: gui_chanlist.ChannelsList
 
     def __init__(
         self, parent: tk.Widget, radio_memory: model.RadioMemory
