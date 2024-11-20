@@ -9,7 +9,7 @@ import tkinter as tk
 import typing as ty
 from tkinter import messagebox
 
-from . import consts, expimp, gui_model, model
+from . import consts, expimp, gui_model, gui_scanedgeslist, model
 from .gui_widgets import (
     ComboboxPopup,
     EntryPopup,
@@ -19,7 +19,6 @@ from .gui_widgets import (
     TableViewModel,
     TableViewModelRow,
     UpdateCellResult,
-    build_list_model,
 )
 
 _LOG = logging.getLogger(__name__)
@@ -31,7 +30,7 @@ class ScanEdgePage(tk.Frame):
     ) -> None:
         super().__init__(parent)
         self._radio_memory = radio_memory
-        self._last_selected_se = "0"
+        self._last_selected_se: list[int] = []
 
         self._create_list(self)
 
@@ -46,29 +45,25 @@ class ScanEdgePage(tk.Frame):
         self.__update_scan_edges_list()
 
     def _create_list(self, frame: tk.Frame) -> None:
-        self._se_list_model = ScanEdgeListModel(self._radio_memory)
-        ccframe, self._scanedges_list = build_list_model(
-            frame, self._se_list_model
+        self._scanedges_list = gui_scanedgeslist.ScanEdgesList(frame)
+        self._scanedges_list.pack(
+            expand=True, fill=tk.BOTH, side=tk.TOP, padx=12, pady=12
         )
-        ccframe.pack(expand=True, fill=tk.BOTH, side=tk.TOP, padx=12, pady=12)
 
-        self._scanedges_list.bind(
-            "<<TreeviewSelect>>", self.__on_channel_select, add="+"
-        )
         self._scanedges_list.bind("<Delete>", self.__on_channel_delete)
         self._scanedges_list.bind("<Control-c>", self.__on_scan_edge_copy)
         self._scanedges_list.bind("<Control-v>", self.__on_scan_edge_paste)
 
-    def __on_channel_select(self, _event: tk.Event) -> None:  # type: ignore
-        sel = self._scanedges_list.selection()
-        if not sel:
-            return
+    # def __on_channel_select(self, _event: tk.Event) -> None:  # type: ignore
+    #     sel = self._scanedges_list.selection()
+    #     if not sel:
+    #         return
 
-        self._last_selected_se = sel[0]
+    #     self._last_selected_se = sel[0]
 
-        se_num = int(sel[0])
-        se = self._radio_memory.get_scan_edge(se_num)
-        _LOG.debug("scan_edge: %r", se)
+    #     se_num = int(sel[0])
+    #     se = self._radio_memory.get_scan_edge(se_num)
+    #     _LOG.debug("scan_edge: %r", se)
 
     def __on_channel_delete(self, _event: tk.Event) -> None:  # type: ignore
         sel = self._scanedges_list.selection()
@@ -91,11 +86,12 @@ class ScanEdgePage(tk.Frame):
         self._scanedges_list.selection_set(sel)
 
     def __update_scan_edges_list(self) -> None:
-        self._se_list_model.data = [
-            self._radio_memory.get_scan_edge(idx)
-            for idx in range(consts.NUM_SCAN_EDGES)
-        ]
-        self._scanedges_list.update_all()
+        self._scanedges_list.set_data(
+            [
+                self._radio_memory.get_scan_edge(idx)
+                for idx in range(consts.NUM_SCAN_EDGES)
+            ]
+        )
 
     def __on_scan_edge_copy(self, _event: tk.Event) -> None:  # type: ignore
         sel = self._scanedges_list.selection()

@@ -764,29 +764,39 @@ class ScanEdge:
             "mode": consts.MODES_SCAN_EDGES[self.mode],
             "ts": consts.STEPS[self.tuning_step],
             "att": consts.ATTENUATOR[self.attenuator],
-            "name": self.name,
+            "name": self.name.rstrip(),
         }
 
     def from_record(self, data: dict[str, object]) -> None:
         _LOG.debug("from_record: %r", data)
-        self.idx = int(data["idx"])  # type: ignore
-        self.start = int(data["start"] or "0")  # type: ignore
-        self.end = int(data["end"] or "0")  # type: ignore
+        if (idx := data.get("idx")) is not None:
+            self.idx = int(idx)  # type: ignore
 
-        self.mode = consts.MODES.index(str(data["mode"]))
-        if self.mode == 3:
-            # map "auto" to "-"
-            self.mode = 4
+        if (start := data.get("start")) is not None:
+            self.start = int(start or "0")  # type: ignore
 
-        self.tuning_step = consts.STEPS.index(str(data["ts"]))
-        if self.tuning_step == 14:
-            # map "auto" tuning_step to "-"
-            self.tuning_step = 15
+        if (end := data.get("end")) is not None:
+            self.end = int(end or "0")  # type: ignore
 
-        self.attenuator = get_index_or_default(
-            consts.ATTENUATOR, str(data["att"]), 2
-        )
-        self.name = str(data["name"])
+        if mode := data.get("mode"):
+            self.mode = consts.MODES.index(str(mode))
+            if self.mode == 3:
+                # map "auto" to "-"
+                self.mode = 4
+
+        if ts := data.get("ts"):
+            self.tuning_step = consts.STEPS.index(str(ts))
+            if self.tuning_step == 14:
+                # map "auto" tuning_step to "-"
+                self.tuning_step = 15
+
+        if att := data.get("att"):
+            self.attenuator = get_index_or_default(
+                consts.ATTENUATOR, str(att), 2
+            )
+
+        if name := data.get("name"):
+            self.name = str(name)
 
 
 @dataclass
