@@ -184,6 +184,9 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
             ]
             self.on_record_selected(rows)
 
+        for r in range(sel_box.from_r, sel_box.upto_r):
+            self.update_row_state(r)
+
     def selected_rows(self) -> list[T]:
         return [
             self.sheet.data[r]
