@@ -16,6 +16,8 @@ from . import consts, gui_chanlist, gui_genericlist, model
 
 _LOG = logging.getLogger(__name__)
 
+_SKIPS: ty.Final = ["", "S", "P"]
+
 
 class BLRow(gui_genericlist.BaseRow):
     COLUMNS = (
@@ -29,7 +31,7 @@ class BLRow(gui_genericlist.BaseRow):
         ("ts", "Tuning Step", consts.STEPS),
         ("dup", "DUP", consts.DUPLEX_DIRS),
         ("offset", "Offset", "freq"),
-        ("skip", "Skip", consts.SKIPS),
+        ("skip", "Skip", _SKIPS),
         ("vsc", "VSC", "bool"),  # 10
         ("tone_mode", "Tone", consts.TONE_MODES),
         ("tsql_freq", "TSQL", consts.CTCSS_TONES),
