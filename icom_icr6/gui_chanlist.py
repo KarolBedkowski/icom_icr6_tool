@@ -43,11 +43,6 @@ class Row(gui_genericlist.BaseRow):
         self.channel = channel
         super().__init__(self._from_channel(channel))
 
-    def __hash__(self) -> int:
-        return hash(
-            self.__class__.__name__ + str(self.data[0] if self.data else None)
-        )
-
     def __repr__(self) -> str:
         return f"ROW: data={self.data!r} channel={self.channel}"
 
@@ -97,8 +92,7 @@ class Row(gui_genericlist.BaseRow):
         if channel.hide_channel or not channel.freq:
             return [channel.number, *([""] * 18)]
 
-        data = channel.to_record()
-        return [data[col] for col, *_ in self.COLUMNS]
+        return self._extracts_cols(channel.to_record())
 
 
 @ty.runtime_checkable
@@ -125,6 +119,7 @@ class ChannelsList(gui_genericlist.GenericList[Row, model.Channel]):
         canc_columns = [
             self.colmap[c] - 1 for c in ("canceller", "canceller freq")
         ]
+
         if hide:
             self.sheet.hide_columns(canc_columns)
         else:
@@ -172,6 +167,7 @@ class ChannelsList(gui_genericlist.GenericList[Row, model.Channel]):
                     min(freq, consts.CANCELLER_MAX_FREQ),
                     consts.CANCELLER_MIN_FREQ,
                 )
+
             case "bank":
                 if chan.bank != value and self.on_channel_bank_validate:
                     # change bank

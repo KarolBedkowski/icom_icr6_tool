@@ -5,14 +5,12 @@
 """ """
 
 import logging
-import typing as ty
 
 from tksheet import EventDataDict
 
 from . import consts, gui_genericlist, model
 
 _LOG = logging.getLogger(__name__)
-_BANKS = ["", *consts.BANK_NAMES]
 
 
 class Row(gui_genericlist.BaseRow):
@@ -29,11 +27,6 @@ class Row(gui_genericlist.BaseRow):
     def __init__(self, se: model.ScanEdge) -> None:
         self.se = se
         super().__init__(self._from_scanedge(se))
-
-    def __hash__(self) -> int:
-        return hash(
-            self.__class__.__name__ + str(self.data[0] if self.data else None)
-        )
 
     def __setitem__(self, idx: int, val: object, /) -> None:  # type: ignore
         if val == self.data[idx]:
@@ -70,25 +63,7 @@ class Row(gui_genericlist.BaseRow):
         super().__setitem__(idx, val)
 
     def _from_scanedge(self, se: model.ScanEdge) -> list[object]:
-        data = se.to_record()
-        return [data[col] for col, *_ in self.COLUMNS]
-
-
-def to_int(o: object, **_kwargs: object) -> int:
-    if isinstance(o, int):
-        return o
-
-    if isinstance(o, str):
-        return int(o.replace(" ", ""))
-
-    return int(o)  # type: ignore
-
-
-def format_freq(freq: int, **_kwargs: object) -> str:
-    return f"{freq:_}".replace("_", " ")
-
-
-T_contra = ty.TypeVar("T_contra", contravariant=True)
+        return self._extracts_cols(se.to_record())
 
 
 class ScanEdgesList(gui_genericlist.GenericList[Row, model.ScanEdge]):

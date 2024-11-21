@@ -119,11 +119,12 @@ class ChannelsPage(tk.Frame):
         self._last_selected_group = sel[0]
 
         range_start = selected_range * 100
-        data = [
-            self._radio_memory.get_channel(idx)
-            for idx in range(range_start, range_start + 100)
-        ]
-        self._chan_list.set_data(data)
+        self._chan_list.set_data(
+            [
+                self._radio_memory.get_channel(idx)
+                for idx in range(range_start, range_start + 100)
+            ]
+        )
 
         self._show_stats()
         self.__need_full_refresh = False

@@ -26,6 +26,14 @@ Column = tuple[str, str, str | ty.Collection[str]]
 class BaseRow(UserList[object]):
     COLUMNS: ty.ClassVar[ty.Sequence[Column]] = ()
 
+    def _extracts_cols(self, data: dict[str, object]) -> list[object]:
+        return [data[col] for col, *_ in self.COLUMNS]
+
+    def __hash__(self) -> int:
+        return hash(
+            self.__class__.__name__ + str(self.data[0] if self.data else None)
+        )
+
 
 T_contra = ty.TypeVar("T_contra", contravariant=True)
 
@@ -97,6 +105,7 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
     def set_data(self, data: ty.Iterable[RT]) -> None:
         self.sheet.set_sheet_data(list(map(self._ROW_CLASS, data)))
         self.sheet.set_all_column_widths()
+
         for row in range(len(self.sheet.data)):
             self.update_row_state(row)
 
@@ -129,8 +138,10 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
 
         if values == "int":
             span.format(int_formatter(invalid_value="")).align("right")
+
         elif values == "bool":
             span.checkbox().align("center")
+
         elif values == "freq":
             span.format(
                 int_formatter(
@@ -139,8 +150,10 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
                     invalid_value="",
                 )
             ).align("right")
+
         elif isinstance(values, (list, tuple)):
             span.dropdown(values=values, state="").align("center")
+
         else:
             _LOG.error("unknown column: %s", colname)
 
@@ -176,8 +189,9 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
         if not event.selected:
             return
 
+        sel_box = event.selected.box
+
         if self.on_record_selected:
-            sel_box = event.selected.box
             rows = [
                 self.sheet.data[r]
                 for r in range(sel_box.from_r, sel_box.upto_r)

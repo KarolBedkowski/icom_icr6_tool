@@ -54,11 +54,6 @@ class BLRow(gui_genericlist.BaseRow):
         self.channel = channel
         self.data = self._from_channel(channel)
 
-    def __hash__(self) -> int:
-        return hash(
-            self.__class__.__name__ + str(self.data[0] if self.data else None)
-        )
-
     def __setitem__(self, idx: int, val: object, /) -> None:  # type: ignore
         if val == self.data[idx]:
             return
@@ -121,14 +116,6 @@ class BLRow(gui_genericlist.BaseRow):
             self.new_freq or "",
             *([""] * 15),
         ]
-
-
-class NewChannelCallback(ty.Protocol):
-    def __call__(self) -> model.Channel: ...
-
-
-class ChangeChannelCallback(ty.Protocol):
-    def __call__(self, channum: int, bank_pos: int) -> model.Channel: ...
 
 
 class ChannelsList(gui_chanlist.ChannelsList):

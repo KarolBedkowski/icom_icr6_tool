@@ -7,10 +7,7 @@
 import logging
 import typing as ty
 
-from tksheet import (
-    int_formatter,
-    num2alpha,
-)
+from tksheet import Span
 
 from . import consts, gui_chanlist, gui_genericlist, model
 
@@ -45,11 +42,6 @@ class AWCRow(gui_genericlist.BaseRow):
         self.channel = channel
         self.data = self._from_channel(channel)
 
-    def __hash__(self) -> int:
-        return hash(
-            self.__class__.__name__ + str(self.data[0] if self.data else None)
-        )
-
     def __setitem__(self, idx: int, val: object, /) -> None:  # type: ignore
         # immutable list
         return
@@ -57,8 +49,7 @@ class AWCRow(gui_genericlist.BaseRow):
     def _from_channel(self, channel: model.Channel | None) -> list[object]:
         # valid channel
         if channel and not channel.hide_channel and channel.freq:
-            data = channel.to_record()
-            return [data[col] for col, *_ in self.COLUMNS]
+            return self._extracts_cols(channel.to_record())
 
         # empty channel
         return [""] * 16
@@ -88,35 +79,12 @@ class ChannelsList(gui_chanlist.ChannelsList):
         self._set_cell_ro(row, "canceller", not chan.canceller)
         self._set_cell_ro(row, "canceller freq", not chan.duplex)
 
-    def _configure(self) -> None:
-        self.sheet.headers([c[1] for c in self.columns])
-
-        for idx, (colname, _c, values) in enumerate(self.columns):
-            col = self.sheet[num2alpha(idx)]
-            if values == "str":
-                continue
-
-            if values == "int":
-                col.format(int_formatter(invalid_value="")).align("right")
-
-            elif values == "bool":
-                col.checkbox().align("center")
-
-            elif values == "freq":
-                col.format(
-                    int_formatter(
-                        format_function=gui_genericlist.to_int,
-                        to_str_function=gui_genericlist.format_freq,
-                        invalid_value="",
-                    )
-                ).align("right")
-
-            elif isinstance(values, (list, tuple)):
-                # show dict-ed value as string
-                col.align("center")
-
-            else:
-                _LOG.error("unknown column %d: %s", idx, colname)
-
-        self.sheet.row_index(0)
-        self.sheet.hide_columns(0)
+    def _configure_col(
+        self, column: gui_genericlist.Column, span: Span
+    ) -> None:
+        colname, _c, values = column
+        if isinstance(values, (list, tuple)):
+            # show dict-ed value as string
+            span.align("center")
+        else:
+            super()._configure_col(column, span)
