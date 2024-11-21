@@ -48,6 +48,9 @@ class Row(gui_genericlist.BaseRow):
             self.__class__.__name__ + str(self.data[0] if self.data else None)
         )
 
+    def __repr__(self) -> str:
+        return f"ROW: data={self.data!r} channel={self.channel}"
+
     def __setitem__(self, idx: int, val: object, /) -> None:  # type: ignore
         if val == self.data[idx]:
             return
@@ -75,7 +78,8 @@ class Row(gui_genericlist.BaseRow):
                 return
 
         data = chan.to_record()
-        if data[col] == val:
+        current_val = data[col]
+        if current_val == val or (current_val == "" and val is None):
             return
 
         try:
