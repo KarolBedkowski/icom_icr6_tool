@@ -94,6 +94,8 @@ class BanksPage(tk.Frame):
         self._chan_list.sheet.bind("<Control-v>", self.__on_channel_paste)
 
     def __update_banks_list(self) -> None:
+        selected_bank = self.selected_bank
+
         banks = self._banks_list
 
         banks.delete(0, banks.size())
@@ -102,7 +104,7 @@ class BanksPage(tk.Frame):
             name = f"{bname}: {bank.name}" if bank.name else bname
             banks.insert(tk.END, name)
 
-        if (selected_bank := self.selected_bank) is not None:
+        if selected_bank is not None:
             banks.selection_set(selected_bank)
         else:
             self._field_bank_name["state"] = "disabled"
@@ -155,11 +157,12 @@ class BanksPage(tk.Frame):
 
     def __on_bank_update(self) -> None:
         selected_bank = self.selected_bank
-        if not selected_bank:
+        if selected_bank is None:
             return
 
         bank = self._radio_memory.get_bank(selected_bank)
         bank.name = self._bank_name.get().strip()[:6]
+        self._radio_memory.set_bank(bank)
 
         bl = self._radio_memory.get_bank_links()
         bl[selected_bank] = self._bank_link.get_raw()
