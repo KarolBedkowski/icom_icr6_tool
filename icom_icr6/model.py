@@ -602,6 +602,10 @@ class ScanLink:
 
     debug_info: dict[str, object] | None = None
 
+    def links(self) -> ty.Iterable[bool]:
+        for idx in range(consts.NUM_SCAN_EDGES):
+            yield bool(self.edges & (1 << idx))
+
     def __getitem__(self, idx: int) -> bool:
         if idx < 0 or idx >= consts.NUM_SCAN_EDGES:
             raise IndexError
@@ -1055,6 +1059,7 @@ class RadioMemory:
         return ScanEdge.from_data(idx, self.mem[start : start + 16])
 
     def set_scan_edge(self, se: ScanEdge) -> None:
+        _LOG.debug("set_scan_edge: %r", se)
         se.validate()
         start = 0x5DC0 + se.idx * 16
         mv = memoryview(self.mem)

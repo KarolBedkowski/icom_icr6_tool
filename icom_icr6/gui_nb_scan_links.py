@@ -6,9 +6,10 @@
 
 import logging
 import tkinter as tk
+import typing as ty
 from tkinter import ttk
 
-from . import consts, gui_model, model
+from . import consts, gui_scanlinkslist, model
 from .gui_widgets import new_entry
 
 _LOG = logging.getLogger(__name__)
@@ -66,7 +67,6 @@ class ScanLinksPage(tk.Frame):
 
         pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
         self._scan_links_list = tk.Listbox(pw, selectmode=tk.SINGLE)
-        self.__update_scan_links_list()
 
         self._scan_links_list.bind(
             "<<ListboxSelect>>", self.__on_select_scan_link
@@ -90,6 +90,7 @@ class ScanLinksPage(tk.Frame):
             self._scan_links_list.selection_set(self._last_selected_sl)
 
         self.__update_scan_links_list()
+        self.__update_scan_edges()
         self.__on_select_scan_link()
 
     def _create_fields(self, frame: tk.Frame) -> None:
@@ -104,6 +105,15 @@ class ScanLinksPage(tk.Frame):
             validator=validator,
         )
         self._entry_sl_name["state"] = "disabled"
+
+        self._btn_update = ttk.Button(
+            fields,
+            text="Update",
+            command=self.__on_update_sl,
+            state="disabled",
+        )
+        self._btn_update.grid(row=0, column=3, sticky=tk.E)
+
         fields.pack(side=tk.TOP, fill=tk.X, ipady=6)
 
     def _create_buttons(self, parent: tk.Frame) -> None:
@@ -118,29 +128,16 @@ class ScanLinksPage(tk.Frame):
             state="disabled",
         )
         self._btn_deselect.grid(row=3, column=0, sticky=tk.E)
-        self._btn_update = ttk.Button(
-            frame,
-            text="Update",
-            command=self.__on_update,
-            state="disabled",
-        )
-        self._btn_update.grid(row=3, column=2, sticky=tk.E)
 
         frame.pack(side=tk.BOTTOM, fill=tk.X, ipady=6)
 
     def _create_scan_edges_list(self, parent: tk.Frame) -> None:
-        slf = tk.Frame(parent)
+        self._scan_links_edges = gui_scanlinkslist.ScanLnksList(parent)
+        self._scan_links_edges.pack(
+            side=tk.TOP, expand=True, fill=tk.BOTH, ipady=6
+        )
 
-        slf.columnconfigure(0, weight=0)
-
-        # list of tuple - vars for checkbox and labels
-        self._scan_links_edges: list[_Row] = []
-
-        for idx in range(consts.NUM_SCAN_EDGES):
-            row = _Row(slf, idx)
-            self._scan_links_edges.append(row)
-
-        slf.pack(side=tk.TOP, expand=True, fill=tk.BOTH, ipady=6)
+        self._scan_links_edges.on_record_update = self.__on_scan_edge_updated
 
     def __update_scan_links_list(self) -> None:
         sel_sl = self._scan_links_list.curselection()  # type: ignore
@@ -155,6 +152,21 @@ class ScanLinksPage(tk.Frame):
         if sel_sl:
             self._scan_links_list.selection_set(sel_sl[0])
 
+    def __update_scan_edges(self) -> None:
+        sel_sl = self._scan_links_list.curselection()  # type: ignore
+        selected_se = sel_sl[0] if sel_sl else 0
+
+        sl = self._radio_memory.get_scan_link(selected_se)
+
+        data: list[gui_scanlinkslist.ScanLink] = [
+            gui_scanlinkslist.ScanLink(
+                self._radio_memory.get_scan_edge(idx), sl[idx]
+            )
+            for idx in range(consts.NUM_SCAN_EDGES)
+        ]
+
+        self._scan_links_edges.set_data(data)
+
     def __on_select_scan_link(self, _event: tk.Event | None = None) -> None:  # type: ignore
         sel_sl = self._scan_links_list.curselection()  # type: ignore
         if not sel_sl:
@@ -162,31 +174,16 @@ class ScanLinksPage(tk.Frame):
             return
 
         self._last_selected_sl = sel_sl
-
         sl = self._radio_memory.get_scan_link(sel_sl[0])
         self._sl_name.set(sl.name.rstrip())
 
-        for idx, row in enumerate(self._scan_links_edges):
-            se = self._radio_memory.get_scan_edge(idx)
-            row.set_checked(sl[idx])
-            row.set_state("normal")
-            if se.start:
-                row.set_labels(
-                    se.name or "-",
-                    gui_model.format_freq(se.start),
-                    gui_model.format_freq(se.end),
-                    consts.STEPS[se.tuning_step],
-                    consts.MODES_SCAN_EDGES[se.mode],
-                    "ATT" if se.attenuator else "",
-                )
-            else:
-                row.clear()
+        self._scan_links_edges.set_data_links(list(sl.links()))
 
         self._btn_deselect["state"] = "normal"
         self._btn_update["state"] = "normal"
         self._entry_sl_name["state"] = "normal"
 
-    def __on_update(self) -> None:
+    def __on_update_sl(self) -> None:
         sel_sl = self._scan_links_list.curselection()  # type: ignore
         if not sel_sl:
             self.__disable_widgets()
@@ -194,10 +191,8 @@ class ScanLinksPage(tk.Frame):
 
         sl = self._radio_memory.get_scan_link(sel_sl[0])
         sl.name = self._sl_name.get()
-        for idx, row in enumerate(self._scan_links_edges):
-            sl[idx] = row.value.get()
-
         self._radio_memory.set_scan_link(sl)
+
         self.__update_scan_links_list()
 
     def __on_de_select(self) -> None:
@@ -205,19 +200,46 @@ class ScanLinksPage(tk.Frame):
         if not sel_sl:
             return
 
-        val = 1
-        if all(row.value.get() == 1 for row in self._scan_links_edges):
-            val = 0
+        val = True
+        if all(row.selected for row in self._scan_links_edges.sheet.data):
+            val = False
 
-        for row in self._scan_links_edges:
-            row.set_checked(val)
+        self._scan_links_edges.set_data_links([val] * consts.NUM_SCAN_EDGES)
+
+    def __on_scan_edge_updated(
+        self, action: str, rows: ty.Collection[gui_scanlinkslist.Row]
+    ) -> None:
+        match action:
+            case "delete":
+                pass
+
+            case "update":
+                self.__do_update_scan_edge(rows)
+
+    def __do_update_scan_edge(
+        self, rows: ty.Collection[gui_scanlinkslist.Row]
+    ) -> None:
+        sel_sl = self._scan_links_list.curselection()  # type: ignore
+        if not sel_sl:
+            return
+
+        sl = self._radio_memory.get_scan_link(sel_sl[0])
+
+        for rec in rows:
+            _LOG.debug(
+                "__do_update_scan_edge: row=%r, se=%r, selected=%r",
+                rec,
+                rec.se,
+                rec.selected,
+            )
+            se = rec.se
+            self._radio_memory.set_scan_edge(se)
+
+            sl[se.idx] = rec.selected
+
+        self._radio_memory.set_scan_link(sl)
 
     def __disable_widgets(self) -> None:
-        for row in self._scan_links_edges:
-            row.clear()
-            row.set_checked(False)
-            row.set_state("disabled")
-
         self._btn_deselect["state"] = "disabled"
         self._btn_update["state"] = "disabled"
         self._entry_sl_name["state"] = "disabled"
