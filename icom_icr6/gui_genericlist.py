@@ -98,9 +98,9 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
         self.on_record_selected: RecordSelectedCallback[T] | None = None
 
     @property
-    def data(self) -> ty.Iterable[RT | None]:
+    def data(self) -> ty.Iterable[T | None]:
         for r in self.sheet.data:
-            yield r.channel
+            yield r
 
     def set_data(self, data: ty.Iterable[RT]) -> None:
         self.sheet.set_sheet_data(list(map(self._ROW_CLASS, data)))

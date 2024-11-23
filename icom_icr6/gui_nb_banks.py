@@ -142,7 +142,11 @@ class BanksPage(tk.Frame):
 
     def _show_stats(self) -> None:
         active = sum(
-            (1 for c in self._chan_list.data if c and not c.hide_channel),
+            (
+                1
+                for r in self._chan_list.data
+                if r and (c := r.channel) and not c.hide_channel
+            ),
         )
         self._parent.set_status(f"Active channels in bank: {active}")  # type: ignore
 
