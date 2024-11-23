@@ -15,45 +15,6 @@ from .gui_widgets import new_entry
 _LOG = logging.getLogger(__name__)
 
 
-class _Row:
-    def __init__(self, parent: tk.Widget, idx: int) -> None:
-        self.idx = idx
-        self.value = tk.IntVar()
-        self.cb = tk.Checkbutton(
-            parent,
-            text=str(idx),
-            variable=self.value,
-            onvalue=1,
-            offvalue=0,
-            state="disabled",
-        )
-        self.labels = []
-        self.cb.grid(row=idx, column=0, sticky=tk.W)
-        for i, sticky in enumerate(
-            [tk.W, tk.E, tk.E, tk.E + tk.W, tk.E + tk.W, tk.E + tk.W], 1
-        ):
-            lvar = tk.StringVar()
-            lab = tk.Label(parent, text="", textvariable=lvar)
-            lab.grid(row=idx, column=i, sticky=sticky, padx=12)
-            self.labels.append((lvar, lab))
-
-    def set_labels(self, *label: str) -> None:
-        for (lvar, _), lab in zip(self.labels, label, strict=True):
-            lvar.set(lab)
-
-    def clear(self) -> None:
-        for lvar, _ in self.labels:
-            lvar.set("")
-
-    def set_checked(self, val: object) -> None:
-        self.value.set(1 if val else 0)
-
-    def set_state(self, state: str) -> None:
-        self.cb["state"] = state
-        for _, lab in self.labels:
-            lab["state"] = state
-
-
 class ScanLinksPage(tk.Frame):
     # TODO: scrollable list or other
     def __init__(
