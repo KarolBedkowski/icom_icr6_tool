@@ -40,10 +40,14 @@ class ScanEdgePage(tk.Frame):
             expand=True, fill=tk.BOTH, side=tk.TOP, padx=12, pady=12
         )
 
-        self._scanedges_list.on_record_update = self.__on_scan_edge_updated  # type: ignore
+        self._scanedges_list.on_record_update = self.__on_scan_edge_updated
         self._scanedges_list.bind("<Delete>", self.__on_channel_delete)
-        self._scanedges_list.bind("<Control-c>", self.__on_scan_edge_copy)
-        self._scanedges_list.bind("<Control-v>", self.__on_scan_edge_paste)
+        self._scanedges_list.sheet.bind(
+            "<Control-c>", self.__on_scan_edge_copy
+        )
+        self._scanedges_list.sheet.bind(
+            "<Control-v>", self.__on_scan_edge_paste
+        )
 
     # def __on_channel_select(self, _event: tk.Event) -> None:  # type: ignore
     #     sel = self._scanedges_list.selection()
