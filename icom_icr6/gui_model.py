@@ -311,7 +311,7 @@ class ChannelsListModel(TableViewModel[model.Channel | None]):
                 return ComboboxPopup(parent, iid, column, value, consts.MODES)
 
             case "ts":
-                values = model.tuning_steps_for_freq(data_row.freq)
+                values = consts.tuning_steps_for_freq(data_row.freq)
                 return ComboboxPopup(parent, iid, column, value, values)
 
             case "duplex":
@@ -436,7 +436,7 @@ class ChannelsListModel(TableViewModel[model.Channel | None]):
                 )
                 if chan.freq and chan.hide_channel:
                     chan.hide_channel = False
-                    chan.mode = model.default_mode_for_freq(chan.freq)
+                    chan.mode = consts.default_mode_for_freq(chan.freq)
 
             case "mode":
                 chan.mode = consts.MODES.index(value) if value else 0

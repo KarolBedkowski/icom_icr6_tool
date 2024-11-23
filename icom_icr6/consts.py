@@ -1,7 +1,7 @@
 # Copyright © 2024 Karol Będkowski <Karol Będkowski@kkomp>
 #
 # Distributed under terms of the GPLv3 license.
-
+# ruff: noqa: PLR2004
 """ """
 
 import typing as ty
@@ -179,3 +179,33 @@ USA_FREQ_UNAVAIL_RANGES: ty.Final = [
 
 # use 9k frequency multiplier only for freq <= 1.62MHz
 MAX_FREQ_FOR_9K_MUL: ty.Final = 1_620_000
+
+
+def tuning_steps_for_freq(freq: int) -> list[str]:
+    """From manual: additional steps become selectable in only the
+    VHF Air band (8.33 kHz) and in the AM broadcast band (9 kHz).
+    """
+
+    if freq < 1_620_000:
+        return AVAIL_STEPS_BROADCAST
+
+    if 118_000_000 <= freq <= 135_995_000:
+        return AVAIL_STEPS_AIR
+
+    return AVAIL_STEPS_NORMAL
+
+
+def default_mode_for_freq(freq: int) -> int:
+    if freq > 144_000_000:
+        return 0  # FM
+
+    if freq > 108_000_000:  # air-band
+        return 0  # AM
+
+    if freq > 68_000_000:  # fm radio
+        return 1  # WFM
+
+    if freq > 30_000_000:
+        return 0  # FM
+
+    return 2  # AM

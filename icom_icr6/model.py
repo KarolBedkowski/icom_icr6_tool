@@ -533,7 +533,7 @@ class Channel:
             freq = self.freq
 
         self.name = ""
-        self.mode = default_mode_for_freq(freq) if freq else 0
+        self.mode = consts.default_mode_for_freq(freq) if freq else 0
         self.af_filter = False
         self.attenuator = False
         self.tuning_step = 0  # TODO: default
@@ -1267,22 +1267,6 @@ def fix_frequency(freq: int, *, usa_model: bool = False) -> int:
     return nfreq
 
 
-def default_mode_for_freq(freq: int) -> int:
-    if freq > 144_000_000:
-        return 0  # FM
-
-    if freq > 108_000_000:  # air-band
-        return 0  # AM
-
-    if freq > 68_000_000:  # fm radio
-        return 1  # WFM
-
-    if freq > 30_000_000:
-        return 0  # FM
-
-    return 2  # AM
-
-
 def fix_name(name: str) -> str:
     name = name.rstrip().upper()
     if not name:
@@ -1305,17 +1289,3 @@ def fix_comment(name: str) -> str:
     )
     name = "".join(c for c in name if c.upper() in consts.VALID_CHAR)
     return name[:16]
-
-
-def tuning_steps_for_freq(freq: int) -> list[str]:
-    """From manual: additional steps become selectable in only the
-    VHF Air band (8.33 kHz) and in the AM broadcast band (9 kHz).
-    """
-
-    if freq < 1_620_000:
-        return consts.AVAIL_STEPS_BROADCAST
-
-    if 118_000_000 <= freq <= 135_995_000:
-        return consts.AVAIL_STEPS_AIR
-
-    return consts.AVAIL_STEPS_NORMAL

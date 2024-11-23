@@ -234,7 +234,7 @@ class BanksPage(tk.Frame):
                     continue
 
                 chan.freq = rec.new_freq
-                chan.mode = model.default_mode_for_freq(chan.freq)
+                chan.mode = consts.default_mode_for_freq(chan.freq)
 
             elif rec.channel:
                 chan = rec.channel

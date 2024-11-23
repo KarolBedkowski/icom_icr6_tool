@@ -218,5 +218,5 @@ class ChannelsList(gui_genericlist.GenericList[Row, model.Channel]):
         self.sheet.set_dropdown_values(
             row,
             self.colmap["ts"],
-            values=model.tuning_steps_for_freq(chan.freq),
+            values=consts.tuning_steps_for_freq(chan.freq),
         )
