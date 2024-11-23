@@ -163,3 +163,16 @@ ENCODED_NAME_LEN: ty.Final[int] = 5
 
 # used in scanedge
 ATTENUATOR: ty.Final = ["On", "Off", "-"]
+
+
+USA_FREQ_RANGES: ty.Final = [
+    (100_000, 823_995_000),
+    (851_000_000, 866_995_000),
+    (896_000_000, 1309_995_000),
+]
+
+# exclusive
+USA_FREQ_UNAVAIL_RANGES: ty.Final = [
+    (823_995_000, 851_000_000),
+    (866_995_000, 896_000_000),
+]

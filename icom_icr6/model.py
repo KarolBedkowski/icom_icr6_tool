@@ -13,6 +13,7 @@ import typing as ty
 import unicodedata
 from collections import abc
 from dataclasses import dataclass, field
+from itertools import chain
 
 from . import consts
 
@@ -1278,14 +1279,15 @@ def encode_freq(freq: int, offset: int) -> EncodedFreq:
     # offset max 159.995 MHz
     # flag is <offset_flag:2b><freq_flag:2b>
     flags = 0
-    if freq % 5000 == freq % 9000 == 0:
-        flags = 0b0 if offset else 0b1111  # 9k step or 50 step
-    elif freq % 9000 == 0:
-        flags = 0b1111
+    # 9k step only for freq <= 1620k
+    if freq % 9000 == 0 and freq % 5000 == 0 and freq <= 1_620_000:
+        flags = 0b0 if offset else 0b1111  # 9k step only for freq <= 1620k
+    elif freq % 9000 == 0 and freq <= 1_620_000:
+        flags = 0b011 if offset else 0b1111  # 9k step only for freq <= 1620k
     elif freq % 5000 == 0:
         flags = 0
     elif freq % 6250 == 0:
-        flags = 0b0101
+        flags = 0b01 if offset else 0b0101
     elif (freq * 3) % 25000 == 0:  # not used?
         flags = 0b1010
     else:
@@ -1365,14 +1367,26 @@ def validate_comment(comment: str) -> None:
         raise ValueError
 
 
-def fix_frequency(freq: int) -> int:
+def fix_frequency(freq: int, *, usa_model: bool = False) -> int:
     freq = max(freq, consts.MIN_FREQUENCY)
     freq = min(freq, consts.MAX_FREQUENCY)
 
-    div = (5000, 9000, 6250, 8333.333)
-    nfreqs = (int((freq // f) * f) for f in div)
-    err_freq = ((freq - nf, nf) for nf in nfreqs)
+    if usa_model:
+        # if freq is forbidden range; set freq to nearest valid freq.
+        for fmin, fmax in consts.USA_FREQ_UNAVAIL_RANGES:
+            if fmin < freq < fmax:
+                freq = fmin if (freq - fmin) < (fmax - freq) else fmax
+                break
+
+    # 9k is used to freq <= 1620k; 8333.333 is never used
+    div = (5000, 9000, 6250) if freq <= 1_620_00 else (5000, 6250)
+    nfreqs = chain(
+        (int((freq // f + 1) * f) for f in div),
+        (int((freq // f) * f) for f in div),
+    )
+    err_freq = ((abs(freq - nf), nf) for nf in nfreqs)
     _, nfreq = min(err_freq)
+
     return nfreq
 
 

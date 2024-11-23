@@ -193,11 +193,24 @@ types:
 
       - id: flags_offset
         type: b2
-        doc: 2 bits for offset
+        doc: |
+          2 bits for offset
+          for 9k freq step - when offset != 0 - set to 0b11 otherwise 0;
+          when 6250 step - when offset != 0 - set to 0; otherwise 0b1
+          dup flag is ignored
         enum: freq_mul
       - id: flags_freq
         type: b2
-        doc: 2 bits for freq
+        doc: |
+          2 bits for freq;
+          9k step can be used only for freq < 1.632m
+          when 9k and 5k step can be used:
+            when offset != 0 - 5k step is used
+            when offset == 0 - 9k step is used
+
+          dup flag is ignored
+
+          8333.333 step is probably never used
         enum: freq_mul
       - id: flag_unknown
         type: b2

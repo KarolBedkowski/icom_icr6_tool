@@ -8,8 +8,14 @@
 """ """
 
 import binascii
+from contextlib import suppress
 
 import pytest
+
+with suppress(ImportError):
+    import icecream
+
+    icecream.install()
 
 from . import consts, model
 
@@ -17,13 +23,18 @@ from . import consts, model
 @pytest.mark.parametrize(
     ("freq", "offset", "exp_freq", "exp_flags"),
     [
-        (45000000, 0, 5000, 0b1111),
+        (45000000, 0, 9000, 0),
         (45000000, 1, 9000, 0),
-        (90000000, 0, 10000, 0b1111),
+        (90000000, 0, 18000, 0),
         (831250, 0, 133, 0b0101),
-        (1309995000, 0, 145555, 0b1111),
+        (831250, 1, 133, 0b0001),
+        (1309995000, 0, 261999, 0b0),
         (100000, 0, 20, 0b0),
         (100000, 1, 20, 0b0),
+        (1_620_000, 0, 180, 0b1111),
+        (1_620_000, 1, 324, 0b0),
+        (1_611_000, 0, 179, 0b1111),
+        (1_611_000, 1, 179, 0b0011),
     ],
 )
 def test_encode_freq(freq, offset, exp_freq, exp_flags):
@@ -103,7 +114,7 @@ class TestDecodeChannel:
         assert consts.DTCS_CODES[chan.dtsc] == "023"
         assert not chan.vsc
         assert consts.CANCELLER[chan.canceller] == "Off"
-        assert chan.canceller_freq == 228
+        assert chan.canceller_freq == 2280
         assert not chan.hide_channel
         assert consts.SKIPS[chan.skip] == ""
         assert chan.bank == 1
@@ -132,7 +143,7 @@ class TestDecodeChannel:
         assert consts.DTCS_CODES[chan.dtsc] == "032"
         assert not chan.vsc
         assert consts.CANCELLER[chan.canceller] == "Off"
-        assert chan.canceller_freq == 228
+        assert chan.canceller_freq == 2280
         assert not chan.hide_channel
         assert consts.SKIPS[chan.skip] == ""
         assert chan.bank == 1
@@ -161,7 +172,7 @@ class TestDecodeChannel:
         assert consts.DTCS_CODES[chan.dtsc] == "346"
         assert chan.vsc
         assert consts.CANCELLER[chan.canceller] == "Off"
-        assert chan.canceller_freq == 228
+        assert chan.canceller_freq == 2280
         assert not chan.hide_channel
         assert consts.SKIPS[chan.skip] == "P"
         assert consts.BANK_NAMES[chan.bank] == "U"
@@ -182,3 +193,25 @@ def test_bank_links(inp, exp):
     bl.to_data(data)
 
     assert data == inp
+
+
+@pytest.mark.parametrize(
+    ("inp", "usa", "exp"),
+    [
+        (100_000, False, 100_000),
+        (100_000, True, 100_000),
+        (100_001, False, 100_000),
+        (123_123_123_123, False, 1_309_995_000),
+        (0, False, 100_000),
+        (12_123_000, False, 12_125_000),
+        (912_340, False, 912_500),
+        (451_000, False, 450_000),
+        (459_000, False, 460_000),
+        (823_995_100, False, 823_995_000),
+        (824_000_000, True, 823_995_000),
+        (850_000_000, True, 851_000_000),
+    ],
+)
+def test_fix_freq(inp, usa, exp):
+    freq = model.fix_frequency(inp, usa_model=usa)
+    assert freq == exp
