@@ -10,9 +10,9 @@
 
 import logging
 import sys
+import typing as ty
 from contextlib import suppress
 from pathlib import Path
-import typing as ty
 
 from . import gui, io
 
@@ -37,8 +37,7 @@ def main_clone_from_radio() -> None:
         return
 
     radio = io.Radio(sys.argv[2])
-    mem = radio.clone_from()
-    io.save_icf_file(Path(sys.argv[3]), mem)
+    io.save_icf_file(Path(sys.argv[3]), radio.clone_from())
 
 
 def main_radio_info() -> None:
@@ -201,8 +200,7 @@ def get_commands(
 
 
 def main_help(cmds: dict[str, tuple[str, ty.Callable[[], None]]]) -> None:
-    print(f"""{sys.argv[0]} <command>
-Command:""")
+    print(f"{sys.argv[0]} <command>\nCommand:")
 
     for cmd, (args, _) in cmds.items():
         print(f"   {cmd} {args}")

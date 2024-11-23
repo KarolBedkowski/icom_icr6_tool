@@ -62,18 +62,15 @@ class Row(gui_genericlist.BaseRow):
                 return
 
         data = se.to_record()
-        if data[col] == val:
-            return
-
-        try:
-            se.from_record({col: val})
-        except Exception:
-            _LOG.exception(
-                "update scanedge from record error: %r=%r", col, val
-            )
-            return
-
-        super().__setitem__(idx, val)
+        if data[col] != val:
+            try:
+                se.from_record({col: val})
+            except Exception:
+                _LOG.exception(
+                    "update scanedge from record error: %r=%r", col, val
+                )
+            else:
+                super().__setitem__(idx, val)
 
     def _from_scanedge(self, se: model.ScanEdge) -> list[object]:
         data = se.to_record()

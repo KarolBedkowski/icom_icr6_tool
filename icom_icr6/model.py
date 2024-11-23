@@ -464,7 +464,7 @@ class Channel:
             "bank_pos": self.bank_pos if bank else "",
         }
 
-    def from_record(self, data: dict[str, object]) -> None:
+    def from_record(self, data: dict[str, object]) -> None:  # noqa: PLR0912,C901
         # TODO: adjust freq
         _LOG.debug("from_record: %r", data)
         if (freq := data.get("freq")) is not None:
@@ -1173,8 +1173,7 @@ class RadioMemory:
         bl.to_data(mv[0x6C28 : 0x6C28 + 3])
 
     def get_comment(self) -> str:
-        cmt = self.mem[0x6D00 : 0x6D00 + 16]
-        return cmt.decode().rstrip()
+        return self.mem[0x6D00 : 0x6D00 + 16].decode().rstrip()
 
     def set_comment(self, comment: str) -> None:
         cmt = fix_comment(comment).ljust(16).encode()
