@@ -9,7 +9,7 @@ import tkinter as tk
 import typing as ty
 from tkinter import ttk
 
-from . import consts, gui_scanlinkslist, model
+from . import consts, expimp, gui_model, gui_scanlinkslist, model
 from .gui_widgets import new_entry
 
 _LOG = logging.getLogger(__name__)
@@ -99,6 +99,12 @@ class ScanLinksPage(tk.Frame):
         )
 
         self._scan_links_edges.on_record_update = self.__on_scan_edge_updated
+        self._scan_links_edges.sheet.bind(
+            "<Control-c>", self.__on_scan_edge_copy
+        )
+        self._scan_links_edges.sheet.bind(
+            "<Control-v>", self.__on_scan_edge_paste
+        )
 
     def __update_scan_links_list(self) -> None:
         sel_sl = self._scan_links_list.curselection()  # type: ignore
@@ -199,6 +205,64 @@ class ScanLinksPage(tk.Frame):
             sl[se.idx] = rec.selected
 
         self._radio_memory.set_scan_link(sl)
+
+    def __on_scan_edge_copy(self, _event: tk.Event) -> None:  # type: ignore
+        sel = self._scan_links_edges.selection()
+        if not sel:
+            return
+
+        ses = (self._radio_memory.get_scan_edge(row) for row in sel)
+        clip = gui_model.Clipboard.instance()
+        clip.put(expimp.export_scan_edges_str(ses))
+
+    def __on_scan_edge_paste(self, _event: tk.Event) -> None:  # type: ignore
+        sel = self._scan_links_edges.selection()
+        if not sel:
+            return
+
+        clip = gui_model.Clipboard.instance()
+
+        try:
+            rows = list(expimp.import_scan_edges_str(ty.cast(str, clip.get())))
+        except Exception:
+            _LOG.exception("import from clipboard error")
+            return
+
+        # special case - when in clipboard is one record and selected  many-
+        # duplicate
+        if len(sel) > 1 and len(rows) == 1:
+            row = rows[0]
+            for spos in sel:
+                if not self.__paste_se(row, spos):
+                    break
+
+        else:
+            start_num = sel[0]
+            for se_num, row in enumerate(rows, start_num):
+                if not self.__paste_se(row, se_num):
+                    break
+
+                if se_num == consts.NUM_SCAN_EDGES - 1:
+                    break
+
+        self.__update_scan_edges()
+
+    def __paste_se(self, row: dict[str, object], se_num: int) -> bool:
+        if not row.get("start") or not row.get("end"):
+            return True
+
+        se = self._radio_memory.get_scan_edge(se_num).clone()
+        try:
+            se.from_record(row)
+            se.validate()
+        except ValueError:
+            _LOG.exception("import from clipboard error")
+            _LOG.error("se_num=%d, row=%r", se_num, row)
+            return False
+
+        se.idx = se_num
+        self._radio_memory.set_scan_edge(se)
+        return True
 
     def __disable_widgets(self) -> None:
         self._btn_deselect["state"] = "disabled"
