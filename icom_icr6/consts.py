@@ -176,3 +176,6 @@ USA_FREQ_UNAVAIL_RANGES: ty.Final = [
     (823_995_000, 851_000_000),
     (866_995_000, 896_000_000),
 ]
+
+# use 9k frequency multiplier only for freq <= 1.62MHz
+MAX_FREQ_FOR_9K_MUL: ty.Final = 1_620_000

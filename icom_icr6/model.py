@@ -15,7 +15,7 @@ from collections import abc
 from dataclasses import dataclass, field
 from itertools import chain
 
-from . import consts
+from . import coding, consts
 
 _LOG = logging.getLogger(__name__)
 DEBUG = True
@@ -269,8 +269,8 @@ class Channel:
 
         freq_real = offset_real = 0
         try:
-            freq_real = decode_freq(freq, freq_flags & 0b11)
-            offset_real = decode_freq(offset, freq_flags >> 2)
+            freq_real = coding.decode_freq(freq, freq_flags & 0b11)
+            offset_real = coding.decode_freq(offset, freq_flags >> 2)
         except ValueError as err:
             _LOG.error(
                 "decode freq error: %r, idx=%d, data=%r, cdata=%r, "
@@ -337,7 +337,7 @@ class Channel:
             * ((data[9] << 1) | ((data[10] & 0b10000000) >> 7)),
             vsc=bool(data[10] & 0b00000100),
             canceller=data[10] & 0b00000011,
-            name=decode_name(data[11:16]),
+            name=coding.decode_name(data[11:16]),
             hide_channel=bool(hide_channel),
             skip=skip,
             bank=bank,
@@ -348,7 +348,7 @@ class Channel:
     def to_data(self, data: MutableMemory, cflags: MutableMemory) -> None:
         self.offset = min(self.offset, consts.MAX_OFFSET)
 
-        enc_freq = encode_freq(self.freq, self.offset)
+        enc_freq = coding.encode_freq(self.freq, self.offset)
         freq0, freq1, freq2 = enc_freq.freq_bytes()
         offset_l, offset_h = enc_freq.offset_bytes()
 
@@ -394,7 +394,7 @@ class Channel:
         # canceller
         data_set(data, 10, 0b11, self.canceller)
         # name
-        data[11:16] = bytes(encode_name(self.name))
+        data[11:16] = bytes(coding.encode_name(self.name))
 
         # hide_channel, bank
         cflags[0] = (
@@ -1185,129 +1185,6 @@ class RadioMemory:
         return self.file_etcdata == "0003"
 
 
-def decode_name(inp: abc.Sequence[int]) -> str:
-    """Decode name from 5-bytes that contains 6 - 6bits coded characters with
-    4-bit padding on beginning..
-
-          76543210
-       0  xxxx0000
-       1  00111111
-       2  22222233
-       3  33334444
-       4  44555555
-    """
-    if len(inp) != consts.ENCODED_NAME_LEN:
-        raise ValueError
-
-    chars = (
-        (inp[0] & 0b00001111) << 2 | (inp[1] & 0b11000000) >> 6,
-        (inp[1] & 0b00111111),
-        (inp[2] & 0b11111100) >> 2,
-        (inp[2] & 0b00000011) << 4 | (inp[3] & 0b11110000) >> 4,
-        (inp[3] & 0b00001111) << 2 | (inp[4] & 0b11000000) >> 6,
-        (inp[4] & 0b00111111),
-    )
-
-    name = "".join(consts.CODED_CHRS[x] for x in chars)
-    if name and name[0] == "^":
-        # invalid name
-        return ""
-
-    return name.rstrip()
-
-
-def encode_name(inp: str) -> abc.Sequence[int]:
-    inp = inp[: consts.NAME_LEN].upper().ljust(consts.NAME_LEN)
-
-    iic = [0 if x == "^" else consts.CODED_CHRS.index(x) for x in inp]
-    return [
-        (iic[0] & 0b00111100) >> 2,  # padding
-        ((iic[0] & 0b00000011) << 6) | (iic[1] & 0b00111111),
-        ((iic[2] & 0b00111111) << 2) | ((iic[3] & 0b00110000) >> 4),
-        ((iic[3] & 0b00001111) << 4) | ((iic[4] & 0b00111100) >> 2),
-        ((iic[4] & 0b00000011) << 6) | (iic[5] & 0b00111111),
-    ]
-
-
-def decode_freq(freq: int, flags: int) -> int:
-    """
-    flags are probably only 2 bits:
-        00 -> 5000
-        01 -> 6250
-        10 -> 8333.3333
-        11 -> 9000
-    """
-    # TODO: check:
-    match flags:
-        case 0b00:
-            return 5000 * freq
-        case 0b01:
-            return 6250 * freq
-        case 0b10:
-            return (25000 * freq) // 3  # unused?
-        case 0b11:
-            return 9000 * freq
-
-    _LOG.error("unknown flag %r for freq %r", flags, freq)
-    raise ValueError
-
-
-class EncodedFreq(ty.NamedTuple):
-    flags: int
-    freq: int
-    offset: int
-
-    def freq_bytes(self) -> tuple[int, int, int]:
-        # freq0, freq1, freq2
-        return (
-            self.freq & 0x00FF,
-            (self.freq & 0xFF00) >> 8,
-            (self.freq & 0x30000) >> 16,
-        )
-
-    def offset_bytes(self) -> tuple[int, int]:
-        # offset_l, offset_h
-        return self.offset & 0x00FF, (self.offset & 0xFF00) >> 8
-
-
-class InvalidFlagError(ValueError):
-    pass
-
-
-def encode_freq(freq: int, offset: int) -> EncodedFreq:
-    # freq min 0.1MHz
-    # offset max 159.995 MHz
-    # flag is <offset_flag:2b><freq_flag:2b>
-    flags = 0
-    # 9k step only for freq <= 1620k
-    if freq % 9000 == 0 and freq % 5000 == 0 and freq <= 1_620_000:
-        flags = 0b0 if offset else 0b1111  # 9k step only for freq <= 1620k
-    elif freq % 9000 == 0 and freq <= 1_620_000:
-        flags = 0b011 if offset else 0b1111  # 9k step only for freq <= 1620k
-    elif freq % 5000 == 0:
-        flags = 0
-    elif freq % 6250 == 0:
-        flags = 0b01 if offset else 0b0101
-    elif (freq * 3) % 25000 == 0:  # not used?
-        flags = 0b1010
-    else:
-        raise InvalidFlagError
-
-    match flags & 0b11:
-        case 0b11:  # 9k
-            return EncodedFreq(flags, freq // 9000, offset // 9000)
-        case 0b10:  # 8333.333
-            return EncodedFreq(
-                flags, (freq * 3) // 25000, (offset * 3) // 25000
-            )
-        case 0b01:  # 6250
-            return EncodedFreq(flags, freq // 6250, offset // 6250)
-        case 0b00:  # 5k
-            return EncodedFreq(flags, freq // 5000, offset // 5000)
-
-    raise ValueError
-
-
 def validate_frequency(inp: str | int) -> bool:
     if isinstance(inp, str):
         try:
@@ -1321,7 +1198,7 @@ def validate_frequency(inp: str | int) -> bool:
         return False
 
     try:
-        encode_freq(freq, 0)
+        coding.encode_freq(freq, 0)
     except ValueError:
         return False
 
@@ -1344,7 +1221,7 @@ def validate_offset(inp: str | int) -> bool:
         return False
 
     try:
-        encode_freq(freq, freq)
+        coding.encode_freq(freq, freq)
     except ValueError:
         return False
 
@@ -1381,8 +1258,8 @@ def fix_frequency(freq: int, *, usa_model: bool = False) -> int:
     # 9k is used to freq <= 1620k; 8333.333 is never used
     div = (5000, 9000, 6250) if freq <= 1_620_00 else (5000, 6250)
     nfreqs = chain(
-        (int((freq // f + 1) * f) for f in div),
-        (int((freq // f) * f) for f in div),
+        ((freq // f + 1) * f for f in div),
+        ((freq // f) * f for f in div),
     )
     err_freq = ((abs(freq - nf), nf) for nf in nfreqs)
     _, nfreq = min(err_freq)
