@@ -12,6 +12,7 @@ import logging
 import sys
 from contextlib import suppress
 from pathlib import Path
+import typing as ty
 
 from . import gui, io
 
@@ -28,6 +29,9 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 def main_clone_from_radio() -> None:
+    """cmd: clone_from_radio
+    args: <port> <icf file>
+    """
     if len(sys.argv) < 4:
         print("port and file name required")
         return
@@ -38,6 +42,9 @@ def main_clone_from_radio() -> None:
 
 
 def main_radio_info() -> None:
+    """cmd: radio_info
+    args: <port>
+    """
     if len(sys.argv) < 3:
         print("port required (/dev/ttyUSB0 ie)")
         return
@@ -51,6 +58,8 @@ def main_radio_info() -> None:
 
 
 def main_print_channels() -> None:
+    """cmd: channels
+    args: <icf file> [<start channel num>] [hidden]"""
     if len(sys.argv) < 3:
         print("file name required")
         return
@@ -75,6 +84,9 @@ def main_print_channels() -> None:
 
 
 def main_print_aw_channels() -> None:
+    """cmd: autowrite
+    args: <icf file>
+    """
     if len(sys.argv) < 3:
         print("file name required")
         return
@@ -87,6 +99,9 @@ def main_print_aw_channels() -> None:
 
 
 def main_print_banks() -> None:
+    """cmd: banks
+    args: <icf file>
+    """
     if len(sys.argv) < 3:
         print("file name required")
         return
@@ -99,6 +114,9 @@ def main_print_banks() -> None:
 
 
 def main_print_scan_programs() -> None:
+    """cmd: scan
+    args: <icf file>
+    """
     if len(sys.argv) < 3:
         print("file name required")
         return
@@ -115,6 +133,9 @@ def main_print_scan_programs() -> None:
 
 
 def main_write_mem_raw() -> None:
+    """cmd: icf2raw
+    args: <icf file> [<raw file>]
+    """
     if len(sys.argv) < 3:
         print("file name required")
         return
@@ -127,6 +148,9 @@ def main_write_mem_raw() -> None:
 
 
 def main_write_icf_mem() -> None:
+    """cmd: raw2icf
+    args: <raw file> [<icf file>]
+    """
     if len(sys.argv) < 3:
         print("file name required")
         return
@@ -139,6 +163,9 @@ def main_write_icf_mem() -> None:
 
 
 def main_print_settings() -> None:
+    """cmd: settings
+    args: <icf file>
+    """
     if len(sys.argv) < 3:
         print("file name required")
         return
@@ -155,47 +182,53 @@ def main_print_settings() -> None:
     print(bl)
 
 
-def main_help() -> None:
+def get_commands(
+    *functions: ty.Callable[[], None],
+) -> ty.Iterable[tuple[str, tuple[str, ty.Callable[[], None]]]]:
+    for func in functions:
+        cmd = ""
+        args = ""
+        if doc := func.__doc__:
+            for line in doc.split("\n"):
+                lkey, _, val = line.strip().partition(":")
+                if lkey == "args":
+                    args = val.strip()
+                elif lkey == "cmd" and (v := val.strip()):
+                    cmd = v
+
+        if cmd:
+            yield cmd, (args, func)
+
+
+def main_help(cmds: dict[str, tuple[str, ty.Callable[[], None]]]) -> None:
     print(f"""{sys.argv[0]} <command>
-Command:
-   channels <icf file> [<start channel num>] [hidden]
-   banks <icf file>
-   scan <icf file>
-   icf2raw <icf file> [<raw file>]
-   raw2icf <raw file> [<icf file>]
-   clone_from_radio <port> <icf file>
-   radio_info <port>
-   autowrite <icf file>
-   settings <icf file>
-""")
+Command:""")
+
+    for cmd, (args, _) in cmds.items():
+        print(f"   {cmd} {args}")
 
 
 def main() -> None:
-    if len(sys.argv) == 1:
-        main_help()
-        return
+    cmds = dict(
+        get_commands(
+            main_print_channels,
+            main_print_banks,
+            main_print_scan_programs,
+            main_write_mem_raw,
+            main_write_icf_mem,
+            main_clone_from_radio,
+            main_print_aw_channels,
+            main_radio_info,
+            main_print_settings,
+        )
+    )
 
-    match sys.argv[1]:
-        case "channels":
-            main_print_channels()
-        case "banks":
-            main_print_banks()
-        case "scan":
-            main_print_scan_programs()
-        case "icf2raw":
-            main_write_mem_raw()
-        case "raw2icf":
-            main_write_icf_mem()
-        case "clone_from_radio":
-            main_clone_from_radio()
-        case "autowrite":
-            main_print_aw_channels()
-        case "radio_info":
-            main_radio_info()
-        case "settings":
-            main_print_settings()
-        case _:
-            main_help()
+    if len(sys.argv) == 1:
+        main_help(cmds)
+    elif cmd := cmds.get(sys.argv[1]):
+        cmd[1]()
+    else:
+        main_help(cmds)
 
 
 def main_gui() -> None:
