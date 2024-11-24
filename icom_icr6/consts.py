@@ -177,9 +177,6 @@ USA_FREQ_UNAVAIL_RANGES: ty.Final = [
     (866_995_000, 896_000_000),
 ]
 
-# use 9k frequency multiplier only for freq <= 1.62MHz
-MAX_FREQ_FOR_9K_MUL: ty.Final = 1_620_000
-
 
 def tuning_steps_for_freq(freq: int) -> list[str]:
     """From manual: additional steps become selectable in only the
@@ -209,3 +206,7 @@ def default_mode_for_freq(freq: int) -> int:
         return 0  # FM
 
     return 2  # AM
+
+
+def is_air_band(freq: int) -> bool:
+    return 108_000_000 < freq < 144_000_000

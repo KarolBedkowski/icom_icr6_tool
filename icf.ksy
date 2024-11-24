@@ -186,7 +186,7 @@ types:
     seq:
       - id: freq0
         type: u1
-        doc: lsb; comlpete freq=(freq3 << 16) | (freq2 << 8) | freq3
+        doc: lsb; complete freq=(freq3 << 16) | (freq2 << 8) | freq3
 
       - id: freq1
         type: u1
@@ -195,22 +195,26 @@ types:
         type: b2
         doc: |
           2 bits for offset
-          for 9k freq step - when offset != 0 - set to 0b11 otherwise 0;
-          when 6250 step - when offset != 0 - set to 0; otherwise 0b1
-          dup flag is ignored
+          8.333k step is available only for air band
+          If offset is 0 (dup flag is ignored) - use the same divisor
+          as freq_mul.
+          If offset > 0 - try:
+            - use common divisor for offset and freq
+            - use 9k divisor if available
+            - use min useful divisor (5k, 6.25k, 8.333k)
+          If any divisor can be used - round offset to value when any divisor
+          can be used.
         enum: freq_mul
       - id: flags_freq
         type: b2
         doc: |
           2 bits for freq;
-          9k step can be used only for freq < 1.632m
-          when 9k and 5k step can be used:
-            when offset != 0 - 5k step is used
-            when offset == 0 - 9k step is used
-
-          dup flag is ignored
-
-          8333.333 step is probably never used
+          8333.333 step is available only for air band
+          if offset > 0 - try find common divisor; otherwise try:
+            - use 9k divisor if applicable
+            - find minimal useful divisor (5k, 6.25k, 8.333k)
+          If any divisor can be used - round frequency to nearest value for
+          which any divisor can be used.
         enum: freq_mul
       - id: flag_unknown
         type: b2

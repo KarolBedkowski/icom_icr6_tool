@@ -89,6 +89,12 @@ class EncodedFreq(ty.NamedTuple):
     freq: int
     offset: int
 
+    def __repr__(self) -> str:
+        return (
+            f"EncodedFreq(flags={self.flags:04b}, freq={self.freq}, "
+            f"offset={self.offset})"
+        )
+
     def freq_bytes(self) -> tuple[int, int, int]:
         # freq0, freq1, freq2
         return (
@@ -106,35 +112,66 @@ class InvalidFlagError(ValueError):
     pass
 
 
+def _find_div_for_freq(freq: int, avail: tuple[int, ...]) -> ty.Iterable[int]:
+    if not freq:
+        return
+
+    if 0 in avail and freq % 5000 == 0:
+        yield 0
+
+    if 1 in avail and freq % 6250 == 0:
+        yield 1
+
+    if 2 in avail and int(freq * 3 / 25000 + 0.5) * 25000 // 3 == freq:  # noqa: PLR2004
+        yield 2
+
+    if 3 in avail and freq % 9000 == 0:  # noqa: PLR2004
+        yield 3
+
+
+def _div_freq(freq: int, freq_div: int) -> int:
+    match freq_div:
+        case 0b00:  # 5k
+            nfreq = freq // 5000
+        case 0b01:  # 6250
+            nfreq = freq // 6250
+        case 0b10:  # 8333.333
+            nfreq = int(freq * 3 / 25000 + 0.5)
+        case 0b11:  # 9k
+            nfreq = freq // 9000
+
+    return nfreq
+
+
 def encode_freq(freq: int, offset: int) -> EncodedFreq:
     # freq min 0.1MHz
     # offset max 159.995 MHz
-    # flag is <offset_flag:2b><freq_flag:2b>
-    flags = 0
-    # 9k step only for freq <= 1620k
-    if freq % 9000 == freq % 5000 == 0 and freq <= consts.MAX_FREQ_FOR_9K_MUL:
-        flags = 0b0 if offset else 0b1111  # 9k step only for freq <= 1620k
-    elif freq % 9000 == 0 and freq <= consts.MAX_FREQ_FOR_9K_MUL:
-        flags = 0b011 if offset else 0b1111  # 9k step only for freq <= 1620k
-    elif freq % 5000 == 0:
-        flags = 0
-    elif freq % 6250 == 0:
-        flags = 0b01 if offset else 0b0101
-    elif (freq * 3) % 25000 == 0:  # not used?
-        flags = 0b1010
+    # flag is <offset_flag:2b><freq_flag:2b
+
+    if freq == 0:
+        return EncodedFreq(0, 0, 0)
+
+    fset: tuple[int, ...] = (0, 1, 3)  # 5k, 6250
+    if consts.is_air_band(freq):
+        fset = (0, 1, 2)  # 5k, 6250, 8333.33
+
+    fd = set(_find_div_for_freq(freq, fset))
+    od = set(_find_div_for_freq(offset, fset)) if offset else set()
+
+    if offset:
+        if common := fd & od:
+            # there is common divider for freq & offset
+            freq_div = offset_div = min(common)
+        else:
+            # prefer 9k in offset when available
+            freq_div = 3 if 3 in fd else min(fd)  # noqa: PLR2004
+            offset_div = 3 if 3 in od else min(od)  # noqa: PLR2004
     else:
-        raise InvalidFlagError
+        # when 9k is available for freq, set it for for freq and offset
+        offset_div = freq_div = 3 if 3 in fd else min(fd)  # noqa: PLR2004
 
-    match flags & 0b11:
-        case 0b11:  # 9k
-            return EncodedFreq(flags, freq // 9000, offset // 9000)
-        case 0b10:  # 8333.333
-            return EncodedFreq(
-                flags, (freq * 3) // 25000, (offset * 3) // 25000
-            )
-        case 0b01:  # 6250
-            return EncodedFreq(flags, freq // 6250, offset // 6250)
-        case 0b00:  # 5k
-            return EncodedFreq(flags, freq // 5000, offset // 5000)
-
-    raise ValueError
+    return EncodedFreq(
+        (offset_div << 2) | freq_div,
+        _div_freq(freq, freq_div),
+        _div_freq(offset, offset_div),
+    )

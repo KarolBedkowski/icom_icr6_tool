@@ -227,7 +227,7 @@ class Channel:
         return (
             f"Channel {self.number}: "
             f"f={self.freq}, "
-            f"ff={self.freq_flags}, "
+            f"ff={self.freq_flags} ({self.freq_flags:>04b}), "
             f"af={self.af_filter}, "
             f"att={self.attenuator}, "
             f"mode={consts.MODES[self.mode]}, "
@@ -1255,16 +1255,53 @@ def fix_frequency(freq: int, *, usa_model: bool = False) -> int:
                 freq = fmin if (freq - fmin) < (fmax - freq) else fmax
                 break
 
-    # 9k is used to freq <= 1620k; 8333.333 is never used
-    div = (5000, 9000, 6250) if freq <= 1_620_00 else (5000, 6250)
+    div: tuple[float, ...]
+    # 9k is used to freq <= 1620k, 8.333 for air bands
+    if freq <= 1_620_00:
+        div = (5000, 9000, 6250)
+    elif consts.is_air_band(freq):
+        div = (5000, 6250, 8333.33333333333)
+    else:
+        div = (5000, 6250)
+
     nfreqs = chain(
-        ((freq // f + 1) * f for f in div),
-        ((freq // f) * f for f in div),
+        (int(freq / f + 1) * f for f in div),
+        (int(freq / f) * f for f in div),
     )
+
     err_freq = ((abs(freq - nf), nf) for nf in nfreqs)
     _, nfreq = min(err_freq)
 
-    return nfreq
+    return int(nfreq)
+
+
+def fix_offset(freq: int, offset: int) -> int:
+    offset = max(offset, 5000)
+    offset = min(offset, 159995000)
+
+    div: tuple[float, ...]
+    if freq <= 1_620_00:
+        div = (5000, 6250)
+    elif consts.is_air_band(freq):
+        div = (5000, 6250, 8333.33333333333)
+    else:
+        div = (5000, 6250)
+
+    noffsets = chain(
+        ((f, int(offset / f + 0.5) * f) for f in div),
+        ((f, int(offset / f) * f) for f in div),
+    )
+
+    noffset = offset
+    err = 99999999999.0
+    for d, nf in noffsets:
+        nerr = abs(offset - nf)
+        ic(d, nf, nerr)
+        if nerr < err:
+            err = nerr
+            noffset = int(nf)
+
+    return int(noffset)
 
 
 def fix_name(name: str) -> str:

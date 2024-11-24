@@ -82,6 +82,27 @@ def main_print_channels() -> None:
             print(channel, ch)
 
 
+def main_print_channels_4test() -> None:
+    """cmd: channels4t
+    args: <icf file>"""
+    if len(sys.argv) < 3:
+        print("file name required")
+        return
+
+    mem = io.load_icf_file(Path(sys.argv[2]))
+
+    hidden = False
+    ch_start, ch_end = 0, 1300
+    for channel in range(ch_start, ch_end):
+        ch = mem.get_channel(channel)
+        if not ch.hide_channel or not ch.freq or hidden:
+            print(
+                f"({ch.freq}, {ch.offset}, 0b{ch.freq_flags:04b}, "
+                f"{ch.debug_info['freq']}, "
+                f"{ch.debug_info['offset']})"
+            )
+
+
 def main_print_aw_channels() -> None:
     """cmd: autowrite
     args: <icf file>
@@ -218,6 +239,8 @@ def main() -> None:
             main_print_aw_channels,
             main_radio_info,
             main_print_settings,
+            # debug, for tests
+            main_print_channels_4test,
         )
     )
 
