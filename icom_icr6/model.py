@@ -494,7 +494,8 @@ class Channel:
             self.tone_mode = get_index_or_default(consts.TONE_MODES, mode)
 
         if (offset := data.get("offset")) is not None:
-            self.offset = int(offset)  # type: ignore
+            off = int(offset)  # type: ignore
+            self.offset = fix_offset(self.freq, off) if off else 0
 
         if (tf := data.get("tsql_freq")) is not None:
             self.tsql_freq = get_index_or_default(consts.CTCSS_TONES, tf)
@@ -1244,6 +1245,28 @@ def validate_comment(comment: str) -> None:
         raise ValueError
 
 
+def _first_min_diff(base: float, values: ty.Iterable[float]) -> float:
+    minimal = base
+    err = 99999999999.0
+    # keep order; using min not always return first minimal value
+    for v in values:
+        if (nerr := abs(base - v)) < err:
+            err = nerr
+            minimal = v
+
+    return minimal
+
+
+def _freq_div_for_freq(freq: int) -> tuple[float, ...]:
+    if freq <= 1_620_00:
+        return (5000, 9000, 6250)
+
+    if consts.is_air_band(freq):
+        return (5000, 6250, 8333.33333333333)
+
+    return (5000, 6250)
+
+
 def fix_frequency(freq: int, *, usa_model: bool = False) -> int:
     freq = max(freq, consts.MIN_FREQUENCY)
     freq = min(freq, consts.MAX_FREQUENCY)
@@ -1255,53 +1278,37 @@ def fix_frequency(freq: int, *, usa_model: bool = False) -> int:
                 freq = fmin if (freq - fmin) < (fmax - freq) else fmax
                 break
 
-    div: tuple[float, ...]
-    # 9k is used to freq <= 1620k, 8.333 for air bands
-    if freq <= 1_620_00:
-        div = (5000, 9000, 6250)
-    elif consts.is_air_band(freq):
-        div = (5000, 6250, 8333.33333333333)
-    else:
-        div = (5000, 6250)
-
+    div = _freq_div_for_freq(freq)
     nfreqs = chain(
         (int(freq / f + 1) * f for f in div),
         (int(freq / f) * f for f in div),
     )
 
-    err_freq = ((abs(freq - nf), nf) for nf in nfreqs)
-    _, nfreq = min(err_freq)
-
-    return int(nfreq)
+    return int(_first_min_diff(freq, nfreqs))
 
 
 def fix_offset(freq: int, offset: int) -> int:
+    if offset == 0:
+        return 0
+
     offset = max(offset, 5000)
     offset = min(offset, 159995000)
 
-    div: tuple[float, ...]
-    if freq <= 1_620_00:
-        div = (5000, 6250)
-    elif consts.is_air_band(freq):
-        div = (5000, 6250, 8333.33333333333)
-    else:
-        div = (5000, 6250)
+    if offset % 9000 == 0:
+        # 9k is used only if match exactly
+        return offset
 
+    div = (
+        (5000, 6250, 8333.33333333333)
+        if consts.is_air_band(freq)
+        else (5000, 6250)
+    )
     noffsets = chain(
-        ((f, int(offset / f + 0.5) * f) for f in div),
-        ((f, int(offset / f) * f) for f in div),
+        (int(offset / f + 1) * f for f in div),
+        (int(offset / f) * f for f in div),
     )
 
-    noffset = offset
-    err = 99999999999.0
-    for d, nf in noffsets:
-        nerr = abs(offset - nf)
-        ic(d, nf, nerr)
-        if nerr < err:
-            err = nerr
-            noffset = int(nf)
-
-    return int(noffset)
+    return int(_first_min_diff(offset, noffsets))
 
 
 def fix_name(name: str) -> str:

@@ -156,7 +156,7 @@ class ChannelsList(gui_genericlist.GenericList[Row, model.Channel]):
 
             case "offset":
                 value = (
-                    max(min(off, consts.MAX_OFFSET), consts.MIN_OFFSET)
+                    model.fix_offset(chan.freq, off)
                     if (off := int(value))
                     else 0
                 )
