@@ -4,7 +4,6 @@
 
 """ """
 
-import locale
 import logging
 
 from tksheet import EventDataDict
