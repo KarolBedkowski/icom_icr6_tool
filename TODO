@@ -2,6 +2,8 @@
 - clone in background
 - handle errors
 - sorting lists
+- compact lists
 - how to read region from radio? from serial number? - add support for clone from US radio
 - fast clone
-- use tksheet for data display
+- validation / show errors
+- progess in percent

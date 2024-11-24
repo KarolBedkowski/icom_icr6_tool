@@ -101,7 +101,11 @@ class ScanLnksList(gui_genericlist.GenericList[Row, ScanLink]):
 
         match column[0]:
             case "start" | "end":
-                if value := int(value):
+                val = float(value)
+                if val < 1_310:  # entered freq  # noqa: PLR2004
+                    val *= 1_000_000
+
+                if value := int(val):
                     value = model.fix_frequency(value)
 
             case "name":
