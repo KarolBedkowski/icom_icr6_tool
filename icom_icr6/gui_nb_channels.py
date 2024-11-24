@@ -7,6 +7,7 @@
 import logging
 import tkinter as tk
 import typing as ty
+from operator import attrgetter
 from tkinter import messagebox, ttk
 
 from . import consts, expimp, gui_chanlist, gui_model, model
@@ -60,6 +61,17 @@ class ChannelsPage(tk.Frame):
         self._chan_list.sheet.bind("<Control-c>", self.__on_channel_copy)
         self._chan_list.sheet.bind("<Control-v>", self.__on_channel_paste)
 
+        bframe = tk.Frame(frame)
+        self._btn_sort = ttk.Button(
+            bframe,
+            text="Sort...",
+            command=self.__on_btn_sort,
+            state="disabled",
+        )
+        self._btn_sort.pack(side=tk.LEFT)
+
+        bframe.pack(side=tk.BOTTOM, fill=tk.X, ipady=6)
+
     def __on_channel_update(
         self, action: str, rows: ty.Collection[gui_chanlist.Row]
     ) -> None:
@@ -101,6 +113,9 @@ class ChannelsPage(tk.Frame):
             self._show_stats()
 
     def __on_channel_select(self, rows: list[gui_chanlist.Row]) -> None:
+        if len(rows) > 1:
+            self._btn_sort["state"] = "normal"
+
         for rec in rows:
             _LOG.debug("chan selected: %r", rec.channel)
 
@@ -238,3 +253,71 @@ class ChannelsPage(tk.Frame):
         # this may create duplicates !!!! FIXME: mark duplicates
         self.__need_full_refresh = True
         return bank_pos
+
+    def __on_btn_sort(self) -> None:
+        rows = self._chan_list.selected_rows()
+        if len(rows) <= 1:
+            return
+
+        popup_menu = tk.Menu(self, tearoff=0)
+        popup_menu.add_command(
+            label="Sort by frequency", command=lambda: self._do_sort("freq")
+        )
+
+        popup_menu.add_command(
+            label="Sort by name", command=lambda: self._do_sort("name")
+        )
+        popup_menu.add_command(
+            label="Sort by name (empty first)",
+            command=lambda: self._do_sort("name2"),
+        )
+        popup_menu.add_separator()
+        popup_menu.add_command(
+            label="Pack", command=lambda: self._do_sort("pack")
+        )
+        try:
+            btn = self._btn_sort
+            popup_menu.tk_popup(btn.winfo_rootx(), btn.winfo_rooty())
+        finally:
+            popup_menu.grab_release()
+
+    def _do_sort(self, field: str) -> None:
+        rows = self._chan_list.selected_rows()
+        if len(rows) <= 1:
+            return
+
+        channels = [chan for row in rows if (chan := row.channel)]
+        channels.sort(key=attrgetter("number"))
+        channels_ids = [chan.number for chan in channels]
+
+        sfunc: ty.Callable[[model.Channel], object]
+
+        match field:
+            case "name":
+
+                def sfunc(chan: model.Channel) -> str:
+                    return chan.name or "\xff"
+
+            case "name2":
+                sfunc = attrgetter(field)
+
+            case "freq":
+
+                def sfunc(chan: model.Channel) -> int:
+                    return 0 if chan.hide_channel else chan.freq
+
+            case "pack":
+
+                def sfunc(chan: model.Channel) -> int:
+                    return 1 if (chan.hide_channel or not chan.freq) else 0
+
+            case _:
+                raise ValueError
+
+        channels.sort(key=sfunc)
+
+        for chan, idx in zip(channels, channels_ids, strict=True):
+            chan.number = idx
+            self._radio_memory.set_channel(chan)
+
+        self.__update_chan_list()
