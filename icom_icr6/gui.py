@@ -181,8 +181,6 @@ class App(tk.Frame):
         if fname:
             self.load_icf(Path(fname))
 
-        self.focus_set()
-
     def load_icf(self, file: Path) -> None:
         self._radio_memory.update_from(io.load_icf_file(file))
         self.__set_loaded_filename(file)
@@ -197,7 +195,6 @@ class App(tk.Frame):
 
         io.save_icf_file(self._last_file, self._radio_memory)
         self.set_status(f"File {self._last_file} saved")
-        self.focus_set()
 
     def __on_file_save_as(self, _event: tk.Event | None = None) -> None:  # type: ignore
         fname = filedialog.asksaveasfilename(
@@ -213,9 +210,6 @@ class App(tk.Frame):
             assert self._last_file
             io.save_icf_file(self._last_file, self._radio_memory)
             self.set_status(f"File {fname} saved")
-
-        self.focus_set()
-        self.grab_set()
 
     def __update_widgets(self) -> None:
         try:
