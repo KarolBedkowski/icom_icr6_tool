@@ -243,14 +243,16 @@ class Radio:
 
     def _process_clone_from_frame(
         self, idx: int, frame: Frame, mem: model.RadioMemory
-    ) -> bool:
+    ) -> tuple[bool, int]:
         if frame.is_echo():
             # echo, skip
-            return True
+            return True, 0
+
+        length = 0
 
         match frame.cmd:
             case 0xE5:  # CMD_END
-                return False
+                return False, 0
 
             case 0xE4:  # CMD_CLONE_DAT:
                 rawdata = frame.decode_payload()
@@ -283,12 +285,14 @@ class Radio:
                 )
                 raise ValueError
 
-        return True
+        return True, length
 
     def clone_from(
         self, cb: ty.Callable[[int], bool] | None = None
     ) -> model.RadioMemory:
         self._check_radio()
+
+        total_length = 0
 
         with self._open_serial("clone_from") as s:
             # clone out
@@ -299,10 +303,14 @@ class Radio:
                 if frame := self.read_frame(s):
                     _LOG.debug("read: %d: %r", idx, frame)
 
-                    if not self._process_clone_from_frame(idx, frame, mem):
+                    res, length = self._process_clone_from_frame(
+                        idx, frame, mem
+                    )
+                    if not res:
                         break
 
-                    if cb and not cb(idx):
+                    total_length += length
+                    if cb and not cb(total_length):
                         raise AbortError
 
             return mem

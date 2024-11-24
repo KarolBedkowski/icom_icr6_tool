@@ -9,7 +9,7 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import simpledialog, ttk
 
-from . import io, model
+from . import consts, io, model
 
 _LOG = logging.getLogger(__name__)
 
@@ -64,7 +64,8 @@ class CloneFromRadioDialog(_CloneDialog):
         super().__init__(parent, "Clone from radio")
 
     def __progress_cb(self, progress: int) -> bool:
-        self._var_progress.set(f"Read: {progress}")
+        perc = min(100* progress / consts.MEM_SIZE, 100.0)
+        self._var_progress.set(f"Read: {perc:0.1f}%")
         self.update_idletasks()
         return True
 
@@ -94,7 +95,8 @@ class CloneToRadioDialog(_CloneDialog):
         super().__init__(parent, "Clone to radio")
 
     def __progress_cb(self, progress: int) -> bool:
-        self._var_progress.set(f"Write: {progress}")
+        perc = min(100 * progress / consts.MEM_SIZE, 100.0)
+        self._var_progress.set(f"Write: {perc:0.1f}%")
         self.update_idletasks()
         return True
 
