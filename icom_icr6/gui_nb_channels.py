@@ -39,9 +39,7 @@ class ChannelsPage(tk.Frame):
 
         pw.pack(expand=True, fill=tk.BOTH, side=tk.TOP, padx=12, pady=12)
 
-    def set(
-        self, radio_memory: model.RadioMemory, *, activate: bool = False
-    ) -> None:
+    def update_tab(self, radio_memory: model.RadioMemory) -> None:
         self._radio_memory = radio_memory
 
         # hide canceller in global models
@@ -49,13 +47,9 @@ class ChannelsPage(tk.Frame):
             hide=not radio_memory.is_usa_model()
         )
 
-        if activate:
-            self._groups_list.selection_set(self._last_selected_group)
-
+        self._groups_list.selection_set(self._last_selected_group)
         self.__update_chan_list()
-
-        if activate:
-            self._chan_list.selection_set(self._last_selected_chan)
+        self._chan_list.selection_set(self._last_selected_chan)
 
     def _create_channel_list(self, frame: tk.Frame) -> None:
         self._chan_list = gui_chanlist.ChannelsList(frame)

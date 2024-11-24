@@ -24,14 +24,10 @@ class ScanEdgePage(tk.Frame):
 
         self._create_list(self)
 
-    def set(
-        self, radio_memory: model.RadioMemory, *, activate: bool = False
-    ) -> None:
+    def update_tab(self, radio_memory: model.RadioMemory) -> None:
         self._radio_memory = radio_memory
 
-        if activate:
-            self._scanedges_list.selection_set(self._last_selected_se)
-
+        self._scanedges_list.selection_set(self._last_selected_se)
         self.__update_scan_edges_list()
 
     def _create_list(self, frame: tk.Frame) -> None:

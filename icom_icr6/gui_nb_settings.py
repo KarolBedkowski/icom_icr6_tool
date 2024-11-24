@@ -24,13 +24,10 @@ class SettingsPage(tk.Frame):
         self._create_vars()
         self._create_fields()
 
-    def set(
-        self, radio_memory: model.RadioMemory, *, activate: bool = False
-    ) -> None:
+    def update_tab(self, radio_memory: model.RadioMemory) -> None:
         self._radio_memory = radio_memory
 
-        if activate:
-            self.__update()
+        self.__update()
 
     def _create_vars(self) -> None:
         self._var_func_dial_step = gui_model.ListVar(

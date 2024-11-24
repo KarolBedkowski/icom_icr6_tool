@@ -7,6 +7,7 @@
 import logging
 import sys
 import tkinter as tk
+import typing as ty
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
@@ -25,6 +26,11 @@ from . import (
 )
 
 _LOG = logging.getLogger(__name__)
+
+
+@ty.runtime_checkable
+class TabWidget(ty.Protocol):
+    def update_tab(self, radio_memory: model.RadioMemory) -> None: ...
 
 
 class App(tk.Frame):
@@ -211,9 +217,15 @@ class App(tk.Frame):
         self.focus_set()
         self.grab_set()
 
-    def __update_widgets(self, page: int | None = None) -> None:
-        _LOG.debug("update page: %r", page)
-        pages = (
+    def __update_widgets(self) -> None:
+        try:
+            selected_tab = self._ntb.tabs().index(self._ntb.select())  # type: ignore
+        except ValueError:
+            selected_tab = 0
+
+        _LOG.debug("update page: %r", selected_tab)
+
+        pages: tuple[TabWidget, ...] = (
             self._nb_channels,
             self._nb_banks,
             self._nb_scan_edge,
@@ -221,18 +233,11 @@ class App(tk.Frame):
             self._nb_aw_channels,
             self._nb_settings,
         )
-
-        if page is None:
-            for p in pages:
-                p.set(self._radio_memory)
-
-        else:
-            pages[page].set(self._radio_memory, activate=True)
+        pages[selected_tab].update_tab(self._radio_memory)
 
     def __on_nb_page_changed(self, _event: tk.Event) -> None:  # type: ignore
         self.set_status("")
-        selected_tab = self._ntb.tabs().index(self._ntb.select())  # type: ignore
-        self.__update_widgets(selected_tab)
+        self.__update_widgets()
 
     def __set_loaded_filename(self, fname: Path | None) -> None:
         self._last_file = fname

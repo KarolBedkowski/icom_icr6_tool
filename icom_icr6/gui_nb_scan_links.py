@@ -42,13 +42,10 @@ class ScanLinksPage(tk.Frame):
 
         pw.pack(expand=True, fill=tk.BOTH, side=tk.TOP, padx=12, pady=12)
 
-    def set(
-        self, radio_memory: model.RadioMemory, *, activate: bool = False
-    ) -> None:
+    def update_tab(self, radio_memory: model.RadioMemory) -> None:
         self._radio_memory = radio_memory
 
-        if activate:
-            self._scan_links_list.selection_set(self._last_selected_sl)
+        self._scan_links_list.selection_set(self._last_selected_sl)
 
         self.__update_scan_links_list()
         self.__update_scan_edges()

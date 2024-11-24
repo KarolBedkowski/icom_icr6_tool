@@ -47,9 +47,7 @@ class BanksPage(tk.Frame):
 
         self.__update_banks_list()
 
-    def set(
-        self, radio_memory: model.RadioMemory, *, activate: bool = False
-    ) -> None:
+    def update_tab(self, radio_memory: model.RadioMemory) -> None:
         self._radio_memory = radio_memory
 
         # hide canceller in global models
@@ -58,10 +56,7 @@ class BanksPage(tk.Frame):
         )
 
         self.__update_banks_list()
-
-        if activate:
-            self._banks_list.selection_set(self._last_selected_bank)
-
+        self._banks_list.selection_set(self._last_selected_bank)
         self.__update_chan_list()
 
     def __create_bank_fields(self, frame: tk.Frame) -> None:
@@ -114,7 +109,9 @@ class BanksPage(tk.Frame):
             self._bank_name.set("")
 
     def __update_chan_list(self, _event: tk.Event | None = None) -> None:  # type: ignore
-        selected_bank = self.selected_bank or 0
+        selected_bank = self.selected_bank
+        if selected_bank is None:
+            return
 
         self._chan_list.set_bank(selected_bank)
         self._last_selected_bank = selected_bank
