@@ -414,7 +414,7 @@ class Channel:
         _is_valid_index(consts.SKIPS, self.skip, "skip")
 
         _is_valid_index(consts.DUPLEX_DIRS, self.duplex, "duplex")
-        if not validate_offset(self.offset):
+        if not validate_offset(self.freq, self.offset):
             raise ValidateError("offset", self.offset)
 
         _is_valid_index(consts.TONE_MODES, self.tone_mode, "tone mode")
@@ -1206,23 +1206,23 @@ def validate_frequency(inp: str | int) -> bool:
     return True
 
 
-def validate_offset(inp: str | int) -> bool:
+def validate_offset(freq: int, inp: str | int) -> bool:
     if isinstance(inp, str):
         try:
-            freq = int(inp)
+            offset = int(inp)
         except ValueError:
             return False
     else:
-        freq = inp
+        offset = inp
 
-    if freq == 0:
+    if offset == 0:
         return True
 
-    if freq > consts.MAX_OFFSET or freq < consts.MIN_OFFSET:
+    if offset > consts.MAX_OFFSET or offset < consts.MIN_OFFSET:
         return False
 
     try:
-        coding.encode_freq(freq, freq)
+        coding.encode_freq(freq, offset)
     except ValueError:
         return False
 
