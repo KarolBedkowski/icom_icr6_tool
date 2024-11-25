@@ -93,6 +93,9 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
         self.sheet.bind("<<SheetSelect>>", self._on_sheet_select)
         self.sheet.extra_bindings("begin_delete", self._on_delete)
 
+        # disable popup menu
+        self.sheet.disable_bindings("right_click_popup_menu")
+
         self.columns = self._ROW_CLASS.COLUMNS
         self.colmap = {
             name: idx for idx, (name, *_) in enumerate(self.columns)
