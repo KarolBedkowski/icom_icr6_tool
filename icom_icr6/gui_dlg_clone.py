@@ -64,7 +64,7 @@ class CloneFromRadioDialog(_CloneDialog):
         super().__init__(parent, "Clone from radio")
 
     def __progress_cb(self, progress: int) -> bool:
-        perc = min(100* progress / consts.MEM_SIZE, 100.0)
+        perc = min(100 * progress / consts.MEM_SIZE, 100.0)
         self._var_progress.set(f"Read: {perc:0.1f}%")
         self.update_idletasks()
         return True

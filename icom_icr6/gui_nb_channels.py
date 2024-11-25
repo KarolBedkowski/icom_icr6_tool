@@ -308,10 +308,9 @@ class ChannelsPage(tk.Frame):
             return
 
         channels = [chan for row in rows if (chan := row.channel)]
-        channels.sort(key=attrgetter("number"))
         channels_ids = [chan.number for chan in channels]
 
-        sfunc: ty.Callable[[model.Channel], object]
+        sfunc: ty.Callable[[model.Channel], str | int]
 
         match field:
             case "name":
