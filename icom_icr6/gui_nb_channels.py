@@ -7,6 +7,7 @@
 import logging
 import tkinter as tk
 import typing as ty
+from contextlib import suppress
 from operator import attrgetter
 from tkinter import messagebox, ttk
 
@@ -69,6 +70,14 @@ class ChannelsPage(tk.Frame):
             state="disabled",
         )
         self._btn_sort.pack(side=tk.LEFT)
+
+        self._btn_fill = ttk.Button(
+            bframe,
+            text="Fill values...",
+            command=self.__on_btn_fill_down,
+            state="disabled",
+        )
+        self._btn_fill.pack(side=tk.LEFT)
 
         bframe.pack(side=tk.BOTTOM, fill=tk.X, ipady=6)
 
@@ -136,6 +145,7 @@ class ChannelsPage(tk.Frame):
     def __on_channel_select(self, rows: list[gui_chanlist.Row]) -> None:
         if len(rows) > 1:
             self._btn_sort["state"] = "normal"
+            self._btn_fill["state"] = "normal"
 
         for rec in rows:
             _LOG.debug("chan selected: %r", rec.channel)
@@ -341,3 +351,35 @@ class ChannelsPage(tk.Frame):
             self._radio_memory.set_channel(chan)
 
         self.__update_chan_list()
+
+    def __on_btn_fill_down(self) -> None:
+        """Copy value from first selected cell down"""
+        sheet = self._chan_list.sheet
+        sel_rows = sheet.get_selected_rows(
+            get_cells_as_rows=True, return_tuple=True
+        )
+
+        if len(sel_rows) <= 1:
+            return
+
+        # visible cols
+        sel_cols = sheet.get_selected_columns(
+            get_cells_as_columns=True, return_tuple=True
+        )
+        if not sel_rows:
+            return
+
+        min_col = sel_cols[0] + 1
+        max_col = sel_cols[-1] + 2
+
+        first_row = sel_rows[0]
+
+        data = sheet[(first_row, min_col), (first_row + 1, max_col)].data
+
+        with suppress(ValueError):
+            # remove bano_pos if is on list
+            idx = sel_cols.index(15)
+            data[idx] = None
+
+        for row in sel_rows[1:]:
+            sheet.span((row, min_col), emit_event=True).data = data
