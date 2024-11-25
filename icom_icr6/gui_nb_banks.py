@@ -84,9 +84,21 @@ class BanksPage(tk.Frame):
         self._chan_list = gui_bankchanlist.ChannelsList(frame)
         self._chan_list.pack(side=tk.TOP, expand=True, fill=tk.BOTH, ipady=6)
 
+        self._chan_list.on_record_selected = self.__on_channel_select  # type: ignore
         self._chan_list.on_record_update = self.__on_channel_update  # type: ignore
         self._chan_list.sheet.bind("<Control-c>", self.__on_channel_copy)
         self._chan_list.sheet.bind("<Control-v>", self.__on_channel_paste)
+
+        bframe = tk.Frame(frame)
+        self._btn_sort = ttk.Button(
+            bframe,
+            text="Sort...",
+            command=self.__on_btn_sort,
+            state="disabled",
+        )
+        self._btn_sort.pack(side=tk.LEFT)
+
+        bframe.pack(side=tk.BOTTOM, fill=tk.X, ipady=6)
 
     def __update_banks_list(self) -> None:
         selected_bank = self.selected_bank
@@ -167,6 +179,10 @@ class BanksPage(tk.Frame):
         self._radio_memory.set_bank_links(bl)
 
         self.__update_banks_list()
+
+    def __on_channel_select(self, rows: list[gui_bankchanlist.BLRow]) -> None:
+        if len(rows) > 1:
+            self._btn_sort["state"] = "normal"
 
     def __on_channel_update(
         self, action: str, rows: ty.Collection[gui_bankchanlist.BLRow]
@@ -356,6 +372,85 @@ class BanksPage(tk.Frame):
         chan.hide_channel = False
         self._radio_memory.set_channel(chan)
         return True
+
+    def __on_btn_sort(self) -> None:
+        rows = self._chan_list.selected_rows()
+        if len(rows) <= 1:
+            return
+
+        popup_menu = tk.Menu(self, tearoff=0)
+        popup_menu.add_command(
+            label="Sort by frequency", command=lambda: self.__do_sort("freq")
+        )
+
+        popup_menu.add_command(
+            label="Sort by name", command=lambda: self.__do_sort("name")
+        )
+        popup_menu.add_command(
+            label="Sort by name (empty first)",
+            command=lambda: self.__do_sort("name2"),
+        )
+        popup_menu.add_command(
+            label="Sort by channel number",
+            command=lambda: self.__do_sort("channel"),
+        )
+        popup_menu.add_separator()
+        popup_menu.add_command(
+            label="Pack", command=lambda: self.__do_sort("pack")
+        )
+        try:
+            btn = self._btn_sort
+            popup_menu.tk_popup(btn.winfo_rootx(), btn.winfo_rooty())
+        finally:
+            popup_menu.grab_release()
+
+    def __do_sort(self, field: str) -> None:  # noqa: C901
+        rows = self._chan_list.selected_rows()
+        if len(rows) <= 1:
+            return
+
+        channels = [row.channel for row in rows]
+        channels_bank_pos = [row.rownum for row in rows]
+
+        sfunc: ty.Callable[[model.Channel], str | int]
+
+        match field:
+            case "name":
+
+                def sfunc(chan: model.Channel | None) -> str:
+                    return chan.name or "\xff" if chan else "\xff"
+
+            case "name2":
+
+                def sfunc(chan: model.Channel | None) -> str:
+                    return chan.name if chan else ""
+
+            case "freq":
+
+                def sfunc(chan: model.Channel | None) -> int:
+                    return chan.freq if chan and not chan.hide_channel else 0
+
+            case "pack":
+
+                def sfunc(chan: model.Channel | None) -> int:
+                    return 0 if chan else 1
+
+            case "channel":
+
+                def sfunc(chan: model.Channel | None) -> int:
+                    return chan.number if chan else 1400
+
+            case _:
+                raise ValueError
+
+        channels.sort(key=sfunc)
+
+        for chan, idx in zip(channels, channels_bank_pos, strict=True):
+            if chan:
+                chan.bank_pos = idx
+                self._radio_memory.set_channel(chan)
+
+        self.__update_chan_list()
 
 
 def validate_bank_name(name: str | None) -> bool:
