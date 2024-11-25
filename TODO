@@ -1,8 +1,7 @@
 - export / import data
 - clone in background
 - handle errors
-- sorting lists
-- compact lists
 - how to read region from radio? from serial number? - add support for clone from US radio
 - fast clone
 - validation / show errors
+- disable insert/delete rows in tksheet
