@@ -82,6 +82,9 @@ class ChannelsPage(tk.Frame):
             case "update":
                 self.__do_update_channels(rows)
 
+            case "move":
+                self.__do_move_channels(rows)
+
     def __do_delete_channels(
         self, rows: ty.Collection[gui_chanlist.Row]
     ) -> None:
@@ -111,6 +114,24 @@ class ChannelsPage(tk.Frame):
             self.__update_chan_list()
         else:
             self._show_stats()
+
+    def __do_move_channels(
+        self, rows: ty.Collection[gui_chanlist.Row]
+    ) -> None:
+        if sel := self._groups_list.curselection():  # type: ignore
+            selected_range = sel[0]
+        else:
+            return
+
+        range_start = selected_range * 100
+
+        for rec in rows:
+            channum = range_start + rec.rownum
+            _LOG.debug("__do_move_channels: %r -> %d", rec, channum)
+            rec.channel.number = channum
+            self._radio_memory.set_channel(rec.channel)
+
+        self.__update_chan_list()
 
     def __on_channel_select(self, rows: list[gui_chanlist.Row]) -> None:
         if len(rows) > 1:
