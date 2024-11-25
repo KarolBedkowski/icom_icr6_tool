@@ -178,6 +178,9 @@ class BanksPage(tk.Frame):
             case "update":
                 self.__do_update_channels(rows)
 
+            case "move":
+                self.__do_move_channels(rows)
+
     def __do_delete_channels(
         self, rows: ty.Collection[gui_bankchanlist.BLRow]
     ) -> None:
@@ -238,11 +241,11 @@ class BanksPage(tk.Frame):
 
             else:
                 # no chan = deleted
-                self._radio_memory.clear_bank_pos(selected_bank, rec.bank_pos)
+                self._radio_memory.clear_bank_pos(selected_bank, rec.rownum)
                 continue
 
             chan.bank = selected_bank
-            chan.bank_pos = rec.bank_pos
+            chan.bank_pos = rec.rownum
 
             if chan.hide_channel or not chan.freq:
                 chan.freq = model.fix_frequency(chan.freq)
@@ -250,6 +253,19 @@ class BanksPage(tk.Frame):
                 chan.hide_channel = False
 
             self._radio_memory.set_channel(chan)
+
+        self.__update_chan_list()
+
+    def __do_move_channels(
+        self, rows: ty.Collection[gui_bankchanlist.BLRow]
+    ) -> None:
+        for rec in rows:
+            if not rec.channel:
+                continue
+
+            _LOG.debug("__do_move_channels: %r -> %d", rec.channel, rec.rownum)
+            rec.channel.bank_pos = rec.rownum
+            self._radio_memory.set_channel(rec.channel)
 
         self.__update_chan_list()
 
