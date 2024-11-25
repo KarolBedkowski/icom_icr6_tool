@@ -5,9 +5,11 @@
 """ """
 
 import logging
+import tkinter as tk
 import typing as ty
+from itertools import starmap
 
-from tksheet import Span
+from tksheet import EventDataDict, Span
 
 from . import consts, gui_chanlist, gui_genericlist, model
 
@@ -58,8 +60,12 @@ class AWCRow(gui_genericlist.BaseRow):
 class ChannelsList(gui_chanlist.ChannelsList):
     _ROW_CLASS = AWCRow
 
+    def __init__(self, parent: tk.Widget) -> None:
+        super().__init__(parent)
+        self.sheet.extra_bindings("begin_move_rows", self._on_begin_row_move)
+
     def set_data(self, data: ty.Iterable[model.Channel | None]) -> None:
-        self.sheet.set_sheet_data(list(map(AWCRow, data)))
+        self.sheet.set_sheet_data(list(starmap(AWCRow, enumerate(data))))
         self.sheet.set_all_column_widths()
         for row in range(len(self.sheet.data)):
             self.update_row_state(row)
@@ -88,3 +94,7 @@ class ChannelsList(gui_chanlist.ChannelsList):
             span.align("center")
         else:
             super()._configure_col(column, span)
+
+    def _on_begin_row_move(self, _event: EventDataDict) -> None:
+        # prevent moving rows
+        raise ValueError

@@ -5,6 +5,7 @@
 """ """
 
 import logging
+import tkinter as tk
 
 from tksheet import EventDataDict
 
@@ -69,6 +70,10 @@ class Row(gui_genericlist.BaseRow):
 class ScanEdgesList(gui_genericlist.GenericList[Row, model.ScanEdge]):
     _ROW_CLASS = Row
 
+    def __init__(self, parent: tk.Widget) -> None:
+        super().__init__(parent)
+        self.sheet.extra_bindings("begin_move_rows", self._on_begin_row_move)
+
     def _on_validate_edits(self, event: EventDataDict) -> object:
         # _LOG.debug("_on_validate_edits: %r", event)
 
@@ -101,3 +106,7 @@ class ScanEdgesList(gui_genericlist.GenericList[Row, model.ScanEdge]):
 
     def update_row_state(self, row: int) -> None:
         """Set state of other cells in row (readony)."""
+
+    def _on_begin_row_move(self, _event: EventDataDict) -> None:
+        # prevent moving rows
+        raise ValueError
