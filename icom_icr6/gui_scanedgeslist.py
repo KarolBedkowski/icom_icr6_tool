@@ -24,9 +24,9 @@ class Row(gui_genericlist.BaseRow):
         ("att", "ATT", consts.ATTENUATOR),
     )
 
-    def __init__(self, se: model.ScanEdge) -> None:
+    def __init__(self, rownum: int, se: model.ScanEdge) -> None:
         self.se = se
-        super().__init__(self._from_scanedge(se))
+        super().__init__(rownum, self._from_scanedge(se))
 
     def __setitem__(self, idx: int, val: object, /) -> None:  # type: ignore
         if val == self.data[idx]:

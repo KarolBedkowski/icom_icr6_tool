@@ -8,6 +8,7 @@ import logging
 import tkinter as tk
 import typing as ty
 from collections import UserList
+from itertools import starmap
 
 from tksheet import (
     EventDataDict,
@@ -25,6 +26,10 @@ Column = tuple[str, str, str | ty.Collection[str]]
 
 class BaseRow(UserList[object]):
     COLUMNS: ty.ClassVar[ty.Sequence[Column]] = ()
+
+    def __init__(self, rownum: int, data: ty.Iterable[object]) -> None:
+        super().__init__(data)
+        self.rownum = rownum
 
     def _extracts_cols(self, data: dict[str, object]) -> list[object]:
         return [data[col] for col, *_ in self.COLUMNS]
@@ -103,7 +108,9 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
             yield r
 
     def set_data(self, data: ty.Iterable[RT]) -> None:
-        self.sheet.set_sheet_data(list(map(self._ROW_CLASS, data)))
+        self.sheet.set_sheet_data(
+            list(starmap(self._ROW_CLASS, enumerate(data)))
+        )
         self.sheet.set_all_column_widths()
 
         for row in range(len(self.sheet.data)):
@@ -162,6 +169,24 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
 
         data: set[T] = set()
 
+        if event.eventname == "move_rows":
+            if not event.moved.rows:
+                return
+
+            minrow = min(map(min, event.moved.rows.data.items()))
+            maxrow = max(map(max, event.moved.rows.data.items()))
+
+            for rownum in range(minrow, maxrow + 1):
+                row = self.sheet.data[rownum]
+                row.rownum = rownum
+                self.update_row_state(rownum)
+                data.add(row)
+
+            if data and self.on_record_update:
+                self.on_record_update("move", data)
+
+            return
+
         for r, _c in event.cells.table:
             row = self.sheet.data[r]
             _LOG.debug("_on_sheet_modified: row=%d, data=%r", r, row)
@@ -204,7 +229,9 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
     def selected_rows(self) -> list[T]:
         return [
             self.sheet.data[r]
-            for r in self.sheet.get_selected_rows(get_cells_as_rows=True)
+            for r in sorted(
+                self.sheet.get_selected_rows(get_cells_as_rows=True)
+            )
         ]
 
     def _on_delete(self, event: EventDataDict) -> None:

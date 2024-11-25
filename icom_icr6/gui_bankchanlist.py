@@ -42,15 +42,14 @@ class BLRow(gui_genericlist.BaseRow):
     )
 
     def __init__(self, bank_pos: int, channel: model.Channel | None) -> None:
-        self.bank_pos = bank_pos
-
         # channel to set
         self.new_channel: int | None = None
         # new freq to set (if not channel, find free channel and set)
         self.new_freq: int | None = None
         self.channel = channel
+        self.rownum = bank_pos
 
-        super().__init__(self._from_channel(channel))
+        super().__init__(bank_pos, self._from_channel(channel))
 
     def set_channel(self, channel: model.Channel) -> None:
         self.channel = channel
@@ -107,13 +106,13 @@ class BLRow(gui_genericlist.BaseRow):
         ):
             data = channel.to_record()
             return [
-                self.bank_pos,
+                self.rownum,
                 *(data[col] for col, *_ in self.COLUMNS[1:]),
             ]
 
         # empty channel
         return [
-            self.bank_pos,
+            self.rownum,
             self.new_channel if self.new_channel is not None else "",
             self.new_freq or "",
             *([""] * 15),

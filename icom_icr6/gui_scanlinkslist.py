@@ -31,10 +31,10 @@ class Row(gui_genericlist.BaseRow):
         ("att", "ATT", consts.ATTENUATOR),
     )
 
-    def __init__(self, sl: ScanLink) -> None:
+    def __init__(self, rownum: int, sl: ScanLink) -> None:
         self.se = sl.scan_edge
         self.selected = sl.selected
-        super().__init__(self._from_scanedge(sl.scan_edge))
+        super().__init__(rownum, self._from_scanedge(sl.scan_edge))
 
     def __setitem__(self, idx: int, val: object, /) -> None:  # type: ignore
         if val == self.data[idx]:

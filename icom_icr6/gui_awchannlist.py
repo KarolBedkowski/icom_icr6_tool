@@ -34,9 +34,9 @@ class AWCRow(gui_genericlist.BaseRow):
         ("canceller freq", "Canceller freq", "int"),
     )
 
-    def __init__(self, channel: model.Channel | None) -> None:
+    def __init__(self, rownum: int, channel: model.Channel | None) -> None:
         self.channel = channel
-        super().__init__(self._from_channel(channel))
+        super().__init__(rownum, self._from_channel(channel))
 
     def set_channel(self, channel: model.Channel) -> None:
         self.channel = channel

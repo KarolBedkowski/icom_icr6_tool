@@ -40,9 +40,9 @@ class Row(gui_genericlist.BaseRow):
         ("canceller freq", "Canceller freq", "int"),
     )
 
-    def __init__(self, channel: model.Channel) -> None:
+    def __init__(self, rownum: int, channel: model.Channel) -> None:
         self.channel = channel
-        super().__init__(self._from_channel(channel))
+        super().__init__(rownum, self._from_channel(channel))
 
     def __repr__(self) -> str:
         return f"ROW: data={self.data!r} channel={self.channel}"
