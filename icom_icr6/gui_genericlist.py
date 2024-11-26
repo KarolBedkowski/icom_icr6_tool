@@ -245,12 +245,17 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
             if data and self.on_record_update:
                 self.on_record_update("delete", data)
 
+            for row in range(box.from_r, box.upto_r):
+                self.update_row_state(row)
+
         elif event.selected.type_ == "cells":
             r = event.selected.row
             data = [self.sheet.data[r]]
 
             if data and self.on_record_update:
                 self.on_record_update("update", data)
+
+            self.update_row_state(r)
 
     def update_row_state(self, row: int) -> None:
         """Set state of other cells in row (readony)."""
