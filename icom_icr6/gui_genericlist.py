@@ -165,7 +165,7 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
             ).align("right")
 
         elif isinstance(values, (list, tuple)):
-            span.dropdown(values=values, state="").align("center")
+            span.dropdown(values=values).align("center")
 
         else:
             _LOG.error("unknown column: %s", colname)
