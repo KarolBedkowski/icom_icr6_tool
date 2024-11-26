@@ -8,7 +8,7 @@ import logging
 import tkinter as tk
 import typing as ty
 
-from tksheet import EventDataDict, functions
+from tksheet import EventDataDict, Span, functions, int_formatter
 
 from . import consts, gui_genericlist, model
 
@@ -126,6 +126,18 @@ class ChannelsList(gui_genericlist.GenericList[Row, model.Channel]):
         else:
             self.sheet.show_columns(canc_columns)
 
+    def _configure_col(
+        self, column: gui_genericlist.Column, span: Span
+    ) -> None:
+        colname, _c, values = column
+        if values == "bool" or isinstance(values, (list, tuple)):
+            # do not create checkbox and dropdown for columns; create
+            # it for cell - bellow
+            span.align("center")
+
+        else:
+            super()._configure_col(column, span)
+
     def _on_validate_edits(self, event: EventDataDict) -> object:  # noqa:C901
         # _LOG.debug("_on_validate_edits: %r", event)
 
@@ -208,8 +220,27 @@ class ChannelsList(gui_genericlist.GenericList[Row, model.Channel]):
                 self.sheet.MT.cell_options, (row, c), readonly=row_is_readonly
             )
 
-        if not chan:
+        if row_is_readonly:
+            # remove all checkboxes, dropdown when row is empty
+            for col, _ in enumerate(self.columns):
+                self.sheet.span(row, col).del_dropdown().del_checkbox().clear()
+
             return
+
+        for idx, (colname, _, values) in enumerate(self.columns):
+            span = self.sheet.span(row, idx)
+            if values == "bool":
+                span.checkbox()
+
+            if colname == "ts":
+                # tuning step depend on frequency
+                span.dropdown(
+                    values=consts.tuning_steps_for_freq(chan.freq),
+                    set_value=data_row[idx],
+                )
+
+            elif isinstance(values, (list, tuple)):
+                span.dropdown(values, set_value=data_row[idx])
 
         self._set_cell_ro(row, "offset", not chan.duplex)
         self._set_cell_ro(row, "tsql_freq", chan.tone_mode not in (1, 2))
@@ -221,10 +252,3 @@ class ChannelsList(gui_genericlist.GenericList[Row, model.Channel]):
         self._set_cell_ro(row, "bank_pos", chan.bank == consts.BANK_NOT_SET)
         self._set_cell_ro(row, "canceller", not chan.canceller)
         self._set_cell_ro(row, "canceller freq", not chan.duplex)
-
-        # ts
-        self.sheet.set_dropdown_values(
-            row,
-            self.colmap["ts"],
-            values=consts.tuning_steps_for_freq(chan.freq),
-        )

@@ -92,6 +92,8 @@ class ChannelsList(gui_chanlist.ChannelsList):
         if isinstance(values, (list, tuple)):
             # show dict-ed value as string
             span.align("center")
+        elif values == "bool":
+            span.checkbox().align("center")
         else:
             super()._configure_col(column, span)
 
