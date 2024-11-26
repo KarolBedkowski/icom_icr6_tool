@@ -81,10 +81,6 @@ class Row(gui_genericlist.BaseRow):
 class ScanLnksList(gui_genericlist.GenericList[Row, ScanLink]):
     _ROW_CLASS = Row
 
-    def __init__(self, parent: tk.Widget) -> None:
-        super().__init__(parent)
-        self.sheet.extra_bindings("begin_move_rows", self._on_begin_row_move)
-
     def set_data_links(self, links: list[bool]) -> None:
         # update "selected" column
         self.sheet["B"].options(transposed=True).data = links
@@ -121,7 +117,3 @@ class ScanLnksList(gui_genericlist.GenericList[Row, ScanLink]):
 
     def update_row_state(self, row: int) -> None:
         """Set state of other cells in row (readony)."""
-
-    def _on_begin_row_move(self, _event: EventDataDict) -> None:
-        # prevent moving rows
-        raise ValueError
