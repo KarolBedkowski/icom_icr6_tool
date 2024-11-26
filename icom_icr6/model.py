@@ -218,6 +218,10 @@ class Channel:
         self.bank = consts.BANK_NOT_SET
         self.bank_pos = 0
 
+    @property
+    def not_hidden(self) -> bool:
+        return not self.hide_channel and self.freq > 0
+
     def __str__(self) -> str:
         try:
             bank = f"{consts.BANK_NAMES[self.bank]}/{self.bank_pos}"
@@ -650,6 +654,22 @@ class ScanLink:
         edata[1] = (edges >> 8) & 0xFF
         edata[2] = (edges >> 16) & 0xFF
         edata[3] = (edges >> 24) & 0xFF
+
+    def remap_edges(self, mapping: dict[int, int]) -> None:
+        edges = [
+            1 if self.edges & (1 << idx) else 0
+            for idx in range(consts.NUM_SCAN_EDGES)
+        ]
+
+        dst = edges.copy()
+        for idst, isrc in mapping.items():
+            dst[idst] = edges[isrc]
+
+        res = 0
+        for e in reversed(dst):
+            res = (res << 1) | e
+
+        self.edges = res
 
 
 @dataclass
@@ -1184,6 +1204,12 @@ class RadioMemory:
 
     def is_usa_model(self) -> bool:
         return self.file_etcdata == "0003"
+
+    def remap_scan_links(self, mapping: dict[int, int]) -> None:
+        for i in range(consts.NUM_SCAN_LINKS):
+            sl = self.get_scan_link(i)
+            sl.remap_edges(mapping)
+            self.set_scan_link(sl)
 
 
 def validate_frequency(inp: str | int) -> bool:

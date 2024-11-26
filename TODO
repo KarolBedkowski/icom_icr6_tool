@@ -4,4 +4,6 @@
 - how to read region from radio? from serial number? - add support for clone from US radio
 - fast clone
 - validation / show errors
-- disable insert/delete rows in tksheet
+- reorder banks
+- reorder scan_edges
+- reorder scan links

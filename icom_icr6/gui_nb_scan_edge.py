@@ -66,6 +66,9 @@ class ScanEdgePage(tk.Frame):
             case "update":
                 self.__do_update_scan_edge(rows)
 
+            case "move":
+                self.__do_move_scan_edge(rows)
+
     def __do_update_scan_edge(
         self, rows: ty.Collection[gui_scanedgeslist.Row]
     ) -> None:
@@ -75,8 +78,25 @@ class ScanEdgePage(tk.Frame):
                 rec,
                 rec.se,
             )
+            self._radio_memory.set_scan_edge(rec.se)
+
+    def __do_move_scan_edge(
+        self, rows: ty.Collection[gui_scanedgeslist.Row]
+    ) -> None:
+        changes: dict[int, int] = {}
+        for rec in rows:
             se = rec.se
+            _LOG.debug(
+                "__do_move_scan_edge: row=%r, se=%r -> %d", rec, se, rec.rownum
+            )
+            changes[rec.rownum] = se.idx
+            se.idx = rec.rownum
             self._radio_memory.set_scan_edge(se)
+
+        if changes:
+            self._radio_memory.remap_scan_links(changes)
+
+        self.__update_scan_edges_list()
 
     def __on_channel_delete(self, _event: tk.Event) -> None:  # type: ignore
         sel = self._scanedges_list.selection()
