@@ -92,6 +92,9 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
         self.sheet.pack(expand=True, fill=tk.BOTH, side=tk.TOP)
         self.sheet.bind("<<SheetSelect>>", self._on_sheet_select)
         self.sheet.extra_bindings("begin_delete", self._on_delete)
+        self.sheet.extra_bindings(
+            "begin_move_columns", self._on_begin_col_move
+        )
 
         # disable popup menu
         self.sheet.disable_bindings("right_click_popup_menu")
@@ -268,3 +271,7 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
         functions.set_readonly(
             self.sheet.MT.cell_options, (row, col), readonly=ro
         )
+
+    def _on_begin_col_move(self, _event: EventDataDict) -> None:
+        # prevent moving columns
+        raise ValueError
