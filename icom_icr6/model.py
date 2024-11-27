@@ -13,7 +13,6 @@ import typing as ty
 import unicodedata
 from collections import abc
 from dataclasses import dataclass, field
-from itertools import chain
 
 from . import coding, consts
 
@@ -1271,7 +1270,7 @@ def validate_comment(comment: str) -> None:
         raise ValueError
 
 
-def _first_min_diff(base: float, values: ty.Iterable[float]) -> float:
+def _first_min_diff(base: float, values: ty.Iterable[int]) -> float:
     minimal = base
     err = 99999999999.0
     # keep order; using min not always return first minimal value
@@ -1283,14 +1282,47 @@ def _first_min_diff(base: float, values: ty.Iterable[float]) -> float:
     return minimal
 
 
-def _freq_div_for_freq(freq: int) -> tuple[float, ...]:
-    if freq <= 1_620_00:
-        return (5000, 9000, 6250)
+def _fix_frequency(freq: int, base_freq: int) -> int:
+    """base_freq is channel frequency;
+    freq is channel freq or offset to correct
+    """
+    # try exact match
+    if not freq % 5000 or not freq % 6250:
+        return freq
 
-    if consts.is_air_band(freq):
-        return (5000, 6250, 8333.33333333333)
+    if 495_000 <= base_freq <= 1_620_000 and not freq % 9000:
+        return freq
 
-    return (5000, 6250)
+    if consts.is_air_band(base_freq):
+        # TODO: check which work better
+        if round(freq * 3 / 25000.0) == freq:
+            return freq
+
+        if not freq % 8333 or freq % 10 in (3, 6):
+            return freq
+
+    # try find best freq
+    nfreqs = [
+        (freq // 5000) * 5000,
+        (freq // 5000 + 1) * 5000,
+        (freq // 6250) * 6250,
+        (freq // 6250 + 1) * 6250,
+    ]
+
+    # TODO: 9k is not used for rounding?
+    # if 495_000 <= freq <= 1_620_000:
+    #    nfreqs.append(round(freq / 9000) * 9000)
+
+    if consts.is_air_band(base_freq):
+        # nfreqs.append((round(freq * 3 / 25000.0) * 25000) // 3)
+        nfreqs.extend(
+            (
+                ((freq * 3 // 25000) * 25000) // 3,
+                ((freq * 3 // 25000 + 1) * 25000) // 3,
+            )
+        )
+
+    return int(_first_min_diff(freq, nfreqs))
 
 
 def fix_frequency(freq: int, *, usa_model: bool = False) -> int:
@@ -1304,13 +1336,7 @@ def fix_frequency(freq: int, *, usa_model: bool = False) -> int:
                 freq = fmin if (freq - fmin) < (fmax - freq) else fmax
                 break
 
-    div = _freq_div_for_freq(freq)
-    nfreqs = chain(
-        (int(freq / f + 1) * f for f in div),
-        (int(freq / f) * f for f in div),
-    )
-
-    return int(_first_min_diff(freq, nfreqs))
+    return _fix_frequency(freq, freq)
 
 
 def fix_offset(freq: int, offset: int) -> int:
@@ -1324,17 +1350,7 @@ def fix_offset(freq: int, offset: int) -> int:
         # 9k is used only if match exactly
         return offset
 
-    div = (
-        (5000, 6250, 8333.33333333333)
-        if consts.is_air_band(freq)
-        else (5000, 6250)
-    )
-    noffsets = chain(
-        (int(offset / f + 1) * f for f in div),
-        (int(offset / f) * f for f in div),
-    )
-
-    return int(_first_min_diff(offset, noffsets))
+    return _fix_frequency(offset, freq)
 
 
 def fix_name(name: str) -> str:

@@ -122,7 +122,10 @@ def _find_div_for_freq(freq: int, avail: tuple[int, ...]) -> ty.Iterable[int]:
     if 1 in avail and freq % 6250 == 0:
         yield 1
 
-    if 2 in avail and int(freq * 3 / 25000 + 0.5) * 25000 // 3 == freq:  # noqa: PLR2004
+    # if 2 in avail and int(freq * 3 / 25000 + 0.5) * 25000 // 3 == freq:  # noqa: PLR2004
+    #     yield 2
+    # TODO: seems to work like this
+    if 2 in avail and (not freq % 8333 or freq % 10 in (3, 6)):  # noqa: PLR2004
         yield 2
 
     if 3 in avail and freq % 9000 == 0:  # noqa: PLR2004
@@ -136,7 +139,7 @@ def _div_freq(freq: int, freq_div: int) -> int:
         case 0b01:  # 6250
             nfreq = freq // 6250
         case 0b10:  # 8333.333
-            nfreq = int(freq * 3 / 25000 + 0.5)
+            nfreq = round((freq * 3) / 25000.0)
         case 0b11:  # 9k
             nfreq = freq // 9000
 
@@ -147,11 +150,13 @@ def encode_freq(freq: int, offset: int) -> EncodedFreq:
     # freq min 0.1MHz
     # offset max 159.995 MHz
     # flag is <offset_flag:2b><freq_flag:2b
+    # preferred order: 9k, 5k, 6250, 8333
+    # TODO: probably this is not dependent on frequency
 
     if freq == 0:
         return EncodedFreq(0, 0, 0)
 
-    fset: tuple[int, ...] = (0, 1, 3)  # 5k, 6250
+    fset: tuple[int, ...] = (3, 0, 1)  # 9k, 5k, 6250
     if consts.is_air_band(freq):
         fset = (0, 1, 2)  # 5k, 6250, 8333.33
 
@@ -161,7 +166,7 @@ def encode_freq(freq: int, offset: int) -> EncodedFreq:
     if offset:
         if common := fd & od:
             # there is common divider for freq & offset
-            freq_div = offset_div = min(common)
+            freq_div = offset_div = 3 if 3 in common else min(common)  # noqa: PLR2004
         else:
             # prefer 9k in offset when available
             freq_div = 3 if 3 in fd else min(fd)  # noqa: PLR2004
