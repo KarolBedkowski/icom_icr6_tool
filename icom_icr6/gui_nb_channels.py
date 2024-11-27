@@ -74,7 +74,7 @@ class ChannelsPage(tk.Frame):
         self._btn_fill = ttk.Button(
             bframe,
             text="Fill values...",
-            command=self.__on_btn_fill_down,
+            command=self.__on_btn_fill,
             state="disabled",
         )
         self._btn_fill.pack(side=tk.LEFT)
@@ -352,7 +352,26 @@ class ChannelsPage(tk.Frame):
 
         self.__update_chan_list()
 
-    def __on_btn_fill_down(self) -> None:
+    def __on_btn_fill(self) -> None:
+        rows = self._chan_list.selected_rows()
+        if len(rows) <= 1:
+            return
+
+        popup_menu = tk.Menu(self, tearoff=0)
+        popup_menu.add_command(
+            label="Copy first row to following", command=self.__do_fill_down
+        )
+
+        popup_menu.add_command(
+            label="Increment freq by TS", command=self.__do_fill_freq
+        )
+        try:
+            btn = self._btn_fill
+            popup_menu.tk_popup(btn.winfo_rootx(), btn.winfo_rooty())
+        finally:
+            popup_menu.grab_release()
+
+    def __do_fill_down(self) -> None:
         """Copy value from first selected cell down"""
         sheet = self._chan_list.sheet
         sel_rows = sheet.get_selected_rows(
@@ -366,7 +385,7 @@ class ChannelsPage(tk.Frame):
         sel_cols = sheet.get_selected_columns(
             get_cells_as_columns=True, return_tuple=True
         )
-        if not sel_rows:
+        if not sel_cols:
             return
 
         min_col = sel_cols[0] + 1
@@ -383,3 +402,24 @@ class ChannelsPage(tk.Frame):
 
         for row in sel_rows[1:]:
             sheet.span((row, min_col), emit_event=True).data = data
+
+    def __do_fill_freq(self) -> None:
+        """Copy freq from first row increased by ts"""
+        sheet = self._chan_list.sheet
+        sel_rows = sheet.get_selected_rows(
+            get_cells_as_rows=True, return_tuple=True
+        )
+        if len(sel_rows) <= 1:
+            return
+
+        chan = sheet.data[sel_rows[0]].channel
+        if not chan or not chan.freq:
+            return
+
+        start_freq = chan.freq
+        ts = consts.STEPS_KHZ[chan.tuning_step]
+
+        for idx, row in enumerate(sel_rows[1:], 1):
+            sheet.span((row, 1), emit_event=True).data = [
+                model.fix_frequency(int(start_freq + ts * idx))
+            ]

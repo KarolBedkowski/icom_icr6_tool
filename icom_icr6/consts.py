@@ -45,6 +45,24 @@ STEPS: ty.Final = [
     "Auto",  # not used
     "-",  # used only in scan-edges
 ]
+STEPS_KHZ: ty.Final = [
+    5000,
+    6250,
+    8333.3333,
+    9000,
+    10000,
+    12500,
+    15000,
+    20000,
+    25000,
+    30000,
+    50000,
+    100000,
+    125000,
+    200000,
+    0,
+    0,
+]
 AVAIL_STEPS_NORMAL = [
     "5",
     "6.25",
