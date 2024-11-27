@@ -112,11 +112,14 @@ types:
     seq:
       - id: hide_channel
         type: b1
-      - id: skip
-        type: b2
-        doc: skips - none, S, none, P
+      - id: skip_mode
+        type: b1
+        doc: 0 - S; 1 = P
+      - id: skip_enabled
+        type: b1
+        doc: 0=disabled, 1=enabled
       - id: bank
-        type: b4
+        type: b5
         doc: bank number (0-22); 31 when bank is not set
 
       - id: bank_pos
@@ -184,13 +187,16 @@ types:
 
   channel:
     seq:
+      # 0
       - id: freq0
         type: u1
         doc: lsb; complete freq=(freq3 << 16) | (freq2 << 8) | freq3
 
+      # 1
       - id: freq1
         type: u1
 
+      # 2
       - id: flags_offset
         type: b2
         doc: |
@@ -221,8 +227,9 @@ types:
         doc: always 0?
       - id: freq2
         type: b2
-        doc: msb
+        doc: msb; 1 bit usable
 
+      # 3
       - id: af
         type: b1
       - id: attenuator
@@ -237,48 +244,54 @@ types:
           channels not use "auto" and "-" steps; for broadcast there
           is available additional 9k step; for aviation band - 8.33k
 
+      # 4
       - id: unknown1
         type: b2
-        doc: wlawys 0??
+        doc: alawys 0
       - id: duplex
         type: b2
         enum: duplex
       - id: unknown3
         type: b1
         doc: |
-          1 for invalid channels?  must be - when enabled channel
+          1 for invalid channels?  must be 0 - when enabled channel
           and tone_mode
       - id: tone_mode
         type: b3
         enum: tone_mode
         doc: only in fm mode
 
+      # 5-6
       - id: offset
         type: u2le
 
+      # 7
       - id: unknown2
         type: b2
         doc: 1 for invalid channels?  must be 0 when enabled channel?
       - id: tsql_freq
         type: b6
 
+      # 8
       - id: polarity
         type: b1
         enum: polarity
       - id: dscs_code
         type: b7
 
+      # 9-10
       - id: canceller_freq
         type: b9
         doc: range 30-300 -> 300Hz-3kHz; EU 228=2280Hz
       - id: unknown4
         type: b4
-        doc: always 0
+        doc: always 0 - paddign
       - id: vcs
         type: b1
       - id: canceller
         type: b2
 
+      # 11-15
       - id: name_pad
         type: b4
       - id: name
