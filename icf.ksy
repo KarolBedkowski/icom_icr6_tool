@@ -288,8 +288,10 @@ types:
         doc: always 0 - paddign
       - id: vcs
         type: b1
+        doc: enabling vcs - disable canceller
       - id: canceller
         type: b2
+        doc: enabling canceller - disable vcs
 
       # 11-15
       - id: name_pad
