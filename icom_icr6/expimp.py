@@ -75,11 +75,24 @@ def import_channels_str(data: str) -> ty.Iterable[dict[str, object]]:
     inp = io.StringIO(data)
     reader = csv.DictReader(inp)
     for row in reader:
-        # do not require bank information on import
-        if not all(f in row for f in CHANNEL_FIELDS):
+        # only freq is required
+        if not row.get("freq"):
             raise ValueError
 
         yield row
+
+
+def import_str_as_table(data: str) -> list[list[str]]:
+    rows = data.split("\n")
+    res = [list(map(str.strip, row.split(";"))) for row in rows]
+
+    if len(res) > 1:
+        # each row should have the same number of columns
+        col_num = len(res[0])
+        if not all(len(row) == col_num for row in res):
+            raise ValueError
+
+    return res
 
 
 def export_channels_file(

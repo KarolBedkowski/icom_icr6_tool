@@ -184,12 +184,24 @@ class ChannelsPage(tk.Frame):
             return
 
         clip = gui_model.Clipboard.instance()
-
+        data = ty.cast(str, clip.get())
         try:
-            rows = list(expimp.import_channels_str(ty.cast(str, clip.get())))
+            # try import whole channels
+            self.__on_channel_paste_channels(sel, data)
+        except ValueError:
+            # try import as plain data
+            self.__on_channel_paste_simple(data)
+
+    def __on_channel_paste_channels(
+        self, sel: tuple[int, ...], data: str
+    ) -> None:
+        try:
+            rows = list(expimp.import_channels_str(data))
+        except ValueError:
+            raise
         except Exception:
             _LOG.exception("import from clipboard error")
-            return
+            raise
 
         range_start = self._last_selected_group * 100
 
@@ -211,6 +223,26 @@ class ChannelsPage(tk.Frame):
                     break
 
         self.__update_chan_list()
+
+    def __on_channel_paste_simple(self, data: str) -> None:
+        sheet = self._chan_list.sheet
+        currently_selected = sheet.get_currently_selected()
+        if not currently_selected:
+            return
+
+        try:
+            rows = expimp.import_str_as_table(data)
+        except ValueError:
+            raise
+        except Exception:
+            _LOG.exception("simple import from clipboard error")
+            raise
+
+        ic(rows)
+
+        row = currently_selected.row
+        column = currently_selected.column + 1  # TODO: visible cols
+        sheet.span((row, column), emit_event=True).data = rows
 
     def __paste_channel(self, row: dict[str, object], chan_num: int) -> bool:
         _LOG.debug("__paste_channel chan_num=%d, row=%r", chan_num, row)
