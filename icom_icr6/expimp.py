@@ -82,9 +82,18 @@ def import_channels_str(data: str) -> ty.Iterable[dict[str, object]]:
         yield row
 
 
+def export_table_as_string(data: list[list[object]]) -> str:
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerows(data)
+    return output.getvalue()
+
+
 def import_str_as_table(data: str) -> list[list[str]]:
-    rows = data.split("\n")
-    res = [list(map(str.strip, row.split(";"))) for row in rows]
+    inp = io.StringIO(data)
+    dialect = csv.Sniffer().sniff(data)
+    reader = csv.reader(inp, dialect)
+    res = list(reader)
 
     if len(res) > 1:
         # each row should have the same number of columns

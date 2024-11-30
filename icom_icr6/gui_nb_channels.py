@@ -170,13 +170,28 @@ class ChannelsPage(tk.Frame):
         self.__need_full_refresh = False
 
     def __on_channel_copy(self, _event: tk.Event) -> None:  # type: ignore
-        rows = self._chan_list.selected_rows()
-        if not rows:
+        sheet = self._chan_list.sheet
+        currently_selected = sheet.get_currently_selected()
+        if not currently_selected:
             return
 
-        channels = (chan for row in rows if (chan := row.channel))
         clip = gui_model.Clipboard.instance()
-        clip.put(expimp.export_channel_str(channels))
+
+        if currently_selected.type_ == "rows":
+            rows = self._chan_list.selected_rows()
+            if not rows:
+                return
+
+            channels = (chan for row in rows if (chan := row.channel))
+            clip.put(expimp.export_channel_str(channels))
+
+            return
+
+        if currently_selected.type_ == "cells":
+            if data := self._chan_list.selected_data():
+                clip.put(expimp.export_table_as_string(data))
+
+            return
 
     def __on_channel_paste(self, _event: tk.Event) -> None:  # type: ignore
         sel = self._chan_list.selection()
@@ -237,8 +252,6 @@ class ChannelsPage(tk.Frame):
         except Exception:
             _LOG.exception("simple import from clipboard error")
             raise
-
-        ic(rows)
 
         row = currently_selected.row
         column = currently_selected.column + 1  # TODO: visible cols

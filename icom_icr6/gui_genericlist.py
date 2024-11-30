@@ -241,6 +241,34 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
             )
         ]
 
+    def selected_data(self) -> list[list[object]] | None:
+        res = None
+
+        currently_selected = self.sheet.get_currently_selected()
+        if currently_selected and currently_selected.type_ == "cells":
+            box = currently_selected.box
+            res = self.sheet.get_data(
+                box.from_r,
+                self.sheet.displayed_column_to_data(box.from_c),
+                box.upto_r,
+                self.sheet.displayed_column_to_data(box.upto_c),
+            )
+
+            # always return list of list
+            if box.from_c == box.upto_c - 1:
+                # one col
+                if box.from_r == box.upto_r - 1:
+                    # one row
+                    res = [[res]]
+                else:
+                    res = [[c] for c in res]
+
+            elif box.from_r == box.upto_r - 1:
+                # one row
+                res = [res]
+
+        return res
+
     def _on_delete(self, event: EventDataDict) -> None:
         if event.selected.type_ == "rows":
             box = event.selected.box
