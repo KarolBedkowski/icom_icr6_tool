@@ -560,7 +560,7 @@ class Channel:
                 consts.BANK_NAMES, bank, consts.BANK_NOT_SET
             )
 
-        if (bp := data.get("bank_pos")) is not None:
+        if (bp := data.get("bank_pos")) is not None and bp != "":
             self.bank_pos = int(bp)  # type: ignore
 
     def load_defaults(self, freq: int | None = None) -> None:

@@ -63,7 +63,8 @@ class Row(gui_genericlist.BaseRow):
 
             case "freq":  # freq
                 if val:
-                    assert isinstance(val, int)
+                    if isinstance(val, str):
+                        val = int(val)
 
                     if not chan.freq or chan.hide_channel:
                         chan.load_defaults(val)
@@ -201,11 +202,12 @@ class ChannelsList(gui_genericlist.GenericList[Row, model.Channel]):
                     )
 
             case "bank_pos":
-                value = max(min(int(value), 99), 0)
-                if self.on_channel_bank_validate:
-                    value = self.on_channel_bank_validate(
-                        chan.bank, chan.number, value
-                    )
+                if value != "" and value is not None:
+                    value = max(min(int(value), 99), 0)
+                    if self.on_channel_bank_validate:
+                        value = self.on_channel_bank_validate(
+                            chan.bank, chan.number, value
+                        )
 
         _LOG.debug("_on_validate_edits: result value=%r", value)
         return value
