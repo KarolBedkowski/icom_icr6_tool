@@ -321,7 +321,7 @@ class Channel:
             ts if (ts := data[7] & 0b00111111) < len(consts.CTCSS_TONES) else 0
         )
         dtsc = d if (d := data[8] & 0b01111111) < len(consts.DTCS_CODES) else 0
-
+        vsc = bool(data[10] & 0b00000100)
         return Channel(
             number=idx,
             freq=freq_real,
@@ -338,8 +338,8 @@ class Channel:
             dtsc=dtsc,
             canceller_freq=10
             * ((data[9] << 1) | ((data[10] & 0b10000000) >> 7)),
-            vsc=bool(data[10] & 0b00000100),
-            canceller=data[10] & 0b00000011,
+            vsc=vsc,
+            canceller=0 if vsc else (data[10] & 0b00000011),
             name=coding.decode_name(data[11:16]),
             hide_channel=bool(hide_channel),
             skip=skip,
@@ -392,10 +392,17 @@ class Channel:
         canc_freq = self.canceller_freq // 10
         data[9] = (canc_freq & 0b111111110) >> 1
         data_set(data, 10, 0b10000000, (canc_freq & 1) << 7)
-        # vsc
-        data_set(data, 10, 0b00000100, self.vsc << 3)
-        # canceller
-        data_set(data, 10, 0b11, self.canceller)
+        # vsc & cancelelr
+        if self.vsc:
+            # set vsc, disable canceller
+            data_set(data, 10, 0b00000111, 0b100)
+        elif self.canceller:
+            # set canceller; set vsc to 0
+            data_set(data, 10, 0b111, self.canceller & 0b11)
+        else:
+            # disable vsc & canceller
+            data_set(data, 10, 0b111, 0)
+
         # name
         data[11:16] = bytes(coding.encode_name(self.name))
 
@@ -509,11 +516,15 @@ class Channel:
         if (cf := data.get("canceller freq")) is not None:
             self.canceller_freq = int(cf or 300)  # type: ignore
 
-        if (vsc := data.get("vsc")) is not None:
-            self.vsc = obj2bool(vsc)
-
         if (c := data.get("canceller")) is not None:
             self.canceller = get_index_or_default(consts.CANCELLER, c)
+            if self.canceller:
+                self.vsc = False
+
+        if (vsc := data.get("vsc")) is not None:
+            self.vsc = obj2bool(vsc)
+            if self.vsc:
+                self.canceller = 0
 
         if (n := data.get("name")) is not None:
             self.name = fix_name(str(n))
