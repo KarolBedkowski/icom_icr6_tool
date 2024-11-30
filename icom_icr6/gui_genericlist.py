@@ -80,11 +80,15 @@ def format_freq(freq: int, **_kwargs: object) -> str:
 
 class GenericList(tk.Frame, ty.Generic[T, RT]):
     _ROW_CLASS: type[BaseRow] = None  # type: ignore
+    _ALTERNATE_COLOR = "#E5EFFA"
 
     def __init__(self, parent: tk.Widget) -> None:
         super().__init__(parent)
         self.sheet = Sheet(
-            self, data=[], default_column_width=40, alternate_color="#E2EAF4"
+            self,
+            data=[],
+            default_column_width=40,
+            alternate_color=self._ALTERNATE_COLOR,
         )
         self.sheet.enable_bindings("all")
         self.sheet.edit_validation(self.__on_validate_edits)
@@ -268,7 +272,10 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
         ro = bool(readonly)
 
         self.sheet.highlight_cells(
-            row, column=col, fg="#d0d0d0" if ro else "black"
+            row,
+            column=col,
+            fg="#d0d0d0" if ro else "black",
+            bg=self._ALTERNATE_COLOR if row & 1 else None,
         )
         functions.set_readonly(
             self.sheet.MT.cell_options, (row, col), readonly=ro
