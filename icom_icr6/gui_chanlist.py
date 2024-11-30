@@ -8,7 +8,7 @@ import logging
 import tkinter as tk
 import typing as ty
 
-from tksheet import EventDataDict, Span, functions, int_formatter
+from tksheet import EventDataDict, Span, functions
 
 from . import consts, gui_genericlist, model
 
@@ -140,6 +140,7 @@ class ChannelsList(gui_genericlist.GenericList[Row, model.Channel]):
 
     def _on_validate_edits(self, event: EventDataDict) -> object:  # noqa:C901
         # _LOG.debug("_on_validate_edits: %r", event)
+        # WARN: validation not work on checkbox
 
         column = self.columns[event.column + 1]  # FIXME: visible cols
         row = self.sheet.data[event.row]

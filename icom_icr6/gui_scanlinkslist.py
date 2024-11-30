@@ -5,7 +5,6 @@
 """ """
 
 import logging
-import tkinter as tk
 import typing as ty
 
 from tksheet import EventDataDict

@@ -122,7 +122,7 @@ def _find_div_for_freq(freq: int, avail: tuple[int, ...]) -> ty.Iterable[int]:
     if 1 in avail and freq % 6250 == 0:
         yield 1
 
-    # if 2 in avail and int(freq * 3 / 25000 + 0.5) * 25000 // 3 == freq:  # noqa: PLR2004
+    # if 2 in avail and int(freq * 3 / 25000 + 0.5) * 25000 // 3 == freq:
     #     yield 2
     # TODO: seems to work like this
     if 2 in avail and (not freq % 8333 or freq % 10 in (3, 6)):  # noqa: PLR2004
