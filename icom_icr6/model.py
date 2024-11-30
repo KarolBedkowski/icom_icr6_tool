@@ -24,12 +24,20 @@ MutableMemory = abc.MutableSequence[int] | memoryview
 
 @dataclass
 class RadioModel:
-    # Data format - 39B
-    # mode: 4B
+    # Data format - 40B
+    # model: 4B
+    # unknown: 1B - is this mapped to region?
+    #        TODO: check
+    #        0-0xc -> 1; 0xd-0x22 -> 2; 0x23 -> 3; 0x2e -> 5; other -> error
+    #        1,2,5 = > us; 3 -> global (??)
     # rev: 1B
     # comment: 16B
-    # unknown: 4B
+    # unknown: 3B
     # serial 14B
+    #    4b
+    #    1B unknown
+    #    2b
+    #    7b unknown
     model: bytes
     rev: int
     comment: str
@@ -48,12 +56,24 @@ class RadioModel:
             f"{serial[5]<<8|serial[6]:04d}"
         )
 
+        debug_info = (
+            {
+                "raw": binascii.hexlify(data),
+                "unk1": data[4],
+                "unk2": data[22:25],
+                "unk3": data[29],
+                "unk4": data[32:],
+            }
+            if DEBUG
+            else None
+        )
+
         return RadioModel(
             model=bytes(data[0:4]),
             rev=data[5],
             comment=bytes(data[6:22]).decode(),
             serial=serial_decoded,
-            debug_info={"raw": binascii.hexlify(data)} if DEBUG else None,
+            debug_info=debug_info,
         )
 
     def is_icr6(self) -> bool:
@@ -970,7 +990,7 @@ class RadioMemory:
         self.mem = bytearray(consts.MEM_SIZE)
         self.file_comment = ""
         self.file_maprev = "1"
-        # 001A = EU, 0003 = USA, 0002A - ?
+        # 001A = EU, 0003 = USA, 002A - ?
         # for USA - canceller is available
         self.file_etcdata = "001A"
 
