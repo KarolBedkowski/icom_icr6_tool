@@ -50,14 +50,24 @@ class AutoWriteChannelsPage(tk.Frame):
         self._show_stats()
 
     def __on_channel_copy(self, _event: tk.Event) -> None:  # type: ignore
-        rows = self._chan_list.selected_rows_data()
-        if not rows:
+        selected = self._chan_list.sheet.get_currently_selected()
+        if not selected:
             return
 
-        # copy only not-empty data
-        channels = (chan for row in rows if (chan := row.channel))
-        clip = gui_model.Clipboard.instance()
-        clip.put(expimp.export_channel_str(channels, with_bank=False))
+        res = None
+
+        if selected.type_ == "rows":
+            if rows := self._chan_list.selected_rows_data():
+                channels = (chan for row in rows if (chan := row.channel))
+                res = expimp.export_channel_str(channels)
+
+        elif selected.type_ == "cells" and (
+            data := self._chan_list.selected_data()
+        ):
+            res = expimp.export_table_as_string(data).strip()
+
+        if res:
+            gui_model.Clipboard.instance().put(res)
 
     def _show_stats(self) -> None:
         active = sum(
