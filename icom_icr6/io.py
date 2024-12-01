@@ -449,6 +449,7 @@ def load_icf_file(file: Path) -> model.RadioMemory:
 
     _LOG.info("loading %s done", file)
     mem.validate()
+    mem.parse_data()
     return mem
 
 
@@ -458,12 +459,14 @@ def load_raw_memory(file: Path) -> model.RadioMemory:
         mem.mem = bytearray(inp.read())
 
     mem.validate()
+    mem.parse_data()
     return mem
 
 
 def save_icf_file(file: Path, mem: model.RadioMemory) -> None:
     """Write RadioMemory to icf file."""
     _LOG.info("write %s", file)
+    mem.commit()
 
     with file.open("wt") as out:
         # header
@@ -481,5 +484,6 @@ def save_icf_file(file: Path, mem: model.RadioMemory) -> None:
 
 def save_raw_memory(file: Path, mem: model.RadioMemory) -> None:
     """Write RadioMemory to binary file."""
+    mem.commit()
     with file.open("wb") as out:
         out.write(bytes(mem.mem))

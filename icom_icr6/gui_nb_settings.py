@@ -201,7 +201,7 @@ class SettingsPage(tk.Frame):
         frame.pack(fill=tk.X, side=tk.TOP, padx=12, pady=12)
 
     def __update(self) -> None:
-        sett = self._radio_memory.get_settings()
+        sett = self._radio_memory.settings
 
         self._var_func_dial_step.set_raw(sett.func_dial_step)
         self._var_key_beep.set_raw(sett.key_beep)
@@ -230,10 +230,10 @@ class SettingsPage(tk.Frame):
         self._var_af_filer_am.set_raw(sett.af_filer_am)
         self._var_charging_type.set_raw(sett.charging_type)
 
-        self._var_comment.set(self._radio_memory.get_comment())
+        self._var_comment.set(self._radio_memory.comment)
 
     def __on_update(self) -> None:
-        sett = self._radio_memory.get_settings()
+        sett = self._radio_memory.settings
 
         sett.func_dial_step = self._var_func_dial_step.get_raw()
         sett.key_beep = self._var_key_beep.get_raw()

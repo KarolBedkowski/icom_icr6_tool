@@ -111,7 +111,7 @@ class ScanEdgePage(tk.Frame):
             return
 
         for se_num in sel:
-            se = self._radio_memory.get_scan_edge(se_num)
+            se = self._radio_memory.scan_edges[se_num]
             se.delete()
             self._radio_memory.set_scan_edge(se)
 
@@ -119,12 +119,7 @@ class ScanEdgePage(tk.Frame):
         self._scanedges_list.selection_set(sel)
 
     def __update_scan_edges_list(self) -> None:
-        self._scanedges_list.set_data(
-            [
-                self._radio_memory.get_scan_edge(idx)
-                for idx in range(consts.NUM_SCAN_EDGES)
-            ]
-        )
+        self._scanedges_list.set_data(self._radio_memory.scan_edges)
 
     def __on_scan_edge_copy(self, _event: tk.Event) -> None:  # type: ignore
         selected = self._scanedges_list.sheet.get_currently_selected()
@@ -135,9 +130,8 @@ class ScanEdgePage(tk.Frame):
 
         if selected.type_ == "rows":
             if rows := self._scanedges_list.selected_rows():
-                ses = (
-                    self._radio_memory.get_scan_edge(se_num) for se_num in rows
-                )
+                mses = self._radio_memory.scan_edges
+                ses = (mses[se_num] for se_num in rows)
                 res = expimp.export_scan_edges_str(ses)
 
         elif selected.type_ == "cells" and (
@@ -207,7 +201,7 @@ class ScanEdgePage(tk.Frame):
         if not row.get("start") or not row.get("end"):
             return True
 
-        se = self._radio_memory.get_scan_edge(se_num).clone()
+        se = self._radio_memory.scan_edges[se_num].clone()
         try:
             se.from_record(row)
             se.validate()

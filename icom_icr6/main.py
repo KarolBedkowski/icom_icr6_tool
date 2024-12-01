@@ -77,7 +77,7 @@ def main_print_channels() -> None:
         ch_end = ch_start + 100
 
     for channel in range(ch_start, ch_end):
-        ch = mem.get_channel(channel)
+        ch = mem.channels[channel]
         if not ch.hide_channel or not ch.freq or hidden:
             print(channel, ch)
 
@@ -94,7 +94,7 @@ def main_print_channels_4test() -> None:
     hidden = False
     ch_start, ch_end = 0, 1300
     for channel in range(ch_start, ch_end):
-        ch = mem.get_channel(channel)
+        ch = mem.channels[channel]
         if not ch.hide_channel or not ch.freq or hidden:
             assert ch.debug_info
             print(
@@ -114,7 +114,7 @@ def main_print_aw_channels() -> None:
     mem = io.load_icf_file(Path(sys.argv[2]))
 
     print("Autowrite channels")
-    for channel in sorted(mem.get_autowrite_channels()):
+    for channel in mem.awchannels:
         print(channel, channel)
 
 
@@ -129,8 +129,8 @@ def main_print_banks() -> None:
     mem = io.load_icf_file(Path(sys.argv[2]))
 
     print("Banks")
-    for idx in range(22):
-        print(idx, mem.get_bank(idx), mem.get_bank_channels(idx))
+    for idx, bank in enumerate(mem.banks):
+        print(idx, bank, mem.get_bank_channels(idx))
 
 
 def main_print_scan_programs() -> None:
@@ -144,12 +144,12 @@ def main_print_scan_programs() -> None:
     mem = io.load_icf_file(Path(sys.argv[2]))
 
     print("Scan links")
-    for idx in range(10):
-        print(idx, mem.get_scan_link(idx))
+    for idx, sl in enumerate(mem.scan_links):
+        print(idx, sl)
 
     print("Scan edges")
-    for idx in range(25):
-        print(idx, mem.get_scan_edge(idx))
+    for idx, se in enumerate(mem.scan_edges):
+        print(idx, se)
 
 
 def main_write_mem_raw() -> None:
@@ -194,11 +194,11 @@ def main_print_settings() -> None:
     mem = io.load_icf_file(file)
 
     print("Settings")
-    sett = mem.get_settings()
+    sett = mem.settings
     print(repr(sett))
 
     print("Bank links")
-    bl = mem.get_bank_links()
+    bl = mem.bank_links
     print(bl)
 
 

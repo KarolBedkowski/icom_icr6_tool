@@ -106,8 +106,9 @@ class BanksPage(tk.Frame):
         banks = self._banks_list
 
         banks.delete(0, banks.size())
-        for idx, bname in enumerate(consts.BANK_NAMES):
-            bank = self._radio_memory.get_bank(idx)
+        for bank, bname in zip(
+            self._radio_memory.banks, consts.BANK_NAMES, strict=True
+        ):
             name = f"{bname}: {bank.name}" if bank.name else bname
             banks.insert(tk.END, name)
 
@@ -128,16 +129,16 @@ class BanksPage(tk.Frame):
         self._chan_list.set_bank(selected_bank)
         self._last_selected_bank = selected_bank
 
-        bank = self._radio_memory.get_bank(selected_bank)
+        bank = self._radio_memory.banks[selected_bank]
         self._bank_name.set(bank.name.rstrip())
 
-        bl = self._radio_memory.get_bank_links()
+        bl = self._radio_memory.bank_links
         self._bank_link.set_raw(bl[selected_bank])
 
         channels = self._radio_memory.get_bank_channels(selected_bank)
         self._chan_list.set_data(
             [
-                self._radio_memory.get_channel(channum)
+                self._radio_memory.channels[channum]
                 if channum is not None
                 else None
                 for channum in channels.channels
@@ -170,11 +171,11 @@ class BanksPage(tk.Frame):
         if selected_bank is None:
             return
 
-        bank = self._radio_memory.get_bank(selected_bank)
+        bank = self._radio_memory.banks[selected_bank]
         bank.name = self._bank_name.get().strip()[:6]
         self._radio_memory.set_bank(bank)
 
-        bl = self._radio_memory.get_bank_links()
+        bl = self._radio_memory.bank_links
         bl[selected_bank] = self._bank_link.get_raw()
         self._radio_memory.set_bank_links(bl)
 
@@ -242,7 +243,7 @@ class BanksPage(tk.Frame):
                     self._radio_memory.set_channel(old_chan)
 
                 # add chan to bank
-                chan = self._radio_memory.get_channel(rec.new_channel)
+                chan = self._radio_memory.channels[rec.new_channel]
 
             elif rec.new_freq:
                 chan = self._radio_memory.find_first_hidden_channel()
@@ -383,7 +384,7 @@ class BanksPage(tk.Frame):
 
         chan_num = bank_channels[pos]
         if chan_num:
-            chan = self._radio_memory.get_channel(chan_num)
+            chan = self._radio_memory.channels[chan_num]
         else:
             chan = self._radio_memory.find_first_hidden_channel()  # type: ignore
             if not chan:

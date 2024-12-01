@@ -43,6 +43,7 @@ class Row(gui_genericlist.BaseRow):
     def __init__(self, rownum: int, channel: model.Channel) -> None:
         self.channel = channel
         super().__init__(rownum, self._from_channel(channel))
+        self.errors: tuple[str, ...] = ()
 
     def __repr__(self) -> str:
         return f"ROW: data={self.data!r} channel={self.channel}"

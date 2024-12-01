@@ -108,8 +108,7 @@ class ScanLinksPage(tk.Frame):
 
         sls = self._scan_links_list
         sls.delete(0, sls.size())
-        for idx in range(10):
-            sl = self._radio_memory.get_scan_link(idx)
+        for idx, sl in enumerate(10, self._radio_memory.scan_links):
             name = f"{idx}: {sl.name}" if sl.name else str(idx)
             sls.insert(tk.END, name)
 
@@ -120,11 +119,11 @@ class ScanLinksPage(tk.Frame):
         sel_sl = self._scan_links_list.curselection()  # type: ignore
         selected_se = sel_sl[0] if sel_sl else 0
 
-        sl = self._radio_memory.get_scan_link(selected_se)
+        sl = self._radio_memory.scan_links[selected_se]
 
         data: list[gui_scanlinkslist.ScanLink] = [
             gui_scanlinkslist.ScanLink(
-                self._radio_memory.get_scan_edge(idx), sl[idx]
+                self._radio_memory.scan_edges[idx], sl[idx]
             )
             for idx in range(consts.NUM_SCAN_EDGES)
         ]
@@ -138,7 +137,7 @@ class ScanLinksPage(tk.Frame):
             return
 
         self._last_selected_sl = sel_sl
-        sl = self._radio_memory.get_scan_link(sel_sl[0])
+        sl = self._radio_memory.scan_links[sel_sl[0]]
         self._sl_name.set(sl.name.rstrip())
 
         self._scan_links_edges.set_data_links(list(sl.links()))
@@ -153,7 +152,7 @@ class ScanLinksPage(tk.Frame):
             self.__disable_widgets()
             return
 
-        sl = self._radio_memory.get_scan_link(sel_sl[0])
+        sl = self._radio_memory.scan_links[sel_sl[0]].clone()
         sl.name = self._sl_name.get()
         self._radio_memory.set_scan_link(sl)
 
@@ -190,7 +189,7 @@ class ScanLinksPage(tk.Frame):
         if not sel_sl:
             return
 
-        sl = self._radio_memory.get_scan_link(sel_sl[0])
+        sl = self._radio_memory.scan_links[sel_sl[0]].clone()
 
         for rec in rows:
             _LOG.debug(
@@ -233,9 +232,8 @@ class ScanLinksPage(tk.Frame):
 
         if selected.type_ == "rows":
             if rows := self._scan_links_edges.selected_rows():
-                ses = (
-                    self._radio_memory.get_scan_edge(se_num) for se_num in rows
-                )
+                mses = self._radio_memory.scan_edges
+                ses = (mses[se_num] for se_num in rows)
                 res = expimp.export_scan_edges_str(ses)
 
         elif selected.type_ == "cells" and (
@@ -305,7 +303,7 @@ class ScanLinksPage(tk.Frame):
         if not row.get("start") or not row.get("end"):
             return True
 
-        se = self._radio_memory.get_scan_edge(se_num).clone()
+        se = self._radio_memory.scan_edges[se_num].clone()
         try:
             se.from_record(row)
             se.validate()

@@ -42,11 +42,7 @@ class AutoWriteChannelsPage(tk.Frame):
         self._chan_list.sheet.bind("<Control-c>", self.__on_channel_copy)
 
     def __update_channels_list(self, _event: tk.Event | None) -> None:  # type: ignore
-        data = sorted(self._radio_memory.get_autowrite_channels())
-        for idx, ch in enumerate(data):
-            ch.number = idx
-
-        self._chan_list.set_data(data)
+        self._chan_list.set_data(self._radio_memory.awchannels)
         self._show_stats()
 
     def __on_channel_copy(self, _event: tk.Event) -> None:  # type: ignore

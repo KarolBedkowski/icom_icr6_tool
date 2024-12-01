@@ -40,7 +40,6 @@ class App(tk.Frame):
 
         self._last_file: Path | None = None
         self._radio_memory = model.RadioMemory()
-        self._channel_model = gui_model.ChannelModel()
         self._status_value = tk.StringVar()
         # safe is clone to device when data are loaded or cloned from dev
         self._safe_for_clone = False
@@ -298,7 +297,7 @@ class App(tk.Frame):
                     expimp.export_channels_file(channels, dstfile)
 
                 case "awchannels":
-                    channels = self._radio_memory.get_autowrite_channels()
+                    channels = self._radio_memory.awchannels
                     expimp.export_awchannels_file(channels, dstfile)
 
         except Exception as err:

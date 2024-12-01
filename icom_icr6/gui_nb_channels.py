@@ -165,10 +165,7 @@ class ChannelsPage(tk.Frame):
 
         range_start = selected_range * 100
         self._chan_list.set_data(
-            [
-                self._radio_memory.get_channel(idx)
-                for idx in range(range_start, range_start + 100)
-            ]
+            self._radio_memory.channels[range_start : range_start + 100]
         )
 
         self._show_stats()
@@ -255,7 +252,7 @@ class ChannelsPage(tk.Frame):
 
     def __paste_channel(self, row: dict[str, object], chan_num: int) -> bool:
         _LOG.debug("__paste_channel chan_num=%d, row=%r", chan_num, row)
-        chan = self._radio_memory.get_channel(chan_num).clone()
+        chan = self._radio_memory.channels[chan_num].clone()
         # do not clean existing rows
         if not row.get("freq"):
             _LOG.debug("paste empty row to not empty")
