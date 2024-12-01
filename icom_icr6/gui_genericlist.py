@@ -293,9 +293,13 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
 
     def paste(self, data: list[list[str]]) -> None:
         _LOG.debug("paste: %r", data)
-        if currently_selected := self.sheet.get_currently_selected():
-            row = currently_selected.row
-            column = self.sheet.data_c(currently_selected.column)
+        currently_selected = self.sheet.get_currently_selected()
+        if not currently_selected:
+            return
+
+        box = currently_selected.box
+        column = self.sheet.data_c(currently_selected.column)
+        for row in range(box.from_r, box.upto_r):
             self.sheet.span((row, column), emit_event=True).data = data
 
     def set_data_rows(
