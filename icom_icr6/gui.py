@@ -219,6 +219,7 @@ class App(tk.Frame):
             try:
                 io.save_icf_file(Path(fname), self._radio_memory)
             except Exception as err:
+                _LOG.exception("__on_file_save_as error")
                 messagebox.showerror("Save file error", str(err))
                 return
 

@@ -382,7 +382,6 @@ class Channel:
         # flags & freq2
         data_set(data, 2, 0b11110000, enc_freq.flags << 4)
         data_set(data, 2, 0b00001111, freq2 & 0b1111)
-        print(repr(enc_freq), bin(data[2]))
         # af_filter, attenuator, mode, tuning_step
         data[3] = (
             bool2bit(self.af_filter, 0b10000000)
