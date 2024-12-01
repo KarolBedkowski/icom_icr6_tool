@@ -689,7 +689,7 @@ class ScanLink:
         edata[0] = edges & 0xFF
         edata[1] = (edges >> 8) & 0xFF
         edata[2] = (edges >> 16) & 0xFF
-        edata[3] = (edges >> 24) & 0xFF
+        edata[3] = ((edges >> 24) & 1) | 0b11111110
 
     def remap_edges(self, mapping: dict[int, int]) -> None:
         edges = [
