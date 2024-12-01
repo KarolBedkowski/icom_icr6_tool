@@ -484,6 +484,5 @@ def save_icf_file(file: Path, mem: model.RadioMemory) -> None:
 
 def save_raw_memory(file: Path, mem: model.RadioMemory) -> None:
     """Write RadioMemory to binary file."""
-    mem.commit()
     with file.open("wb") as out:
         out.write(bytes(mem.mem))
