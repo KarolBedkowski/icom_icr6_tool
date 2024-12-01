@@ -224,6 +224,7 @@ class Channel:
     bank_pos: int
 
     debug_info: dict[str, object] | None = None
+    updated : bool = False
 
     @property
     def active(self) -> bool:
@@ -496,7 +497,6 @@ class Channel:
         }
 
     def from_record(self, data: dict[str, object]) -> None:  # noqa: PLR0912,C901
-        # TODO: adjust freq
         _LOG.debug("from_record: %r", data)
         if (freq := data.get("freq")) is not None:
             ifreq = int(freq or "0")  # type: ignore
@@ -722,6 +722,7 @@ class ScanEdge:
     name: str
 
     debug_info: dict[str, object] | None = None
+    updated: bool = False
 
     def human_attn(self) -> str:
         match self.attenuator:
@@ -888,6 +889,7 @@ class RadioSettings:
     stop_beep: bool
 
     debug_info: dict[str, object] | None = None
+    updated : bool = False
 
     @classmethod
     def from_data(
@@ -1093,6 +1095,7 @@ class RadioMemory:
 
         chan.validate()
         self.channels[chan.number] = chan
+        chan.updated = True
 
         if chan.bank != consts.BANK_NOT_SET:
             return
@@ -1194,6 +1197,7 @@ class RadioMemory:
 
     def set_settings(self, sett: RadioSettings) -> None:
         self.settings = sett
+        self.settings.updated = True
 
     def set_bank_links(self, bl: BankLinks) -> None:
         self.bank_links = bl
@@ -1222,12 +1226,16 @@ class RadioMemory:
         for idx, chan in enumerate(self.channels):
             assert idx == chan.number
 
+            if not chan.updated:
+                continue
+
             start = idx * 16
             cflags_start = idx * 2 + 0x5F80
 
             chan.to_data(
                 mv[start : start + 16], mv[cflags_start : cflags_start + 2]
             )
+            chan.updated = False
 
     def _load_autowrite_channels(self) -> ty.Iterable[Channel]:
         # load position map
@@ -1258,8 +1266,13 @@ class RadioMemory:
 
         for idx, se in enumerate(self.scan_edges):
             assert idx == se.idx
+
+            if not se.updated:
+                continue
+
             start = 0x5DC0 + se.idx * 16
             se.to_data(mv[start : start + 16])
+            se.updated = False
 
     # not used due to update via channel
     # def _get_channel_flags(self, idx: int) -> ChannelFlags:
@@ -1323,7 +1336,9 @@ class RadioMemory:
 
     def _save_settings(self) -> None:
         mv = memoryview(self.mem)
-        self.settings.to_data(mv[0x6BD0 : 0x6BD0 + 64])
+        if self.settings.updated:
+            self.settings.to_data(mv[0x6BD0 : 0x6BD0 + 64])
+            self.settings.updated = False
 
     def _load_bank_links(self) -> BankLinks:
         return BankLinks.from_data(self.mem[0x6C28 : 0x6C28 + 3])
