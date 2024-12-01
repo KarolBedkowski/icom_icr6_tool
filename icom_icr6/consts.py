@@ -227,4 +227,4 @@ def default_mode_for_freq(freq: int) -> int:
 
 
 def is_air_band(freq: int) -> bool:
-    return 108_000_000 < freq < 136_991_666
+    return 108_000_000 <= freq <= 136_991_666
