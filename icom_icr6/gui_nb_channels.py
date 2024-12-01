@@ -331,7 +331,7 @@ class ChannelsPage(tk.Frame):
         return bank_pos
 
     def __on_btn_sort(self) -> None:
-        rows = self._chan_list.selected_rows()
+        rows = self._chan_list.selected_rows_data()
         if len(rows) <= 1:
             return
 
@@ -358,7 +358,7 @@ class ChannelsPage(tk.Frame):
             popup_menu.grab_release()
 
     def _do_sort(self, field: str) -> None:
-        rows = self._chan_list.selected_rows()
+        rows = self._chan_list.selected_rows_data()
         if len(rows) <= 1:
             return
 
@@ -398,7 +398,7 @@ class ChannelsPage(tk.Frame):
         self.__update_chan_list()
 
     def __on_btn_fill(self) -> None:
-        rows = self._chan_list.selected_rows()
+        rows = self._chan_list.selected_rows_data()
         if len(rows) <= 1:
             return
 

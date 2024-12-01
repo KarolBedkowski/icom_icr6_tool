@@ -286,7 +286,7 @@ class BanksPage(tk.Frame):
         self.__update_chan_list()
 
     def __on_channel_copy(self, _event: tk.Event) -> None:  # type: ignore
-        rows = self._chan_list.selected_rows()
+        rows = self._chan_list.selected_rows_data()
         if not rows:
             return
 
@@ -374,7 +374,7 @@ class BanksPage(tk.Frame):
         return True
 
     def __on_btn_sort(self) -> None:
-        rows = self._chan_list.selected_rows()
+        rows = self._chan_list.selected_rows_data()
         if len(rows) <= 1:
             return
 
@@ -405,7 +405,7 @@ class BanksPage(tk.Frame):
             popup_menu.grab_release()
 
     def __do_sort(self, field: str) -> None:  # noqa: C901
-        rows = self._chan_list.selected_rows()
+        rows = self._chan_list.selected_rows_data()
         if len(rows) <= 1:
             return
 

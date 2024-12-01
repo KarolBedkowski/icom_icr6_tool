@@ -50,7 +50,7 @@ class AutoWriteChannelsPage(tk.Frame):
         self._show_stats()
 
     def __on_channel_copy(self, _event: tk.Event) -> None:  # type: ignore
-        rows = self._chan_list.selected_rows()
+        rows = self._chan_list.selected_rows_data()
         if not rows:
             return
 

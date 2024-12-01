@@ -233,7 +233,7 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
             ]
             self.on_record_selected(rows)
 
-    def selected_rows(self) -> list[T]:
+    def selected_rows_data(self) -> list[T]:
         return [
             self.sheet.data[r]
             for r in sorted(
