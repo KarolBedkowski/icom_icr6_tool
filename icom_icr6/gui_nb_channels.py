@@ -124,12 +124,18 @@ class ChannelsPage(tk.Frame):
         else:
             self._show_stats()
 
+    @property
+    def _selected_range(self) -> int | None:
+        if sel := self._groups_list.curselection():  # type: ignore
+            return sel[0]  # type: ignore
+
+        return None
+
     def __do_move_channels(
         self, rows: ty.Collection[gui_chanlist.Row]
     ) -> None:
-        if sel := self._groups_list.curselection():  # type: ignore
-            selected_range = sel[0]
-        else:
+        selected_range = self._selected_range
+        if selected_range is None:
             return
 
         range_start = selected_range * 100
@@ -151,12 +157,11 @@ class ChannelsPage(tk.Frame):
             _LOG.debug("chan selected: %r", rec.channel)
 
     def __update_chan_list(self, _event: tk.Event | None = None) -> None:  # type: ignore
-        if sel := self._groups_list.curselection():  # type: ignore
-            selected_range = sel[0]
-        else:
+        selected_range = self._selected_range
+        if selected_range is None:
             return
 
-        self._last_selected_group = sel[0]
+        self._last_selected_group = selected_range
 
         range_start = selected_range * 100
         self._chan_list.set_data(
@@ -170,28 +175,24 @@ class ChannelsPage(tk.Frame):
         self.__need_full_refresh = False
 
     def __on_channel_copy(self, _event: tk.Event) -> None:  # type: ignore
-        sheet = self._chan_list.sheet
-        currently_selected = sheet.get_currently_selected()
-        if not currently_selected:
+        selected = self._chan_list.sheet.get_currently_selected()
+        if not selected:
             return
 
-        clip = gui_model.Clipboard.instance()
+        res = None
 
-        if currently_selected.type_ == "rows":
-            rows = self._chan_list.selected_rows()
-            if not rows:
-                return
+        if selected.type_ == "rows":
+            if rows := self._chan_list.selected_rows_data():
+                channels = (chan for row in rows if (chan := row.channel))
+                res = expimp.export_channel_str(channels)
 
-            channels = (chan for row in rows if (chan := row.channel))
-            clip.put(expimp.export_channel_str(channels))
+        elif selected.type_ == "cells" and (
+            data := self._chan_list.selected_data()
+        ):
+            res = expimp.export_table_as_string(data).strip()
 
-            return
-
-        if currently_selected.type_ == "cells":
-            if data := self._chan_list.selected_data():
-                clip.put(expimp.export_table_as_string(data))
-
-            return
+        if res:
+            gui_model.Clipboard.instance().put(res)
 
     def __on_channel_paste(self, _event: tk.Event) -> None:  # type: ignore
         sel = self._chan_list.selection()
@@ -206,6 +207,8 @@ class ChannelsPage(tk.Frame):
         except ValueError:
             # try import as plain data
             self.__on_channel_paste_simple(data)
+        except Exception:
+            _LOG.exception("__on_channel_paste error")
 
     def __on_channel_paste_channels(
         self, sel: tuple[int, ...], data: str
@@ -240,11 +243,6 @@ class ChannelsPage(tk.Frame):
         self.__update_chan_list()
 
     def __on_channel_paste_simple(self, data: str) -> None:
-        sheet = self._chan_list.sheet
-        currently_selected = sheet.get_currently_selected()
-        if not currently_selected:
-            return
-
         try:
             rows = expimp.import_str_as_table(data)
         except ValueError:
@@ -253,9 +251,7 @@ class ChannelsPage(tk.Frame):
             _LOG.exception("simple import from clipboard error")
             raise
 
-        row = currently_selected.row
-        column = currently_selected.column + 1  # TODO: visible cols
-        sheet.span((row, column), emit_event=True).data = rows
+        self._chan_list.paste(rows)
 
     def __paste_channel(self, row: dict[str, object], chan_num: int) -> bool:
         _LOG.debug("__paste_channel chan_num=%d, row=%r", chan_num, row)
@@ -418,31 +414,24 @@ class ChannelsPage(tk.Frame):
 
     def __do_fill_down(self) -> None:
         """Copy value from first selected cell down"""
-        sheet = self._chan_list.sheet
-        sel_rows = sheet.get_selected_rows(
-            get_cells_as_rows=True, return_tuple=True
-        )
-
+        sel_rows = self._chan_list.selected_rows()
         if len(sel_rows) <= 1:
             return
 
+        sheet = self._chan_list.sheet
+
         # visible cols
-        sel_cols = sheet.get_selected_columns(
-            get_cells_as_columns=True, return_tuple=True
-        )
+        sel_cols = self._chan_list.selected_columns()
         if not sel_cols:
-            return
+            sel_cols = self._chan_list.visible_cols()
 
-        min_col = sel_cols[0] + 1
-        max_col = sel_cols[-1] + 2
-
+        min_col, max_col = sel_cols[0], sel_cols[-1] + 1
         first_row = sel_rows[0]
-
         data = sheet[(first_row, min_col), (first_row + 1, max_col)].data
 
         with suppress(ValueError):
             # remove bano_pos if is on list
-            idx = sel_cols.index(15)
+            idx = sel_cols.index(self._chan_list.colmap["bank_pos"])
             data[idx] = None
 
         for row in sel_rows[1:]:
@@ -450,13 +439,11 @@ class ChannelsPage(tk.Frame):
 
     def __do_fill_freq(self) -> None:
         """Copy freq from first row increased by ts"""
-        sheet = self._chan_list.sheet
-        sel_rows = sheet.get_selected_rows(
-            get_cells_as_rows=True, return_tuple=True
-        )
+        sel_rows = self._chan_list.selected_rows()
         if len(sel_rows) <= 1:
             return
 
+        sheet = self._chan_list.sheet
         chan = sheet.data[sel_rows[0]].channel
         if not chan or not chan.freq:
             return
@@ -464,7 +451,10 @@ class ChannelsPage(tk.Frame):
         start_freq = chan.freq
         ts = consts.STEPS_KHZ[chan.tuning_step]
 
-        for idx, row in enumerate(sel_rows[1:], 1):
-            sheet.span((row, 1), emit_event=True).data = [
-                model.fix_frequency(int(start_freq + ts * idx))
-            ]
+        self._chan_list.set_data_rows(
+            1,
+            (
+                (row, [model.fix_frequency(int(start_freq + ts * idx))])
+                for idx, row in enumerate(sel_rows[1:], 1)
+            ),
+        )

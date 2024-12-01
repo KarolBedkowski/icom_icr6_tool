@@ -90,16 +90,17 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
             default_column_width=40,
             alternate_color=self._ALTERNATE_COLOR,
         )
+        self.sheet.pack(expand=True, fill=tk.BOTH, side=tk.TOP)
+
         self.sheet.enable_bindings("all")
         self.sheet.edit_validation(self.__on_validate_edits)
         self.sheet.bind("<<SheetModified>>", self._on_sheet_modified)
-        self.sheet.pack(expand=True, fill=tk.BOTH, side=tk.TOP)
         self.sheet.bind("<<SheetSelect>>", self._on_sheet_select)
         self.sheet.extra_bindings("begin_delete", self._on_delete)
+        # disable column moving
         self.sheet.extra_bindings(
             "begin_move_columns", self._on_begin_col_move
         )
-
         # disable popup menu
         self.sheet.disable_bindings("right_click_popup_menu")
 
@@ -175,7 +176,7 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
             _LOG.error("unknown column: %s", colname)
 
     def _on_sheet_modified(self, event: EventDataDict) -> None:
-        # _LOG.debug("_on_sheet_modified: %r", event)
+        _LOG.debug("_on_sheet_modified: %r", event)
 
         data: set[T] = set()
 
@@ -207,7 +208,9 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
             self.on_record_update("update", data)
 
     def __on_validate_edits(self, event: EventDataDict) -> object:
-        if event.eventname != "end_edit_table":
+        _LOG.debug("__on_validate_edits: %r", event)
+
+        if event.eventname not in ("end_edit_table", "edit_table"):
             return None
 
         try:
@@ -233,6 +236,25 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
             ]
             self.on_record_selected(rows)
 
+    def selected_rows(self) -> ty.Sequence[int]:
+        return self.sheet.get_selected_rows(  # type: ignore
+            get_cells_as_rows=True, return_tuple=True
+        )
+
+    def selected_columns(self) -> ty.Sequence[int]:
+        """get columns index include hidden ones"""
+        return list(
+            map(
+                self.sheet.data_c,
+                self.sheet.get_selected_columns(
+                    get_cells_as_columns=True, return_tuple=True
+                ),
+            )
+        )
+
+    def visible_cols(self) -> list[int]:
+        return self.sheet.MT.displayed_columns  # type: ignore
+
     def selected_rows_data(self) -> list[T]:
         return [
             self.sheet.data[r]
@@ -249,9 +271,9 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
             box = currently_selected.box
             res = self.sheet.get_data(
                 box.from_r,
-                self.sheet.displayed_column_to_data(box.from_c),
+                self.sheet.data_c(box.from_c),
                 box.upto_r,
-                self.sheet.displayed_column_to_data(box.upto_c),
+                self.sheet.data_c(box.upto_c - 1) + 1,
             )
 
             # always return list of list
@@ -268,6 +290,20 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
                 res = [res]
 
         return res
+
+    def paste(self, data: list[list[str]]) -> None:
+        _LOG.debug("paste: %r", data)
+        if currently_selected := self.sheet.get_currently_selected():
+            row = currently_selected.row
+            column = self.sheet.data_c(currently_selected.column)
+            self.sheet.span((row, column), emit_event=True).data = data
+
+    def set_data_rows(
+        self, col: int, rows: ty.Iterable[tuple[int, list[object]]]
+    ) -> None:
+        sheet = self.sheet
+        for row, data in rows:
+            sheet.span((row, col), emit_event=True).data = data
 
     def _on_delete(self, event: EventDataDict) -> None:
         if event.selected.type_ == "rows":

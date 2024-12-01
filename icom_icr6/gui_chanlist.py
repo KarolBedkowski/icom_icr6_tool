@@ -63,8 +63,7 @@ class Row(gui_genericlist.BaseRow):
 
             case "freq":  # freq
                 if val:
-                    if isinstance(val, str):
-                        val = int(val)
+                    assert isinstance(val, int)
 
                     if not chan.freq or chan.hide_channel:
                         chan.load_defaults(val)
