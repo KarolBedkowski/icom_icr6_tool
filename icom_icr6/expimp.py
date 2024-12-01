@@ -74,6 +74,9 @@ def export_channel_str(
 def import_channels_str(data: str) -> ty.Iterable[dict[str, object]]:
     inp = io.StringIO(data)
     reader = csv.DictReader(inp)
+    if "freq" not in (reader.fieldnames or ()):
+        raise ValueError
+
     for row in reader:
         # only freq is required
         if not row.get("freq"):
@@ -91,7 +94,11 @@ def export_table_as_string(data: list[list[object]]) -> str:
 
 def import_str_as_table(data: str) -> list[list[str]]:
     inp = io.StringIO(data)
-    dialect = csv.Sniffer().sniff(data)
+    try:
+        dialect = csv.Sniffer().sniff(data, delimiters="\t;,|")
+    except csv.Error:
+        dialect = "excel"  # type: ignore
+
     reader = csv.reader(inp, dialect)
     res = list(reader)
 
