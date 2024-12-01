@@ -182,7 +182,12 @@ class App(tk.Frame):
             self.load_icf(Path(fname))
 
     def load_icf(self, file: Path) -> None:
-        self._radio_memory.update_from(io.load_icf_file(file))
+        try:
+            self._radio_memory.update_from(io.load_icf_file(file))
+        except Exception as err:
+            messagebox.showerror("Load file error", str(err))
+            return
+
         self.__set_loaded_filename(file)
         self.__update_widgets()
         self.set_status(f"File {file} loaded")
@@ -206,9 +211,13 @@ class App(tk.Frame):
         )
 
         if fname:
+            try:
+                io.save_icf_file(Path(fname), self._radio_memory)
+            except Exception as err:
+                messagebox.showerror("Save file error", str(err))
+                return
+
             self.__set_loaded_filename(Path(fname))
-            assert self._last_file
-            io.save_icf_file(self._last_file, self._radio_memory)
             self.set_status(f"File {fname} saved")
 
     def __update_widgets(self) -> None:
@@ -280,14 +289,21 @@ class App(tk.Frame):
         if not fname:
             return
 
-        match what:
-            case "channels":
-                channels = self._radio_memory.get_active_channels()
-                expimp.export_channels_file(channels, Path(fname))
+        dstfile = Path(fname)
 
-            case "awchannels":
-                channels = self._radio_memory.get_autowrite_channels()
-                expimp.export_awchannels_file(channels, Path(fname))
+        try:
+            match what:
+                case "channels":
+                    channels = self._radio_memory.get_active_channels()
+                    expimp.export_channels_file(channels, dstfile)
+
+                case "awchannels":
+                    channels = self._radio_memory.get_autowrite_channels()
+                    expimp.export_awchannels_file(channels, dstfile)
+
+        except Exception as err:
+            messagebox.showerror("Export error", str(err))
+            return
 
 
 def start_gui() -> None:

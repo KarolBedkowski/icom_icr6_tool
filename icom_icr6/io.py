@@ -410,7 +410,8 @@ class OutOfSyncError(ValueError):
 
 
 class InvalidFileError(Exception):
-    pass
+    def __str__(self) -> str:
+        return "Invalid file"
 
 
 def load_icf_file(file: Path) -> model.RadioMemory:
