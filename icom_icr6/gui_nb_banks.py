@@ -286,27 +286,52 @@ class BanksPage(tk.Frame):
         self.__update_chan_list()
 
     def __on_channel_copy(self, _event: tk.Event) -> None:  # type: ignore
-        rows = self._chan_list.selected_rows_data()
-        if not rows:
+        selected = self._chan_list.sheet.get_currently_selected()
+        if not selected:
             return
 
-        channels = (chan for row in rows if (chan := row.channel))
-        clip = gui_model.Clipboard.instance()
-        clip.put(expimp.export_channel_str(channels))
+        res = None
+
+        if selected.type_ == "rows":
+            if rows := self._chan_list.selected_rows_data():
+                channels = (chan for row in rows if (chan := row.channel))
+                res = expimp.export_channel_str(channels)
+
+        elif selected.type_ == "cells" and (
+            data := self._chan_list.selected_data()
+        ):
+            res = expimp.export_table_as_string(data).strip()
+
+        if res:
+            gui_model.Clipboard.instance().put(res)
 
     def __on_channel_paste(self, _event: tk.Event) -> None:  # type: ignore
         selected_bank = self.selected_bank
         if selected_bank is None:
             return
 
-        sel_pos = self._chan_list.selection()
-        if not sel_pos:
+        sel = self._chan_list.selection()
+        if not sel:
             return
 
         clip = gui_model.Clipboard.instance()
-
+        data = ty.cast(str, clip.get())
         try:
-            rows = list(expimp.import_channels_str(ty.cast(str, clip.get())))
+            # try import whole channels
+            self.__on_channel_paste_channels(selected_bank, sel, data)
+        except ValueError:
+            # try import as plain data
+            self.__on_channel_paste_simple(data)
+        except Exception:
+            _LOG.exception("__on_channel_paste error")
+
+    def __on_channel_paste_channels(
+        self, selected_bank: int, sel_pos: tuple[int, ...], data: str
+    ) -> None:
+        try:
+            rows = list(expimp.import_channels_str(data))
+        except ValueError:
+            raise
         except Exception:
             _LOG.exception("import from clipboard error")
             return
@@ -334,6 +359,17 @@ class BanksPage(tk.Frame):
                     break
 
         self.__update_chan_list()
+
+    def __on_channel_paste_simple(self, data: str) -> None:
+        try:
+            rows = expimp.import_str_as_table(data)
+        except ValueError:
+            raise
+        except Exception:
+            _LOG.exception("simple import from clipboard error")
+            raise
+
+        self._chan_list.paste(rows)
 
     def __paste_channel(
         self,
