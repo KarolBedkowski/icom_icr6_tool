@@ -225,13 +225,26 @@ class ScanLinksPage(tk.Frame):
         self.__update_scan_edges()
 
     def __on_scan_edge_copy(self, _event: tk.Event) -> None:  # type: ignore
-        sel = self._scan_links_edges.selection()
-        if not sel:
+        selected = self._scan_links_edges.sheet.get_currently_selected()
+        if not selected:
             return
 
-        ses = (self._radio_memory.get_scan_edge(row) for row in sel)
-        clip = gui_model.Clipboard.instance()
-        clip.put(expimp.export_scan_edges_str(ses))
+        res = None
+
+        if selected.type_ == "rows":
+            if rows := self._scan_links_edges.selected_rows():
+                ses = (
+                    self._radio_memory.get_scan_edge(se_num) for se_num in rows
+                )
+                res = expimp.export_scan_edges_str(ses)
+
+        elif selected.type_ == "cells" and (
+            data := self._scan_links_edges.selected_data()
+        ):
+            res = expimp.export_table_as_string(data).strip()
+
+        if res:
+            gui_model.Clipboard.instance().put(res)
 
     def __on_scan_edge_paste(self, _event: tk.Event) -> None:  # type: ignore
         sel = self._scan_links_edges.selection()
@@ -239,9 +252,32 @@ class ScanLinksPage(tk.Frame):
             return
 
         clip = gui_model.Clipboard.instance()
-
+        data = ty.cast(str, clip.get())
         try:
-            rows = list(expimp.import_scan_edges_str(ty.cast(str, clip.get())))
+            # try import whole scan edge
+            self.__on_scan_edge_paste_se(sel, data)
+        except ValueError:
+            # try import as plain data
+            self.__on_scan_edge_paste_simple(data)
+        except Exception:
+            _LOG.exception("__on_channel_paste error")
+
+    def __on_scan_edge_paste_simple(self, data: str) -> None:
+        try:
+            rows = expimp.import_str_as_table(data)
+        except ValueError:
+            raise
+        except Exception:
+            _LOG.exception("simple import from clipboard error")
+            raise
+
+        self._scan_links_edges.paste(rows)
+
+    def __on_scan_edge_paste_se(self, sel: tuple[int, ...], data: str) -> None:
+        try:
+            rows = list(expimp.import_scan_edges_str(data))
+        except ValueError:
+            raise
         except Exception:
             _LOG.exception("import from clipboard error")
             return

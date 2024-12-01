@@ -190,6 +190,10 @@ def export_scan_edges_str(ses: ty.Iterable[model.ScanEdge]) -> str:
 def import_scan_edges_str(data: str) -> ty.Iterable[dict[str, object]]:
     inp = io.StringIO(data)
     reader = csv.DictReader(inp)
+    fields = reader.fieldnames or ()
+    if not fields or "start" not in fields or "end" not in fields:
+        raise ValueError
+
     for row in reader:
         if not all(f in row for f in _SCAN_EDGE_FIELDS):
             raise ValueError
