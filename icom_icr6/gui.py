@@ -182,9 +182,15 @@ class App(tk.Frame):
 
     def load_icf(self, file: Path) -> None:
         try:
-            self._radio_memory.update_from(io.load_icf_file(file))
+            mem = io.load_icf_file(file)
+            mem.validate()
+            self._radio_memory.update_from(mem)
+        except ValueError as err:
+            messagebox.showerror(
+                "Load file error", f"Loaded data are invalid: {err}"
+            )
         except Exception as err:
-            messagebox.showerror("Load file error", str(err))
+            messagebox.showerror("Load file error", f"Load error: {err}")
             return
 
         self.__set_loaded_filename(file)
@@ -249,7 +255,17 @@ class App(tk.Frame):
     def __on_clone_from_radio(self, _event: tk.Event | None = None) -> None:  # type: ignore
         dlg = gui_dlg_clone.CloneFromRadioDialog(self)
         if dlg.radio_memory:
-            self._radio_memory.update_from(dlg.radio_memory)
+            mem = dlg.radio_memory
+            try:
+                mem.validate()
+            except ValueError as err:
+                messagebox.showerror(
+                    "Clone from radio error",
+                    f"Cloned data are invalid: {err}",
+                )
+                return
+
+            self._radio_memory.update_from(mem)
             self._safe_for_clone = True
             self.__set_loaded_filename(None)
             self.__update_widgets()

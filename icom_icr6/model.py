@@ -605,8 +605,14 @@ class BankChannels:
         return None
 
     def set(self, channels: ty.Iterable[Channel]) -> None:
+        chs = self.channels
         for chan in channels:
-            self.channels[chan.bank_pos] = chan.number
+            if chs[chan.bank_pos] is None:
+                chs[chan.bank_pos] = chan.number
+            else:
+                _LOG.debug(
+                    "duplicated channel in bank on pos: %d", chan.bank_pos
+                )
 
 
 @dataclass
@@ -1007,7 +1013,7 @@ class RadioMemory:
         self.comment = ""
 
         # this create all lists etc
-        self.parse_data()
+        self.load_memory()
 
     def reset(self) -> None:
         pass
@@ -1018,14 +1024,13 @@ class RadioMemory:
         self.file_comment = rm.file_comment
         self.file_maprev = rm.file_maprev
         self.file_etcdata = rm.file_etcdata
-        self.validate()
-        self.parse_data()
+        self.load_memory()
 
-    def update(self, addr: int, length: int, data: bytes) -> None:
+    def update_mem_region(self, addr: int, length: int, data: bytes) -> None:
         assert len(data) == length
         self.mem[addr : addr + length] = data
 
-    def dump(self, step: int = 16) -> ty.Iterator[str]:
+    def dump_memory(self, step: int = 16) -> ty.Iterator[str]:
         """Dump data in icf file format."""
         for idx in range(0, 0x6E60, step):
             data = self.mem[idx : idx + step]
@@ -1033,7 +1038,7 @@ class RadioMemory:
             res = f"{idx:04x}{step:02x}{data_hex}"
             yield res.upper()
 
-    def read(self, line: str) -> None:
+    def update_from_icf_file(self, line: str) -> None:
         """Read line from icf file"""
         addr = int(line[0:4], 16)
         size = int(line[4:6], 16)
@@ -1056,57 +1061,31 @@ class RadioMemory:
 
         _LOG.debug("region: %r", self.file_etcdata)
 
-    def parse_data(self) -> None:
-        self.channels = list(
-            map(self._load_channel, range(consts.NUM_CHANNELS))
-        )
-
+    def load_memory(self) -> None:
+        self.channels = list(self._load_channels())
         self.awchannels = list(self._load_autowrite_channels())
         self.awchannels.sort()
         for idx, ch in enumerate(self.awchannels):
             ch.number = idx
 
-        self.banks = list(map(self._load_bank, range(consts.NUM_BANKS)))
+        self.banks = list(self._load_banks())
         self.bank_links = self._load_bank_links()
 
-        self.scan_edges = list(
-            map(self._load_scan_edge, range(consts.NUM_SCAN_EDGES))
-        )
-        self.scan_links = list(
-            map(self._load_scan_link, range(consts.NUM_SCAN_LINKS))
-        )
+        self.scan_edges = list(self._load_scan_edge())
+        self.scan_links = list(self._load_scan_links())
 
         self.settings = self._load_settings()
         self.comment = self._load_comment()
 
     def commit(self) -> None:
-        """Write data to mem. """
-        for chan in self.channels:
-            self._save_channel(chan)
-
-        for se in self.scan_edges:
-            self._save_scan_edge(se)
-
-        for sl in self.scan_links:
-            self._save_scan_link(sl)
-
-        for b in self.banks:
-            self._save_bank(b)
-
-        self._save_bank_links(self.bank_links)
-
-        self._save_settings(self.settings)
-        self._save_comment(self.comment)
-
-    def _load_channel(self, idx: int) -> Channel:
-        start = idx * 16
-        cflags_start = idx * 2 + 0x5F80
-
-        return Channel.from_data(
-            idx,
-            self.mem[start : start + 16],
-            self.mem[cflags_start : cflags_start + 2],
-        )
+        """Write data to mem."""
+        self._save_channels()
+        self._save_scan_edges()
+        self._save_scan_links()
+        self._save_banks()
+        self._save_bank_links()
+        self._save_settings()
+        self._save_comment()
 
     def set_channel(self, chan: Channel) -> None:
         _LOG.debug("set_channel: %r", chan)
@@ -1115,23 +1094,14 @@ class RadioMemory:
 
         chan.validate()
         self.channels[chan.number] = chan
-        # remove other channels from this position
 
         if chan.bank != consts.BANK_NOT_SET:
-            for c in self._get_channels_in_bank(chan.bank):
-                if c.number != chan.number and c.bank_pos == chan.bank_pos:
-                    c.bank = consts.BANK_NOT_SET
+            return
 
-    def _save_channel(self, chan: Channel) -> None:
-        mv = memoryview(self.mem)
-
-        idx = chan.number
-        start = idx * 16
-        cflags_start = idx * 2 + 0x5F80
-
-        chan.to_data(
-            mv[start : start + 16], mv[cflags_start : cflags_start + 2]
-        )
+        # remove other channels from this position bank
+        for c in self._get_channels_in_bank(chan.bank):
+            if c.number != chan.number and c.bank_pos == chan.bank_pos:
+                c.clear_bank()
 
     def find_first_hidden_channel(self, start: int = 0) -> Channel | None:
         for chan in self.channels[start:]:
@@ -1139,6 +1109,126 @@ class RadioMemory:
                 return chan
 
         return None
+
+    def set_scan_edge(self, se: ScanEdge) -> None:
+        _LOG.debug("set_scan_edge: %r", se)
+        se.validate()
+        self.scan_edges[se.idx] = se
+
+    def get_active_channels(self) -> ty.Iterable[Channel]:
+        return (
+            chan
+            for chan in self.channels
+            if not chan.hide_channel and chan.freq
+        )
+
+    def get_bank_channels(self, bank_idx: int) -> BankChannels:
+        """this return only first channel on bank position."""
+        _LOG.debug("loading bank channels %d", bank_idx)
+        if bank_idx < 0 or bank_idx > consts.NUM_BANKS - 1:
+            raise IndexError
+
+        bc = BankChannels()
+        bc.set(self._get_channels_in_bank(bank_idx))
+        return bc
+
+    def set_bank(self, bank: Bank) -> None:
+        self.banks[bank.idx] = bank
+
+    def clear_bank_pos(
+        self, bank: int, bank_pos: int, *, channum: int | None = None
+    ) -> bool:
+        _LOG.debug(
+            "clear_bank_pos: %d, %d, channum=%r", bank, bank_pos, channum
+        )
+
+        if channum:
+            ch = self.channels[channum]
+            if ch.bank != bank and ch.bank_pos != bank_pos:
+                _LOG.error(
+                    "wrong bank; exp=%r/%r; chan=%r", bank, bank_pos, ch
+                )
+                return False
+
+            ch.clear_bank()
+            return True
+
+        deleted = False
+
+        for ch in self.get_active_channels():
+            if ch.bank == bank and ch.bank_pos == bank_pos:
+                ch.clear_bank()
+                deleted = True
+
+        if not deleted:
+            _LOG.debug("clear_bank_pos: no chan in pos %r/%r", bank, bank_pos)
+            return False
+
+        return True
+
+    def get_dupicated_bank_pos(self) -> set[int]:
+        """Return list of channels that occupy one position in bank."""
+        banks_pos: defaultdict[tuple[int, int], list[int]] = defaultdict(list)
+
+        for channum, chan in enumerate(self.channels):
+            if chan.bank != consts.BANK_NOT_SET and not chan.hide_channel:
+                banks_pos[(chan.bank, chan.bank_pos)].append(channum)
+
+        return set(itertools.chain.from_iterable(banks_pos.values()))
+
+    def is_bank_pos_duplicted(
+        self, bank: int, bank_pos: int, channum: int
+    ) -> bool:
+        for idx, chan in enumerate(self.channels):
+            if (
+                channum != idx
+                and chan.bank == bank
+                and chan.bank_pos == bank_pos
+                and not chan.hide_channel
+            ):
+                return True
+
+        return False
+
+    def set_scan_link(self, sl: ScanLink) -> None:
+        self.scan_links[sl.idx] = sl
+
+    def set_settings(self, sett: RadioSettings) -> None:
+        self.settings = sett
+
+    def set_bank_links(self, bl: BankLinks) -> None:
+        self.bank_links = bl
+
+    def set_comment(self, comment: str) -> None:
+        self.comment = comment.strip()
+
+    def remap_scan_links(self, mapping: dict[int, int]) -> None:
+        for sl in self.scan_links:
+            sl.remap_edges(mapping)
+
+    def _load_channels(self) -> ty.Iterable[Channel]:
+        for idx in range(consts.NUM_CHANNELS):
+            start = idx * 16
+            cflags_start = idx * 2 + 0x5F80
+
+            yield Channel.from_data(
+                idx,
+                self.mem[start : start + 16],
+                self.mem[cflags_start : cflags_start + 2],
+            )
+
+    def _save_channels(self) -> None:
+        mv = memoryview(self.mem)
+
+        for idx, chan in enumerate(self.channels):
+            assert idx == chan.number
+
+            start = idx * 16
+            cflags_start = idx * 2 + 0x5F80
+
+            chan.to_data(
+                mv[start : start + 16], mv[cflags_start : cflags_start + 2]
+            )
 
     def _load_autowrite_channels(self) -> ty.Iterable[Channel]:
         # load position map
@@ -1155,29 +1245,22 @@ class RadioMemory:
             if (cpos := chan_pos[idx]) != 255:
                 start = idx * 16 + 0x5140
                 data = mv[start : start + 16]
-                chan = Channel.from_data(cpos, data, None)
-                yield chan
+                yield Channel.from_data(cpos, data, None)
 
-    def _load_scan_edge(self, idx: int) -> ScanEdge:
-        start = 0x5DC0 + idx * 16
-        return ScanEdge.from_data(idx, self.mem[start : start + 16])
-
-    def set_scan_edge(self, se: ScanEdge) -> None:
-        _LOG.debug("set_scan_edge: %r", se)
-        se.validate()
-        self.scan_edges[se.idx] = se
-
-    def _save_scan_edge(self, se: ScanEdge) -> None:
-        start = 0x5DC0 + se.idx * 16
+    def _load_scan_edge(self) -> ty.Iterable[ScanEdge]:
         mv = memoryview(self.mem)
-        se.to_data(mv[start : start + 16])
 
-    def get_active_channels(self) -> ty.Iterable[Channel]:
-        return (
-            chan
-            for chan in self.channels
-            if not chan.hide_channel and chan.freq
-        )
+        for idx in range(consts.NUM_SCAN_EDGES):
+            start = 0x5DC0 + idx * 16
+            yield ScanEdge.from_data(idx, mv[start : start + 16])
+
+    def _save_scan_edges(self) -> None:
+        mv = memoryview(self.mem)
+
+        for idx, se in enumerate(self.scan_edges):
+            assert idx == se.idx
+            start = 0x5DC0 + se.idx * 16
+            se.to_data(mv[start : start + 16])
 
     # not used due to update via channel
     # def _get_channel_flags(self, idx: int) -> ChannelFlags:
@@ -1204,135 +1287,62 @@ class RadioMemory:
             if chan.bank == bank and not chan.hide_channel:
                 yield chan
 
-    def _load_bank(self, idx: int) -> Bank:
-        start = 0x6D10 + idx * 8
-        return Bank.from_data(idx, self.mem[start : start + 8])
+    def _load_banks(self) -> ty.Iterable[Bank]:
+        for idx in range(consts.NUM_BANKS):
+            start = 0x6D10 + idx * 8
+            yield Bank.from_data(idx, self.mem[start : start + 8])
 
-    def get_bank_channels(self, bank_idx: int) -> BankChannels:
-        _LOG.debug("loading bank channels %d", bank_idx)
-        if bank_idx < 0 or bank_idx > consts.NUM_BANKS - 1:
-            raise IndexError
-
-        # TODO: confilicts / doubles
-        bc = BankChannels()
-        bc.set(self._get_channels_in_bank(bank_idx))
-        return bc
-
-    def set_bank(self, bank: Bank) -> None:
-        self.banks[bank.idx] = bank
-
-    def _save_bank(self, bank: Bank) -> None:
-        idx = bank.idx
+    def _save_banks(self) -> None:
         mv = memoryview(self.mem)
-        start = 0x6D10 + idx * 8
-        bank.to_data(mv[start : start + 8])
+        for idx, bank in enumerate(self.banks):
+            assert idx == bank.idx
+            start = 0x6D10 + idx * 8
+            bank.to_data(mv[start : start + 8])
 
-    def get_dupicated_bank_pos(self) -> set[int]:
-        """Return list of channels that occupy one position in bank."""
+    def _load_scan_links(self) -> ty.Iterable[ScanLink]:
+        for idx in range(consts.NUM_SCAN_LINKS):
+            start = 0x6DC0 + idx * 8
+            # edges
+            estart = 0x6C2C + 4 * idx
+
+            yield ScanLink.from_data(
+                idx, self.mem[start : start + 8], self.mem[estart : estart + 4]
+            )
+
+    def _save_scan_links(self) -> None:
         mv = memoryview(self.mem)
-        mem_flags = mv[0x5F80:]
-        banks_pos: defaultdict[tuple[int, int], list[int]] = defaultdict(list)
 
-        for channum in range(consts.NUM_CHANNELS):
-            start = channum * 2
-            cf = ChannelFlags.from_data(channum, mem_flags[start : start + 2])
-            if cf.bank != consts.BANK_NOT_SET and not cf.hide_channel:
-                banks_pos[(cf.bank, cf.bank_pos)].append(channum)
-
-        return set(itertools.chain.from_iterable(banks_pos.values()))
-
-    def is_bank_pos_duplicted(
-        self, bank: int, bank_pos: int, channum: int
-    ) -> bool:
-        mv = memoryview(self.mem)
-        mem_flags = mv[0x5F80:]
-
-        for cn in range(consts.NUM_CHANNELS):
-            if channum == cn:
-                continue
-
-            start = channum * 2
-            cf = ChannelFlags.from_data(channum, mem_flags[start : start + 2])
-            if (
-                cf.bank == bank
-                and cf.bank_pos == bank_pos
-                and not cf.hide_channel
-            ):
-                return True
-
-        return False
-
-    def _load_scan_link(self, idx: int) -> ScanLink:
-        start = 0x6DC0 + idx * 8
-        # edges
-        estart = 0x6C2C + 4 * idx
-
-        return ScanLink.from_data(
-            idx, self.mem[start : start + 8], self.mem[estart : estart + 4]
-        )
-
-    def clear_bank_pos(self, bank: int, bank_pos: int) -> bool:
-        _LOG.debug("clear_bank_pos: %d, %d", bank, bank_pos)
-        bc = self.get_bank_channels(bank)
-        channum = bc[bank_pos]
-        if channum is None:
-            _LOG.debug("clear_bank_pos: no chan in pos %d", bank_pos)
-            return False
-
-        _LOG.debug("clear_bank_pos: chan %d in pos %d", channum, bank_pos)
-        ch = self.channels[channum]
-        ch.bank = consts.BANK_NOT_SET
-        ch.bank_pos = 0
-
-        return True
-
-    def set_scan_link(self, sl: ScanLink) -> None:
-        self.scan_links[sl.idx] = sl
-
-    def _save_scan_link(self, sl: ScanLink) -> None:
-        mv = memoryview(self.mem)
-        start = 0x6DC0 + sl.idx * 8
-        # edges mapping
-        estart = 0x6C2C + 4 * sl.idx
-        sl.to_data(mv[start : start + 8], mv[estart : estart + 4])
+        for idx, sl in enumerate(self.scan_links):
+            assert idx == sl.idx
+            start = 0x6DC0 + idx * 8
+            # edges mapping
+            estart = 0x6C2C + 4 * idx
+            sl.to_data(mv[start : start + 8], mv[estart : estart + 4])
 
     def _load_settings(self) -> RadioSettings:
         return RadioSettings.from_data(self.mem[0x6BD0 : 0x6BD0 + 64])
 
-    def set_settings(self, sett: RadioSettings) -> None:
-        self.settings = sett
-
-    def _save_settings(self, sett: RadioSettings) -> None:
+    def _save_settings(self) -> None:
         mv = memoryview(self.mem)
-        sett.to_data(mv[0x6BD0 : 0x6BD0 + 64])
+        self.settings.to_data(mv[0x6BD0 : 0x6BD0 + 64])
 
     def _load_bank_links(self) -> BankLinks:
         return BankLinks.from_data(self.mem[0x6C28 : 0x6C28 + 3])
 
-    def set_bank_links(self, bl: BankLinks) -> None:
-        self.bank_links = bl
-
-    def _save_bank_links(self, bl: BankLinks) -> None:
+    def _save_bank_links(self) -> None:
         mv = memoryview(self.mem)
-        bl.to_data(mv[0x6C28 : 0x6C28 + 3])
+        self.bank_links.to_data(mv[0x6C28 : 0x6C28 + 3])
 
     def _load_comment(self) -> str:
         return self.mem[0x6D00 : 0x6D00 + 16].decode().rstrip()
 
-    def set_comment(self, comment: str) -> None:
-        self.comment = comment.strip()
-
-    def _save_comment(self, comment: str) -> None:
-        cmt = fix_comment(comment).ljust(16).encode()
+    def _save_comment(self) -> None:
+        cmt = fix_comment(self.comment).ljust(16).encode()
         mv = memoryview(self.mem)
         mv[0x6D00 : 0x6D00 + 16] = cmt
 
     def is_usa_model(self) -> bool:
         return self.file_etcdata == "0003"
-
-    def remap_scan_links(self, mapping: dict[int, int]) -> None:
-        for sl in self.scan_links:
-            sl.remap_edges(mapping)
 
 
 def validate_frequency(inp: str | int) -> bool:

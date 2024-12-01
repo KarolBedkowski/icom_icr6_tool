@@ -274,7 +274,7 @@ class Radio:
                     raise ChecksumError
 
                 _LOG.debug("update mem: addr=%d, len=%d", daddr, length)
-                mem.update(daddr, length, data)
+                mem.update_mem_region(daddr, length, data)
 
             case _:
                 _LOG.error(
@@ -445,11 +445,11 @@ def load_icf_file(file: Path) -> model.RadioMemory:
                 continue
 
             if line := line.strip():
-                mem.read(line)
+                mem.update_from_icf_file(line)
 
     _LOG.info("loading %s done", file)
     mem.validate()
-    mem.parse_data()
+    mem.load_memory()
     return mem
 
 
@@ -459,7 +459,7 @@ def load_raw_memory(file: Path) -> model.RadioMemory:
         mem.mem = bytearray(inp.read())
 
     mem.validate()
-    mem.parse_data()
+    mem.load_memory()
     return mem
 
 
@@ -475,7 +475,7 @@ def save_icf_file(file: Path, mem: model.RadioMemory) -> None:
         out.write(f"#MapRev={mem.file_maprev}\r\n")
         out.write(f"#EtcData={mem.file_etcdata}\r\n")
         # data
-        for line in mem.dump():
+        for line in mem.dump_memory():
             out.write(line)
             out.write("\r\n")
 

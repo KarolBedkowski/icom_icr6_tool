@@ -108,7 +108,7 @@ class ScanLinksPage(tk.Frame):
 
         sls = self._scan_links_list
         sls.delete(0, sls.size())
-        for idx, sl in enumerate(10, self._radio_memory.scan_links):
+        for idx, sl in enumerate(self._radio_memory.scan_links):
             name = f"{idx}: {sl.name}" if sl.name else str(idx)
             sls.insert(tk.END, name)
 
