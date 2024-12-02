@@ -8,7 +8,7 @@ import logging
 import tkinter as tk
 import typing as ty
 from collections import UserList
-from itertools import starmap
+from itertools import cycle, starmap
 
 from tksheet import (
     EventDataDict,
@@ -301,9 +301,23 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
             return
 
         box = currently_selected.box
+        csel_col = currently_selected.column
         column = self.sheet.data_c(currently_selected.column)
-        for row in range(box.from_r, box.upto_r):
-            self.sheet.span((row, column), emit_event=True).data = data
+        end_row = max(len(data) + box.from_r, box.upto_r)
+        cdata = cycle(data)
+
+        for row in range(box.from_r, end_row):
+            row_data = next(cdata)
+            # validate
+            ev = EventDataDict()
+            ev.row = row
+            res_data = []
+            for col, value in enumerate(row_data, csel_col):
+                ev.column = col
+                ev.value = value
+                res_data.append(self._on_validate_edits(ev))
+
+            self.sheet.span((row, column), emit_event=True).data = res_data
 
     def set_data_rows(
         self, col: int, rows: ty.Iterable[tuple[int, list[object]]]
