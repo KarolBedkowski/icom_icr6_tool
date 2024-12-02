@@ -70,6 +70,9 @@ class Row(gui_genericlist.BaseRow):
                         chan.load_defaults(val)
 
                 chan.freq = val or 0  # type: ignore
+                chan.tuning_step = model.fix_tunning_step(
+                    chan.freq, chan.tuning_step
+                )
                 chan.hide_channel = not val
                 self.data = self._from_channel(chan)
                 return

@@ -201,7 +201,7 @@ def tuning_steps_for_freq(freq: int) -> list[str]:
     VHF Air band (8.33 kHz) and in the AM broadcast band (9 kHz).
     """
 
-    if freq < 1_620_000:
+    if 500_000 <= freq <= 1_620_000:
         return AVAIL_STEPS_BROADCAST
 
     if 118_000_000 <= freq <= 135_995_000:
@@ -228,3 +228,20 @@ def default_mode_for_freq(freq: int) -> int:
 
 def is_air_band(freq: int) -> bool:
     return 108_000_000 <= freq <= 136_991_666
+
+
+def default_tuning_step_for_freq(freq: int) -> int:
+    if 500_000 <= freq <= 1_620_000:
+        return STEPS.index("9")
+
+    if 770_000_000 <= freq <= 960_000_000:
+        return STEPS.index("12.5")
+
+    if 68_000_000 <= freq <= 108_000_000:
+        # WFM
+        return STEPS.index("50")
+
+    if freq > 30_000_00:
+        return STEPS.index("25")
+
+    return STEPS.index("5")

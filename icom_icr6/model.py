@@ -571,7 +571,7 @@ class Channel:
         self.mode = consts.default_mode_for_freq(freq) if freq else 0
         self.af_filter = False
         self.attenuator = False
-        self.tuning_step = 0  # TODO: default
+        self.tuning_step = consts.default_tuning_step_for_freq(freq)
         self.duplex = 0
         self.offset = 0
         self.tone_mode = 0
@@ -1092,6 +1092,7 @@ class RadioMemory:
                 c.clear_bank()
                 res = True
 
+        return res
 
     def find_first_hidden_channel(self, start: int = 0) -> Channel | None:
         for chan in self.channels[start:]:
@@ -1511,3 +1512,17 @@ def fix_comment(name: str) -> str:
     )
     name = "".join(c for c in name if c.upper() in consts.VALID_CHAR)
     return name[:16]
+
+
+def fix_tunning_step(freq: int, tuning_step: int) -> int:
+    if not freq:
+        return tuning_step
+
+    ts = consts.STEPS[tuning_step]
+    if ts == "9" and not (500_000 <= freq <= 1_620_000):
+        return consts.default_tuning_step_for_freq(freq)
+
+    if ts == "8.33" and not (118_000_000 <= freq <= 135_995_000):
+        return consts.default_tuning_step_for_freq(freq)
+
+    return tuning_step
