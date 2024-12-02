@@ -414,11 +414,21 @@ class InvalidFileError(Exception):
         return "Invalid file"
 
 
+def _update_from_icf_file(mv: memoryview, line: str) -> None:
+    """Read line from icf file"""
+    addr = int(line[0:4], 16)
+    size = int(line[4:6], 16)
+    data_raw = line[6:]
+    assert size * 2 == len(data_raw)
+    data = binascii.unhexlify(data_raw)
+    mv[addr : addr + size] = data
+
+
 def load_icf_file(file: Path) -> model.RadioMemory:
     """Load icf file as RadioMemory."""
-    mem = model.RadioMemory()
-
     _LOG.info("loading %s", file)
+    mem = model.RadioMemory()
+    mv = memoryview(mem.mem)
 
     with file.open("rt") as inp:
         try:
@@ -445,11 +455,12 @@ def load_icf_file(file: Path) -> model.RadioMemory:
                 continue
 
             if line := line.strip():
-                mem.update_from_icf_file(line)
+                _update_from_icf_file(mv, line)
 
     _LOG.info("loading %s done", file)
     mem.validate()
     mem.load_memory()
+
     return mem
 
 
@@ -461,6 +472,17 @@ def load_raw_memory(file: Path) -> model.RadioMemory:
     mem.validate()
     mem.load_memory()
     return mem
+
+
+def _dump_memory(mem: bytearray, step: int = 16) -> ty.Iterator[str]:
+    """Dump data in icf file format."""
+
+    mv = memoryview(mem)
+    for idx in range(0, 0x6E60, step):
+        data = mv[idx : idx + step]
+        data_hex = binascii.hexlify(bytes(data)).decode()
+        res = f"{idx:04x}{step:02x}{data_hex}"
+        yield res.upper()
 
 
 def save_icf_file(file: Path, mem: model.RadioMemory) -> None:
@@ -475,7 +497,8 @@ def save_icf_file(file: Path, mem: model.RadioMemory) -> None:
         out.write(f"#MapRev={mem.file_maprev}\r\n")
         out.write(f"#EtcData={mem.file_etcdata}\r\n")
         # data
-        for line in mem.dump_memory():
+
+        for line in _dump_memory(mem.mem):
             out.write(line)
             out.write("\r\n")
 
@@ -485,4 +508,4 @@ def save_icf_file(file: Path, mem: model.RadioMemory) -> None:
 def save_raw_memory(file: Path, mem: model.RadioMemory) -> None:
     """Write RadioMemory to binary file."""
     with file.open("wb") as out:
-        out.write(bytes(mem.mem))
+        out.write(mem.mem)

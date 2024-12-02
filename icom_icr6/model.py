@@ -1031,23 +1031,6 @@ class RadioMemory:
         assert len(data) == length
         self.mem[addr : addr + length] = data
 
-    def dump_memory(self, step: int = 16) -> ty.Iterator[str]:
-        """Dump data in icf file format."""
-        for idx in range(0, 0x6E60, step):
-            data = self.mem[idx : idx + step]
-            data_hex = binascii.hexlify(bytes(data)).decode()
-            res = f"{idx:04x}{step:02x}{data_hex}"
-            yield res.upper()
-
-    def update_from_icf_file(self, line: str) -> None:
-        """Read line from icf file"""
-        addr = int(line[0:4], 16)
-        size = int(line[4:6], 16)
-        data_raw = line[6:]
-        assert size * 2 == len(data_raw)
-        data = binascii.unhexlify(data_raw)
-        self.mem[addr : addr + size] = data
-
     def validate(self) -> None:
         if (memlen := len(self.mem)) != consts.MEM_SIZE:
             err = f"invalid memory size: {memlen}"
