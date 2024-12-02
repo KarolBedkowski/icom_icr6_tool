@@ -117,7 +117,9 @@ class ChannelsPage(tk.Frame):
     ) -> None:
         for rec in rows:
             _LOG.debug("__do_update_channels: %r", rec)
-            self._radio_memory.set_channel(rec.channel)
+            self.__need_full_refresh |= self._radio_memory.set_channel(
+                rec.channel
+            )
 
         if self.__need_full_refresh:
             self.__update_chan_list()

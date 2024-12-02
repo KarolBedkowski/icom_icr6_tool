@@ -1071,7 +1071,8 @@ class RadioMemory:
         self._save_settings()
         self._save_comment()
 
-    def set_channel(self, chan: Channel) -> None:
+    def set_channel(self, chan: Channel) -> bool:
+        """Set channel. return True when other channels are also changed."""
         _LOG.debug("set_channel: %r", chan)
         if not chan.freq or chan.hide_channel:
             chan.bank = consts.BANK_NOT_SET
@@ -1080,13 +1081,17 @@ class RadioMemory:
         self.channels[chan.number] = chan
         chan.updated = True
 
-        if chan.bank != consts.BANK_NOT_SET:
-            return
+        if chan.bank == consts.BANK_NOT_SET:
+            return False
 
         # remove other channels from this position bank
+        res = False
         for c in self._get_channels_in_bank(chan.bank):
             if c.number != chan.number and c.bank_pos == chan.bank_pos:
+                _LOG.debug("set_channel clear bank in chan %r", c)
                 c.clear_bank()
+                res = True
+
 
     def find_first_hidden_channel(self, start: int = 0) -> Channel | None:
         for chan in self.channels[start:]:
