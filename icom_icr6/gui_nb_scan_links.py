@@ -130,7 +130,10 @@ class ScanLinksPage(tk.Frame):
 
         self._scan_links_edges.set_data(data)
 
-    def __on_select_scan_link(self, _event: tk.Event | None = None) -> None:  # type: ignore
+    def __on_select_scan_link(self, event: tk.Event | None = None) -> None:  # type: ignore
+        if event:
+            self._scan_links_edges.reset()
+
         sel_sl = self._scan_links_list.curselection()  # type: ignore
         if not sel_sl:
             self.__disable_widgets()

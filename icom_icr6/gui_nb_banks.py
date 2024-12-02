@@ -35,7 +35,7 @@ class BanksPage(tk.Frame):
         pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
         banks = self._banks_list = tk.Listbox(pw, selectmode=tk.SINGLE)
 
-        banks.bind("<<ListboxSelect>>", self.__update_chan_list)
+        banks.bind("<<ListboxSelect>>", self.__on_bank_select)
         pw.add(banks, weight=0)
 
         frame = tk.Frame(pw)
@@ -99,6 +99,10 @@ class BanksPage(tk.Frame):
         self._btn_sort.pack(side=tk.LEFT)
 
         bframe.pack(side=tk.BOTTOM, fill=tk.X, ipady=6)
+
+    def __on_bank_select(self, _event: tk.Event) -> None:  # type: ignore
+        self._chan_list.reset()
+        self.__update_chan_list()
 
     def __update_banks_list(self) -> None:
         selected_bank = self.selected_bank

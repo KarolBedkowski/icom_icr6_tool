@@ -113,6 +113,9 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
         self.on_record_update: RecordActionCallback[T] | None = None
         self.on_record_selected: RecordSelectedCallback[T] | None = None
 
+    def reset(self) -> None:
+        self.sheet.deselect_any(rows=None, columns=None)
+
     @property
     def data(self) -> ty.Iterable[T | None]:
         for r in self.sheet.data:
@@ -176,7 +179,7 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
             _LOG.error("unknown column: %s", colname)
 
     def _on_sheet_modified(self, event: EventDataDict) -> None:
-        _LOG.debug("_on_sheet_modified: %r", event)
+        # _LOG.debug("_on_sheet_modified: %r", event)
 
         data: set[T] = set()
 

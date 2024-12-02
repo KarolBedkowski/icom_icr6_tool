@@ -32,7 +32,7 @@ class ChannelsPage(tk.Frame):
         pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
         self._groups_list = tk.Listbox(pw, selectmode=tk.SINGLE)
         self._groups_list.insert(tk.END, *gui_model.CHANNEL_RANGES)
-        self._groups_list.bind("<<ListboxSelect>>", self.__update_chan_list)
+        self._groups_list.bind("<<ListboxSelect>>", self.__on_group_select)
         pw.add(self._groups_list, weight=0)
 
         frame = tk.Frame(pw)
@@ -80,6 +80,10 @@ class ChannelsPage(tk.Frame):
         self._btn_fill.pack(side=tk.LEFT)
 
         bframe.pack(side=tk.BOTTOM, fill=tk.X, ipady=6)
+
+    def __on_group_select(self, _event: tk.Event) -> None:  # type: ignore
+        self._chan_list.reset()
+        self.__update_chan_list()
 
     def __on_channel_update(
         self, action: str, rows: ty.Collection[gui_chanlist.Row]
