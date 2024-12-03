@@ -15,7 +15,7 @@ import unicodedata
 from collections import abc, defaultdict
 from dataclasses import dataclass, field
 
-from . import coding, consts
+from . import coding, consts, validators
 
 _LOG = logging.getLogger(__name__)
 DEBUG = True
@@ -437,7 +437,7 @@ class Channel:
         cflags[1] = self.bank_pos
 
     def validate(self) -> None:
-        if not validate_frequency(self.freq):
+        if not validators.validate_frequency(self.freq):
             raise ValidateError("freq", self.freq)
 
         _is_valid_index(consts.MODES, self.mode, "mode")
@@ -445,7 +445,7 @@ class Channel:
         _is_valid_index(consts.SKIPS, self.skip, "skip")
 
         _is_valid_index(consts.DUPLEX_DIRS, self.duplex, "duplex")
-        if not validate_offset(self.freq, self.offset):
+        if not validators.validate_offset(self.freq, self.offset):
             raise ValidateError("offset", self.offset)
 
         _is_valid_index(consts.TONE_MODES, self.tone_mode, "tone mode")
@@ -460,7 +460,7 @@ class Channel:
             raise ValidateError("bank", self.bank)
 
         try:
-            validate_name(self.name)
+            validators.validate_name(self.name)
         except ValueError as err:
             raise ValidateError("name", self.name) from err
 
@@ -793,10 +793,10 @@ class ScanEdge:
         if self.idx < 0 or self.idx >= consts.NUM_SCAN_EDGES:
             raise ValidateError("idx", self.idx)
 
-        if not validate_frequency(self.start):
+        if not validators.validate_frequency(self.start):
             raise ValidateError("idx", self.start)
 
-        if not validate_frequency(self.end):
+        if not validators.validate_frequency(self.end):
             raise ValidateError("freq", self.end)
 
         _is_valid_index(consts.MODES_SCAN_EDGES, self.mode, "mode")
@@ -812,7 +812,7 @@ class ScanEdge:
         _is_valid_index(consts.ATTENUATOR, self.attenuator, "attenuator")
 
         try:
-            validate_name(self.name)
+            validators.validate_name(self.name)
         except ValueError as err:
             raise ValidateError("name", self.name) from err
 
@@ -1346,65 +1346,6 @@ class RadioMemory:
 
     def is_usa_model(self) -> bool:
         return self.file_etcdata == "0003"
-
-
-def validate_frequency(inp: str | int) -> bool:
-    if isinstance(inp, str):
-        try:
-            freq = int(inp)
-        except ValueError:
-            return False
-    else:
-        freq = inp
-
-    if freq > consts.MAX_FREQUENCY or freq < 0:
-        return False
-
-    try:
-        coding.encode_freq(freq, 0)
-    except ValueError:
-        return False
-
-    return True
-
-
-def validate_offset(freq: int, inp: str | int) -> bool:
-    if isinstance(inp, str):
-        try:
-            offset = int(inp)
-        except ValueError:
-            return False
-    else:
-        offset = inp
-
-    if offset == 0:
-        return True
-
-    if offset > consts.MAX_OFFSET or offset < consts.MIN_OFFSET:
-        return False
-
-    try:
-        coding.encode_freq(freq, offset)
-    except ValueError:
-        return False
-
-    return True
-
-
-def validate_name(name: str) -> None:
-    if len(name) > 6:
-        raise ValueError
-
-    if any(i not in consts.VALID_CHAR for i in name.upper()):
-        raise ValueError
-
-
-def validate_comment(comment: str) -> None:
-    if len(comment) > 16:
-        raise ValueError
-
-    if any(i not in consts.VALID_CHAR for i in comment.upper()):
-        raise ValueError
 
 
 def _first_min_diff(base: float, values: ty.Iterable[int]) -> float:

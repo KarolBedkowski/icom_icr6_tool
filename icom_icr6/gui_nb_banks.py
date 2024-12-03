@@ -9,7 +9,7 @@ import tkinter as tk
 import typing as ty
 from tkinter import messagebox, ttk
 
-from . import consts, expimp, gui_bankchanlist, gui_model, model
+from . import consts, expimp, gui_bankchanlist, gui_model, model, validators
 from .gui_widgets import (
     new_checkbox,
     new_entry,
@@ -499,7 +499,7 @@ def validate_bank_name(name: str | None) -> bool:
         return True
 
     try:
-        model.validate_name(name)
+        validators.validate_name(name)
     except ValueError:
         return False
 

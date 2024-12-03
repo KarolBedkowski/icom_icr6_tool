@@ -9,7 +9,7 @@ import tkinter as tk
 import typing as ty
 from tkinter import ttk
 
-from . import consts, expimp, gui_model, gui_scanlinkslist, model
+from . import consts, expimp, gui_model, gui_scanlinkslist, model, validators
 from .gui_widgets import new_entry
 
 _LOG = logging.getLogger(__name__)
@@ -331,7 +331,7 @@ def validate_name(name: str | None) -> bool:
         return True
 
     try:
-        model.validate_name(name)
+        validators.validate_name(name)
     except ValueError:
         return False
 

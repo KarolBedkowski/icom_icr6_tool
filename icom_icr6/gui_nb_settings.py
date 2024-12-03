@@ -8,7 +8,7 @@ import logging
 import tkinter as tk
 from tkinter import ttk
 
-from . import consts, gui_model, model
+from . import consts, gui_model, model, validators
 from .gui_widgets import new_checkbox, new_combo, new_entry
 
 _LOG = logging.getLogger(__name__)
@@ -276,7 +276,7 @@ def validate_comment(comment: str) -> bool:
         return True
 
     try:
-        model.validate_comment(comment)
+        validators.validate_comment(comment)
     except ValueError:
         return False
 

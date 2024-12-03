@@ -179,6 +179,9 @@ CODED_CHRS: ty.Final[str] = (
 )
 ENCODED_NAME_LEN: ty.Final[int] = 5
 
+MAX_NAME_LEN: ty.Final = 6
+MAX_COMMENT_LEN: ty.Final = 16
+
 # used in scanedge
 ATTENUATOR: ty.Final = ["On", "Off", "-"]
 
