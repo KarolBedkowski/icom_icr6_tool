@@ -311,10 +311,10 @@ class Channel:
         debug_info = (
             {
                 "unknowns": [
-                    data[4] & 0b11000000,
-                    data[4] & 0b00001000,  # TODO: flag "is channel valid"?
-                    data[7] & 0b11000000,
-                    data[10] & 0b01111000,
+                    data[4] & 0b11000000,  # always 0
+                    data[4] & 0b00001000,  # 0 for valid channels
+                    data[7] & 0b11000000,  # 0 for valid channels
+                    data[10] & 0b01111000,  # always 0
                 ],
                 "raw": binascii.hexlify(bytes(data)),
                 "raw_flags": binascii.hexlify(bytes(cflags))
@@ -331,8 +331,8 @@ class Channel:
         if cflags:
             hide_channel = cflags[0] & 0b10000000
             skip = (cflags[0] & 0b01100000) >> 5
-            bank = cflags[0] & 0b00011111  # TODO: verify
-            bank_pos = cflags[1]  # TODO: verify
+            bank = cflags[0] & 0b00011111
+            bank_pos = cflags[1]
         else:
             hide_channel = skip = bank = bank_pos = 0
 
@@ -500,8 +500,6 @@ class Channel:
         if (freq := data.get("freq")) is not None:
             ifreq = int(freq or "0")  # type: ignore
             self.freq = fixers.fix_frequency(ifreq) if ifreq else 0
-
-            # TODO: ?
             self.hide_channel = not self.freq
 
         if (af := data.get("af")) is not None:
@@ -712,7 +710,6 @@ class ScanEdge:
     idx: int
     start: int
     end: int
-    # TODO: check - always False
     disabled: int
     mode: int
     # tuning_step include 15 - "-"

@@ -87,7 +87,7 @@ class ScanLnksList(gui_genericlist.GenericList[Row, ScanLink]):
     def _on_validate_edits(self, event: EventDataDict) -> object:
         # _LOG.debug("_on_validate_edits: %r", event)
 
-        column = self.columns[event.column + 1]  # FIXME: visible cols
+        column = self.columns[self.sheet.data_c(event.column)]
         row = self.sheet.data[event.row]
         value = event.value
 

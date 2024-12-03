@@ -62,14 +62,15 @@ def encode_name(inp: str) -> abc.Sequence[int]:
 
 
 def decode_freq(freq: int, flags: int) -> int:
-    """
-    flags are probably only 2 bits:
+    """Decode frequency - multiple `freq` by `flags`.
+
+    flags are only 2 bits:
         00 -> 5000
         01 -> 6250
         10 -> 8333.3333
         11 -> 9000
     """
-    # TODO: check:
+
     match flags:
         case 0b00:
             return 5000 * freq
@@ -124,7 +125,6 @@ def _find_div_for_freq(freq: int, avail: tuple[int, ...]) -> ty.Iterable[int]:
 
     # if 2 in avail and int(freq * 3 / 25000 + 0.5) * 25000 // 3 == freq:
     #     yield 2
-    # TODO: seems to work like this
     if 2 in avail and (not freq % 8333 or freq % 10 in (3, 6)):  # noqa: PLR2004
         yield 2
 

@@ -329,7 +329,8 @@ class ChannelsPage(tk.Frame):
                 return pos
 
         # not found unused slot - replace, require update other rows
-        # this may create duplicates !!!! FIXME: mark duplicates
+        # this may create duplicates  but this should be cleaned on channel
+        # save
         self.__need_full_refresh = True
         return bank_pos
 

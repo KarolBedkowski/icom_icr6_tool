@@ -315,7 +315,11 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
             for col, value in enumerate(row_data, csel_col):
                 ev.column = col
                 ev.value = value
-                res_data.append(self._on_validate_edits(ev))
+                try:
+                    res_data.append(self._on_validate_edits(ev))
+                except ValueError:
+                    _LOG.exception("_on_validate_edits: %r", ev)
+                    res_data.append(None)
 
             self.sheet.span((row, column), emit_event=True).data = res_data
 

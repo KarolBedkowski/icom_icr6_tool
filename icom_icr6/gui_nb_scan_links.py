@@ -16,7 +16,6 @@ _LOG = logging.getLogger(__name__)
 
 
 class ScanLinksPage(tk.Frame):
-    # TODO: scrollable list or other
     def __init__(
         self, parent: tk.Widget, radio_memory: model.RadioMemory
     ) -> None:

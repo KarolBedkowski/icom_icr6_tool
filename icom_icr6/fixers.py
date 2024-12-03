@@ -42,25 +42,18 @@ def _fix_frequency(freq: int, base_freq: int) -> int:
             return freq
 
     # try find best freq
-    nfreqs = [
-        (freq // 5000) * 5000,
-        (freq // 5000 + 1) * 5000,
-        (freq // 6250) * 6250,
-        (freq // 6250 + 1) * 6250,
-    ]
+    f5 = freq // 5000
+    f62 = freq // 6250
+    nfreqs = [f5 * 5000, (f5 + 1) * 5000, f62 * 6250, (f62 + 1) * 6250]
 
     # TODO: 9k is not used for rounding?
-    # if 495_000 <= freq <= 1_620_000:
-    #    nfreqs.append(round(freq / 9000) * 9000)
+    if consts.is_broadcast_band(freq):
+        f9 = freq // 9000
+        nfreqs.extend((f9 * 9000, (f9 + 1) * 9000))
 
     if consts.is_air_band(base_freq):
-        # nfreqs.append((round(freq * 3 / 25000.0) * 25000) // 3)
-        nfreqs.extend(
-            (
-                ((freq * 3 // 25000) * 25000) // 3,
-                ((freq * 3 // 25000 + 1) * 25000) // 3,
-            )
-        )
+        f8 = freq * 3 // 25000
+        nfreqs.extend(((f8 * 25000) // 3, ((f8 + 1) * 25000) // 3))
 
     return int(_first_min_diff(freq, nfreqs))
 

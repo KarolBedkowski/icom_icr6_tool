@@ -140,6 +140,7 @@ types:
 
       - id: disabled
         type: b1
+        doc: always 0?
       - id: mode
         type: b3
         enum: mode_scan_edge
