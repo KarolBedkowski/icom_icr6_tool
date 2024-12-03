@@ -183,7 +183,7 @@ types:
     seq:
       - id: map
         type: u4be
-        doc: bitmap for banks Y->A
+        doc: bitmap for banks Y->A with 7 bit padding in last byte (0b11111110)
 
   channel:
     seq:
