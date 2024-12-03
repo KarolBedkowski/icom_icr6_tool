@@ -11,11 +11,10 @@ import copy
 import itertools
 import logging
 import typing as ty
-import unicodedata
 from collections import abc, defaultdict
 from dataclasses import dataclass, field
 
-from . import coding, consts, validators
+from . import coding, consts, fixers, validators
 
 _LOG = logging.getLogger(__name__)
 DEBUG = True
@@ -500,7 +499,7 @@ class Channel:
         _LOG.debug("from_record: %r", data)
         if (freq := data.get("freq")) is not None:
             ifreq = int(freq or "0")  # type: ignore
-            self.freq = fix_frequency(ifreq) if ifreq else 0
+            self.freq = fixers.fix_frequency(ifreq) if ifreq else 0
 
             # TODO: ?
             self.hide_channel = not self.freq
@@ -525,7 +524,7 @@ class Channel:
 
         if (offset := data.get("offset")) is not None:
             off = int(offset)  # type: ignore
-            self.offset = fix_offset(self.freq, off) if off else 0
+            self.offset = fixers.fix_offset(self.freq, off) if off else 0
 
         if (tf := data.get("tsql_freq")) is not None:
             self.tsql_freq = get_index_or_default(consts.CTCSS_TONES, tf)
@@ -547,7 +546,7 @@ class Channel:
                 self.canceller = 0
 
         if (n := data.get("name")) is not None:
-            self.name = fix_name(str(n))
+            self.name = fixers.fix_name(str(n))
 
         if (s := data.get("skip")) is not None:
             self.skip = get_index_or_default(consts.SKIPS, s)
@@ -1340,130 +1339,9 @@ class RadioMemory:
         return self.mem[0x6D00 : 0x6D00 + 16].decode().rstrip()
 
     def _save_comment(self) -> None:
-        cmt = fix_comment(self.comment).ljust(16).encode()
+        cmt = fixers.fix_comment(self.comment).ljust(16).encode()
         mv = memoryview(self.mem)
         mv[0x6D00 : 0x6D00 + 16] = cmt
 
     def is_usa_model(self) -> bool:
         return self.file_etcdata == "0003"
-
-
-def _first_min_diff(base: float, values: ty.Iterable[int]) -> float:
-    minimal = base
-    err = 99999999999.0
-    # keep order; using min not always return first minimal value
-    for v in values:
-        if (nerr := abs(base - v)) < err:
-            err = nerr
-            minimal = v
-
-    return minimal
-
-
-def _fix_frequency(freq: int, base_freq: int) -> int:
-    """base_freq is channel frequency;
-    freq is channel freq or offset to correct
-    """
-    # try exact match
-    if not freq % 5000 or not freq % 6250:
-        return freq
-
-    if 495_000 <= base_freq <= 1_620_000 and not freq % 9000:
-        return freq
-
-    if consts.is_air_band(base_freq):
-        # TODO: check which work better
-        if round(freq * 3 / 25000.0) == freq:
-            return freq
-
-        if not freq % 8333 or freq % 10 in (3, 6):
-            return freq
-
-    # try find best freq
-    nfreqs = [
-        (freq // 5000) * 5000,
-        (freq // 5000 + 1) * 5000,
-        (freq // 6250) * 6250,
-        (freq // 6250 + 1) * 6250,
-    ]
-
-    # TODO: 9k is not used for rounding?
-    # if 495_000 <= freq <= 1_620_000:
-    #    nfreqs.append(round(freq / 9000) * 9000)
-
-    if consts.is_air_band(base_freq):
-        # nfreqs.append((round(freq * 3 / 25000.0) * 25000) // 3)
-        nfreqs.extend(
-            (
-                ((freq * 3 // 25000) * 25000) // 3,
-                ((freq * 3 // 25000 + 1) * 25000) // 3,
-            )
-        )
-
-    return int(_first_min_diff(freq, nfreqs))
-
-
-def fix_frequency(freq: int, *, usa_model: bool = False) -> int:
-    freq = max(freq, consts.MIN_FREQUENCY)
-    freq = min(freq, consts.MAX_FREQUENCY)
-
-    if usa_model:
-        # if freq is forbidden range; set freq to nearest valid freq.
-        for fmin, fmax in consts.USA_FREQ_UNAVAIL_RANGES:
-            if fmin < freq < fmax:
-                freq = fmin if (freq - fmin) < (fmax - freq) else fmax
-                break
-
-    return _fix_frequency(freq, freq)
-
-
-def fix_offset(freq: int, offset: int) -> int:
-    if offset == 0:
-        return 0
-
-    offset = max(offset, 5000)
-    offset = min(offset, 159995000)
-
-    if offset % 9000 == 0:
-        # 9k is used only if match exactly
-        return offset
-
-    return _fix_frequency(offset, freq)
-
-
-def fix_name(name: str) -> str:
-    name = name.rstrip().upper()
-    if not name:
-        return ""
-
-    name = (
-        unicodedata.normalize("NFKD", name).encode("ascii", "replace").decode()
-    )
-    name = "".join(c for c in name if c in consts.VALID_CHAR)
-    return name[:6]
-
-
-def fix_comment(name: str) -> str:
-    name = name.rstrip()
-    if not name:
-        return ""
-
-    name = (
-        unicodedata.normalize("NFKD", name).encode("ascii", "replace").decode()
-    )
-    name = "".join(c for c in name if c.upper() in consts.VALID_CHAR)
-    return name[:16]
-
-
-def fix_tuning_step(freq: int, tuning_step: int) -> int:
-    if not freq:
-        return tuning_step
-
-    ts = consts.STEPS[tuning_step]
-    if ts == "9" and not (500_000 <= freq <= 1_620_000):
-        return consts.default_tuning_step_for_freq(freq)
-
-    if ts == "8.33" and not (118_000_000 <= freq <= 135_995_000):
-        return consts.default_tuning_step_for_freq(freq)
-
-    return tuning_step

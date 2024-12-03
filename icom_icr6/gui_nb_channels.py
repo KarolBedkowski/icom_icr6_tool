@@ -11,7 +11,7 @@ from contextlib import suppress
 from operator import attrgetter
 from tkinter import messagebox, ttk
 
-from . import consts, expimp, gui_chanlist, gui_model, model
+from . import consts, expimp, fixers, gui_chanlist, gui_model, model
 
 _LOG = logging.getLogger(__name__)
 
@@ -461,7 +461,7 @@ class ChannelsPage(tk.Frame):
         self._chan_list.set_data_rows(
             1,
             (
-                (row, [model.fix_frequency(int(start_freq + ts * idx))])
+                (row, [fixers.fix_frequency(int(start_freq + ts * idx))])
                 for idx, row in enumerate(sel_rows[1:], 1)
             ),
         )

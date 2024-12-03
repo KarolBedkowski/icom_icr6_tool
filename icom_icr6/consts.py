@@ -233,6 +233,10 @@ def is_air_band(freq: int) -> bool:
     return 108_000_000 <= freq <= 136_991_666
 
 
+def is_broadcast_band(freq: int) -> bool:
+    return 495_000 <= freq <= 1_620_000
+
+
 def default_tuning_step_for_freq(freq: int) -> int:
     if 500_000 <= freq <= 1_620_000:
         return STEPS.index("9")

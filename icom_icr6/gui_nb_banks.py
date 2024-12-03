@@ -9,7 +9,15 @@ import tkinter as tk
 import typing as ty
 from tkinter import messagebox, ttk
 
-from . import consts, expimp, gui_bankchanlist, gui_model, model, validators
+from . import (
+    consts,
+    expimp,
+    fixers,
+    gui_bankchanlist,
+    gui_model,
+    model,
+    validators,
+)
 from .gui_widgets import (
     new_checkbox,
     new_entry,
@@ -269,7 +277,7 @@ class BanksPage(tk.Frame):
             chan.bank_pos = rec.rownum
 
             if chan.hide_channel or not chan.freq:
-                chan.freq = model.fix_frequency(chan.freq)
+                chan.freq = fixers.fix_frequency(chan.freq)
                 chan.load_defaults()
                 chan.hide_channel = False
 

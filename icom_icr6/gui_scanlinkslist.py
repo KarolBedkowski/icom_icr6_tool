@@ -9,7 +9,7 @@ import typing as ty
 
 from tksheet import EventDataDict
 
-from . import consts, gui_genericlist, model
+from . import consts, fixers, gui_genericlist, model
 
 _LOG = logging.getLogger(__name__)
 
@@ -106,10 +106,10 @@ class ScanLnksList(gui_genericlist.GenericList[Row, ScanLink]):
                     val *= 1_000_000
 
                 if value := int(val):
-                    value = model.fix_frequency(value)
+                    value = fixers.fix_frequency(value)
 
             case "name":
-                value = model.fix_name(value)
+                value = fixers.fix_name(value)
 
         _LOG.debug("_on_validate_edits: result value=%r", value)
         return value

@@ -10,7 +10,7 @@ import typing as ty
 
 from tksheet import EventDataDict, Span, functions
 
-from . import consts, gui_genericlist, model
+from . import consts, fixers, gui_genericlist, model
 
 _LOG = logging.getLogger(__name__)
 _BANKS = ["", *consts.BANK_NAMES]
@@ -70,7 +70,7 @@ class Row(gui_genericlist.BaseRow):
                         chan.load_defaults(val)
 
                 chan.freq = val or 0  # type: ignore
-                chan.tuning_step = model.fix_tuning_step(
+                chan.tuning_step = fixers.fix_tuning_step(
                     chan.freq, chan.tuning_step
                 )
                 chan.hide_channel = not val
@@ -170,10 +170,10 @@ class ChannelsList(gui_genericlist.GenericList[Row, model.Channel]):
                 if val < 1_310:  # entered freq  # noqa: PLR2004
                     val *= 1_000_000
 
-                value = model.fix_frequency(int(val))
+                value = fixers.fix_frequency(int(val))
 
             case "name":
-                value = model.fix_name(value)
+                value = fixers.fix_name(value)
 
             case "offset":
                 val = float(value)
@@ -181,7 +181,7 @@ class ChannelsList(gui_genericlist.GenericList[Row, model.Channel]):
                     val *= 1_000_000
 
                 value = (
-                    model.fix_offset(chan.freq, off)
+                    fixers.fix_offset(chan.freq, off)
                     if (off := int(val))
                     else 0
                 )
