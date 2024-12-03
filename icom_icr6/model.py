@@ -224,7 +224,7 @@ class Channel:
     bank_pos: int
 
     debug_info: dict[str, object] | None = None
-    updated : bool = False
+    updated: bool = False
 
     @property
     def active(self) -> bool:
@@ -889,7 +889,7 @@ class RadioSettings:
     stop_beep: bool
 
     debug_info: dict[str, object] | None = None
-    updated : bool = False
+    updated: bool = False
 
     @classmethod
     def from_data(
@@ -1167,7 +1167,7 @@ class RadioMemory:
 
         return set(itertools.chain.from_iterable(banks_pos.values()))
 
-    def is_bank_pos_duplicted(
+    def is_bank_pos_duplicated(
         self, bank: int, bank_pos: int, channum: int
     ) -> bool:
         for idx, chan in enumerate(self.channels):
@@ -1514,7 +1514,7 @@ def fix_comment(name: str) -> str:
     return name[:16]
 
 
-def fix_tunning_step(freq: int, tuning_step: int) -> int:
+def fix_tuning_step(freq: int, tuning_step: int) -> int:
     if not freq:
         return tuning_step
 

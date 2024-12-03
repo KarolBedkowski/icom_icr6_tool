@@ -254,6 +254,9 @@ class ChannelsPage(tk.Frame):
             _LOG.exception("simple import from clipboard error")
             raise
 
+        if not rows:
+            return
+
         self._chan_list.paste(rows)
 
     def __paste_channel(self, row: dict[str, object], chan_num: int) -> bool:
@@ -295,6 +298,7 @@ class ChannelsPage(tk.Frame):
         *,
         try_set_free_slot: bool = False,
     ) -> int:
+        _LOG.debug("__on_channel_bank_set %r, %r, %r", bank, channum, bank_pos)
         if bank in (consts.BANK_NOT_SET, ""):
             return bank_pos
 

@@ -70,7 +70,7 @@ class Row(gui_genericlist.BaseRow):
                         chan.load_defaults(val)
 
                 chan.freq = val or 0  # type: ignore
-                chan.tuning_step = model.fix_tunning_step(
+                chan.tuning_step = model.fix_tuning_step(
                     chan.freq, chan.tuning_step
                 )
                 chan.hide_channel = not val
@@ -146,7 +146,7 @@ class ChannelsList(gui_genericlist.GenericList[Row, model.Channel]):
         # _LOG.debug("_on_validate_edits: %r", event)
         # WARN: validation not work on checkbox
 
-        column = self.columns[event.column + 1]  # FIXME: visible cols
+        column = self.columns[self.sheet.data_c(event.column)]
         row = self.sheet.data[event.row]
         chan = row.channel
         value = event.value
@@ -207,10 +207,13 @@ class ChannelsList(gui_genericlist.GenericList[Row, model.Channel]):
             case "bank_pos":
                 if value != "" and value is not None:
                     value = max(min(int(value), 99), 0)
-                    if self.on_channel_bank_validate:
-                        value = self.on_channel_bank_validate(
+                    value = (
+                        self.on_channel_bank_validate(
                             chan.bank, chan.number, value
                         )
+                        if self.on_channel_bank_validate
+                        else value
+                    )
 
         _LOG.debug("_on_validate_edits: result value=%r", value)
         return value
