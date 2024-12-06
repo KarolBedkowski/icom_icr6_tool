@@ -5,9 +5,8 @@
 
 """ """
 
-import icecream
+import logging
 
-icecream.install()
 
 try:
     import stackprinter
@@ -24,11 +23,45 @@ except ImportError:
         print("rich.traceback enabled")
     except ImportError:
         pass
+
+import typing as ty
+
+try:
+    from typeguard import install_import_hook
+
+    install_import_hook("icom_icr6")
+    print("WARN! typeguard hook installed")
+
+    ty.TYPE_CHECKING = True
+
+    import typeguard._checkers as checkers
+
+    checkers.check_protocol = None  # agronholm/typeguard#465
+
+except ImportError as err:
+    print(err)
+
+
+
+try:
+    from rich.logging import RichHandler
+
+    logging.basicConfig(
+        level="NOTSET",
+        format="%(message)s",
+        datefmt="[%X]",
+        handlers=[RichHandler()],
+    )
+except ImportError:
+    logging.basicConfig()
+
 try:
     import icecream
 
     icecream.install()
-    icecream.ic.configureOutput(includeContext=True)
+    icecream.ic.configureOutput(
+        includeContext=True, outputFunction=logging.warn
+    )
 
     import traceback
 
@@ -61,39 +94,6 @@ try:
 
 except ImportError:  # Graceful fallback if IceCream isn't installed.
     pass
-
-import typing as ty
-
-try:
-    from typeguard import install_import_hook
-
-    install_import_hook("icom_icr6")
-    print("WARN! typeguard hook installed")
-
-    ty.TYPE_CHECKING = True
-
-    import typeguard._checkers as checkers
-
-    checkers.check_protocol = None  # agronholm/typeguard#465
-
-except ImportError as err:
-    print(err)
-
-
-import logging
-
-try:
-    from rich.logging import RichHandler
-
-    logging.basicConfig(
-        level="NOTSET",
-        format="%(message)s",
-        datefmt="[%X]",
-        handlers=[RichHandler()],
-    )
-except ImportError:
-    logging.basicConfig()
-
 
 try:
     import snoop
