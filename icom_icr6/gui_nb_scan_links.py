@@ -158,6 +158,7 @@ class ScanLinksPage(tk.Frame):
         sl.name = self._sl_name.get()
         self._radio_memory.set_scan_link(sl)
 
+        self._radio_memory.undo_manager.commit()
         self.__update_scan_links_list()
 
     def __on_de_select(self) -> None:
@@ -205,6 +206,7 @@ class ScanLinksPage(tk.Frame):
 
             sl[se.idx] = rec.selected
 
+        self._radio_memory.undo_manager.commit()
         self._radio_memory.set_scan_link(sl)
 
     def __do_move_scan_edge(
@@ -223,6 +225,7 @@ class ScanLinksPage(tk.Frame):
         if changes:
             self._radio_memory.remap_scan_links(changes)
 
+        self._radio_memory.undo_manager.commit()
         self.__update_scan_edges()
 
     def __on_scan_edge_copy(self, _event: tk.Event) -> None:  # type: ignore
@@ -316,6 +319,7 @@ class ScanLinksPage(tk.Frame):
 
         se.idx = se_num
         self._radio_memory.set_scan_edge(se)
+        self._radio_memory.undo_manager.commit()
         return True
 
     def __disable_widgets(self) -> None:

@@ -249,7 +249,7 @@ class Channel:
             bank = f"{self.bank}/{self.bank_pos}"
 
         return (
-            f"Channel {self.number}: "
+            f"Channel {id(self)}-{self.number}: "
             f"f={self.freq}, "
             f"ff={self.freq_flags} ({self.freq_flags:>04b}), "
             f"af={self.af_filter}, "
@@ -619,6 +619,9 @@ class Bank:
 
     debug_info: dict[str, object] | None = None
 
+    def clone(self) -> Bank:
+        return copy.deepcopy(self)
+
     @classmethod
     def from_data(
         cls: type[Bank], idx: int, data: bytearray | memoryview
@@ -657,6 +660,9 @@ class ScanLink:
 
         bit = 1 << idx
         self.edges = (self.edges & (~bit)) | (bit if value else 0)
+
+    def clone(self) -> ScanLink:
+        return copy.deepcopy(self)
 
     @classmethod
     def from_data(
@@ -887,6 +893,9 @@ class RadioSettings:
     debug_info: dict[str, object] | None = None
     updated: bool = False
 
+    def clone(self) -> RadioSettings:
+        return copy.deepcopy(self)
+
     @classmethod
     def from_data(
         cls: type[RadioSettings], data: bytearray | memoryview
@@ -1011,9 +1020,11 @@ class RadioMemory:
 
         # this create all lists etc
         self.load_memory()
+        # dummy undo manager
+        self.undo_manager: UndoManager = UndoManager()
 
     def reset(self) -> None:
-        pass
+        self.undo_manager.clear()
 
     def update_from(self, rm: RadioMemory) -> None:
         self.reset()
@@ -1074,6 +1085,9 @@ class RadioMemory:
             chan.bank = consts.BANK_NOT_SET
 
         chan.validate()
+
+        self.undo_manager.push("channel", self.channels[chan.number], chan)
+
         self.channels[chan.number] = chan
         chan.updated = True
 
@@ -1085,7 +1099,9 @@ class RadioMemory:
         for c in self._get_channels_in_bank(chan.bank):
             if c.number != chan.number and c.bank_pos == chan.bank_pos:
                 _LOG.debug("set_channel clear bank in chan %r", c)
+                prev = c.clone()
                 c.clear_bank()
+                self.undo_manager.push("channel", prev, c)
                 res = True
 
         return res
@@ -1100,6 +1116,10 @@ class RadioMemory:
     def set_scan_edge(self, se: ScanEdge) -> None:
         _LOG.debug("set_scan_edge: %r", se)
         se.validate()
+
+        self.undo_manager.push("scan_edge", self.scan_edges[se.idx], se)
+
+        assert self.scan_edges[se.idx] is not se
         self.scan_edges[se.idx] = se
 
     def get_active_channels(self) -> ty.Iterable[Channel]:
@@ -1120,6 +1140,8 @@ class RadioMemory:
         return bc
 
     def set_bank(self, bank: Bank) -> None:
+        self.undo_manager.push("bank", self.banks[bank.idx], bank)
+
         self.banks[bank.idx] = bank
 
     def clear_bank_pos(
@@ -1137,14 +1159,19 @@ class RadioMemory:
                 )
                 return False
 
+            prev = ch.clone()
             ch.clear_bank()
+            self.undo_manager.push("channel", prev, ch)
+
             return True
 
         deleted = False
 
         for ch in self.get_active_channels():
             if ch.bank == bank and ch.bank_pos == bank_pos:
+                prev = ch.clone()
                 ch.clear_bank()
+                self.undo_manager.push("channel", prev, ch)
                 deleted = True
 
         if not deleted:
@@ -1178,21 +1205,37 @@ class RadioMemory:
         return False
 
     def set_scan_link(self, sl: ScanLink) -> None:
+        self.undo_manager.push("scan_link", self.scan_links[sl.idx], sl)
+
+        assert self.scan_links[sl.idx] is not sl
         self.scan_links[sl.idx] = sl
 
     def set_settings(self, sett: RadioSettings) -> None:
+        self.undo_manager.push("settings", self.settings, sett)
+
+        assert self.settings is not sett
         self.settings = sett
         self.settings.updated = True
 
     def set_bank_links(self, bl: BankLinks) -> None:
+        self.undo_manager.push("bank_links", self.bank_links, bl)
+
+        assert self.bank_links is not bl
         self.bank_links = bl
 
     def set_comment(self, comment: str) -> None:
-        self.comment = comment.strip()
+        comment = comment.strip()
+        if comment == self.comment:
+            return
+
+        self.undo_manager.push("comment", self.comment, comment)
+        self.comment = comment
 
     def remap_scan_links(self, mapping: dict[int, int]) -> None:
         for sl in self.scan_links:
+            prev = sl.clone()
             sl.remap_edges(mapping)
+            self.undo_manager.push("scan_links", prev, sl)
 
     def _load_channels(self) -> ty.Iterable[Channel]:
         for idx in range(consts.NUM_CHANNELS):
@@ -1342,3 +1385,137 @@ class RadioMemory:
 
     def is_usa_model(self) -> bool:
         return self.file_etcdata == "0003"
+
+    def _apply_undo_redo(self, items: ty.Iterable[tuple[str, object]]) -> None:
+        for kind, obj in items:
+            _LOG.debug("_apply_undo_redo: kind=%s, obj=%r", kind, obj)
+            match kind:
+                case "channel":
+                    assert isinstance(obj, Channel)
+                    self.channels[obj.number] = obj
+
+                case "scan_edge":
+                    assert isinstance(obj, ScanEdge)
+                    self.scan_edges[obj.idx] = obj
+
+                case "bank":
+                    assert isinstance(obj, Bank)
+                    self.banks[obj.idx] = obj
+
+                case "scan_link":
+                    assert isinstance(obj, ScanLink)
+                    self.scan_links[obj.idx] = obj
+
+                case "bank_links":
+                    assert isinstance(obj, BankLinks)
+                    self.bank_links = obj
+
+                case "settings":
+                    assert isinstance(obj, RadioSettings)
+                    self.settings = obj
+
+                case "comment":
+                    assert isinstance(obj, str)
+                    self.comment = obj
+
+    def apply_undo(self, actions: list[UndoItem]) -> None:
+        self._apply_undo_redo((a.kind, a.old_item) for a in actions)
+
+    def apply_redo(self, actions: list[UndoItem]) -> None:
+        self._apply_undo_redo((a.kind, a.new_item) for a in reversed(actions))
+
+
+@dataclass
+class UndoItem:
+    kind: str
+    old_item: object
+    new_item: object
+
+
+class UndoManager:
+    def clear(self) -> None:
+        pass
+
+    def push(self, kind: str, old_item: object, new_item: object) -> None:
+        pass
+
+    def commit(self) -> None:
+        pass
+
+    def abort(self) -> None:
+        pass
+
+    def pop_undo(self) -> list[UndoItem] | None:
+        return None
+
+    def pop_redo(self) -> list[UndoItem] | None:
+        return None
+
+
+class RealUndoManager(UndoManager):
+    def __init__(self) -> None:
+        self.max_queue_len = 50
+        self.undo_queue: list[list[UndoItem]] = []
+        self.redo_queue: list[list[UndoItem]] = []
+        self.tmp_queue: list[UndoItem] = []
+        self.lock: bool = False
+
+    def clear(self) -> None:
+        self.undo_queue.clear()
+        self.redo_queue.clear()
+        self.tmp_queue.clear()
+
+    def push(self, kind: str, old_item: object, new_item: object) -> None:
+        _LOG.debug(
+            "RealUndoManager.push: kind=%r old=%r, new=%r",
+            kind,
+            old_item,
+            new_item,
+        )
+
+        if old_item is new_item:
+            # no changes - but check
+            _LOG.warn("old is new: old=%r, new=%r", old_item, new_item)
+        else:
+            self.tmp_queue.append(UndoItem(kind, old_item, new_item))
+
+    def commit(self) -> None:
+        _LOG.debug("RealUndoManager.commit: %d", len(self.tmp_queue))
+        if not self.tmp_queue:
+            _LOG.error("RealUndoManager.commit: empty tmp_queue")
+            return
+
+        self.undo_queue.append(self.tmp_queue)
+        self.tmp_queue = []
+        if len(self.undo_queue) > self.max_queue_len:
+            self.undo_queue.pop(0)
+
+        # push new action clear redo
+        self.redo_queue.clear()
+
+    def abort(self) -> None:
+        self.tmp_queue.clear()
+
+    def pop_undo(self) -> list[UndoItem] | None:
+        try:
+            item = self.undo_queue.pop()
+        except IndexError:
+            return None
+
+        self.redo_queue.append(item)
+        if len(self.redo_queue) > self.max_queue_len:
+            self.redo_queue.pop(0)
+
+        return item
+
+    def pop_redo(self) -> list[UndoItem] | None:
+        try:
+            item = self.redo_queue.pop()
+        except IndexError:
+            return None
+
+        self.undo_queue.append(item)
+        if len(self.undo_queue) > self.max_queue_len:
+            self.undo_queue.pop(0)
+
+        return item

@@ -30,6 +30,7 @@ class BaseRow(UserList[object]):
     def __init__(self, rownum: int, data: ty.Iterable[object]) -> None:
         super().__init__(data)
         self.rownum = rownum
+        self.updated: bool = False
 
     def _extracts_cols(self, data: dict[str, object]) -> list[object]:
         return [data[col] for col, *_ in self.COLUMNS]
@@ -89,6 +90,7 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
             data=[],
             default_column_width=40,
             alternate_color=self._ALTERNATE_COLOR,
+            max_undos=0,
         )
         self.sheet.pack(expand=True, fill=tk.BOTH, side=tk.TOP)
 
@@ -102,7 +104,7 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
             "begin_move_columns", self._on_begin_col_move
         )
         # disable popup menu
-        self.sheet.disable_bindings("right_click_popup_menu")
+        self.sheet.disable_bindings("right_click_popup_menu", "undo")
 
         self.columns = self._ROW_CLASS.COLUMNS
         self.colmap = {
@@ -122,6 +124,7 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
             yield r
 
     def set_data(self, data: ty.Iterable[RT]) -> None:
+        _LOG.debug("set_data")
         self.sheet.set_sheet_data(
             list(starmap(self._ROW_CLASS, enumerate(data)))
         )

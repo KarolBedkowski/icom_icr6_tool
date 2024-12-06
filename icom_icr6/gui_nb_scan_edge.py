@@ -80,6 +80,8 @@ class ScanEdgePage(tk.Frame):
             )
             self._radio_memory.set_scan_edge(rec.se)
 
+        self._radio_memory.undo_manager.commit()
+
     def __do_move_scan_edge(
         self, rows: ty.Collection[gui_scanedgeslist.Row]
     ) -> None:
@@ -96,6 +98,7 @@ class ScanEdgePage(tk.Frame):
         if changes:
             self._radio_memory.remap_scan_links(changes)
 
+        self._radio_memory.undo_manager.commit()
         self.__update_scan_edges_list()
 
     def __on_channel_delete(self, _event: tk.Event) -> None:  # type: ignore
@@ -115,6 +118,7 @@ class ScanEdgePage(tk.Frame):
             se.delete()
             self._radio_memory.set_scan_edge(se)
 
+        self._radio_memory.undo_manager.commit()
         self.__update_scan_edges_list()
         self._scanedges_list.selection_set(sel)
 
@@ -212,4 +216,5 @@ class ScanEdgePage(tk.Frame):
 
         se.idx = se_num
         self._radio_memory.set_scan_edge(se)
+        self._radio_memory.undo_manager.commit()
         return True

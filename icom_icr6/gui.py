@@ -40,6 +40,9 @@ class App(tk.Frame):
 
         self._last_file: Path | None = None
         self._radio_memory = model.RadioMemory()
+        self._undo_menager = self._radio_memory.undo_manager = (
+            model.RealUndoManager()
+        )
         self._status_value = tk.StringVar()
         # safe is clone to device when data are loaded or cloned from dev
         self._safe_for_clone = False
@@ -88,7 +91,7 @@ class App(tk.Frame):
             command=self.__on_file_save_as,
             accelerator="Shift+Ctrl+S",
         )
-        master.bind_all("<Shift-Control-S>", self.__on_file_save_as)
+        master.bind_all("<Shift-Control-s>", self.__on_file_save_as)
 
         file_menu.add_separator()
 
@@ -99,6 +102,21 @@ class App(tk.Frame):
 
         file_menu.add_command(label="Exit", command=self.quit)
         menu_bar.add_cascade(label="File", menu=file_menu)
+
+        edit_menu = tk.Menu(menu_bar)
+        edit_menu.add_command(
+            label="Undo",
+            command=self.__on_undo,
+            accelerator="Ctrl+Z",
+        )
+        master.bind_all("<Control-z>", self.__on_undo)
+        edit_menu.add_command(
+            label="Redo",
+            command=self.__on_redo,
+            accelerator="Ctrl+Y",
+        )
+        master.bind_all("<Control-y>", self.__on_redo)
+        menu_bar.add_cascade(label="Edit", menu=edit_menu)
 
         radio_menu = tk.Menu(menu_bar)
         radio_menu.add_command(
@@ -225,6 +243,24 @@ class App(tk.Frame):
 
             self.__set_loaded_filename(Path(fname))
             self.set_status(f"File {fname} saved")
+
+    def __on_undo(self, _event: tk.Event | None = None) -> None:  # type: ignore
+        _LOG.info("__on_undo")
+        self._undo_menager.lock = True
+        if item := self._undo_menager.pop_undo():
+            _LOG.debug("undo item: %r", item)
+            self._radio_memory.apply_undo(item)
+            self.__update_widgets()
+
+        _LOG.info("__on_undo finished")
+
+    def __on_redo(self, _event: tk.Event | None = None) -> None:  # type: ignore
+        self._undo_menager.lock = True
+
+        if item := self._undo_menager.pop_redo():
+            _LOG.debug("redo item: %r", item)
+            self._radio_memory.apply_redo(item)
+            self.__update_widgets()
 
     def __update_widgets(self) -> None:
         try:

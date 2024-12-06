@@ -89,12 +89,23 @@ class BLRow(gui_genericlist.BaseRow):
 
         # if chan exists and is valid - update
         if chan and chan.freq and not chan.hide_channel:
+            chan = self._make_clone()
             try:
                 chan.from_record({col: val})
             except Exception:
                 _LOG.exception("from record error: %r=%r", col, val)
 
             super().__setitem__(idx, val)
+
+    def _make_clone(self) -> model.Channel:
+        """Make copy of channel for updates."""
+        assert self.channel
+
+        if not self.updated:
+            self.updated = True
+            self.channel = self.channel.clone()
+
+        return self.channel
 
     def _from_channel(self, channel: model.Channel | None) -> list[object]:
         # valid channel

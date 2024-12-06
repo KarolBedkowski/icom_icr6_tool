@@ -39,11 +39,13 @@ class Row(gui_genericlist.BaseRow):
                 return
 
             case "start":  # freq
+                se = self._make_clone()
                 se.start = val or 0  # type: ignore
                 self.data = self._from_scanedge(se)
                 return
 
             case "end":  # freq
+                se = self._make_clone()
                 se.end = val or 0  # type: ignore
                 self.data = self._from_scanedge(se)
                 return
@@ -52,6 +54,7 @@ class Row(gui_genericlist.BaseRow):
         if data[col] == val:
             return
 
+        se = self._make_clone()
         try:
             se.from_record({col: val})
         except Exception:
@@ -61,6 +64,14 @@ class Row(gui_genericlist.BaseRow):
             return
 
         super().__setitem__(idx, val)
+
+    def _make_clone(self) -> model.ScanEdge:
+        """Make copy of channel for updates."""
+        if not self.updated:
+            self.updated = True
+            self.se = self.se.clone()
+
+        return self.se
 
     def _from_scanedge(self, se: model.ScanEdge) -> list[object]:
         return self._extracts_cols(se.to_record())

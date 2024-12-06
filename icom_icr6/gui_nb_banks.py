@@ -183,7 +183,7 @@ class BanksPage(tk.Frame):
         if selected_bank is None:
             return
 
-        bank = self._radio_memory.banks[selected_bank]
+        bank = self._radio_memory.banks[selected_bank].clone()
         bank.name = self._bank_name.get().strip()[:6]
         self._radio_memory.set_bank(bank)
 
@@ -191,6 +191,7 @@ class BanksPage(tk.Frame):
         bl[selected_bank] = self._bank_link.get_raw()
         self._radio_memory.set_bank_links(bl)
 
+        self._radio_memory.undo_manager.commit()
         self.__update_banks_list()
 
     def __on_channel_select(self, rows: list[gui_bankchanlist.BLRow]) -> None:
@@ -231,6 +232,7 @@ class BanksPage(tk.Frame):
                 chan.clear_bank()
                 self._radio_memory.set_channel(chan)
 
+        self._radio_memory.undo_manager.commit()
         self.__update_chan_list()
 
     def __do_update_channels(
@@ -248,6 +250,7 @@ class BanksPage(tk.Frame):
                 rec,
                 rec.channel,
             )
+
             if rec.new_channel is not None:
                 if old_chan := rec.channel:
                     # clear old chan
@@ -283,6 +286,7 @@ class BanksPage(tk.Frame):
 
             self._radio_memory.set_channel(chan)
 
+        self._radio_memory.undo_manager.commit()
         self.__update_chan_list()
 
     def __do_move_channels(
@@ -296,6 +300,7 @@ class BanksPage(tk.Frame):
             rec.channel.bank_pos = rec.rownum
             self._radio_memory.set_channel(rec.channel)
 
+        self._radio_memory.undo_manager.commit()
         self.__update_chan_list()
 
     def __on_channel_copy(self, _event: tk.Event) -> None:  # type: ignore
@@ -420,6 +425,7 @@ class BanksPage(tk.Frame):
         chan.bank_pos = pos
         chan.hide_channel = False
         self._radio_memory.set_channel(chan)
+        self._radio_memory.undo_manager.commit()
         return True
 
     def __on_btn_sort(self) -> None:
@@ -499,6 +505,7 @@ class BanksPage(tk.Frame):
                 chan.bank_pos = idx
                 self._radio_memory.set_channel(chan)
 
+        self._radio_memory.undo_manager.commit()
         self.__update_chan_list()
 
 

@@ -233,7 +233,7 @@ class SettingsPage(tk.Frame):
         self._var_comment.set(self._radio_memory.comment)
 
     def __on_update(self) -> None:
-        sett = self._radio_memory.settings
+        sett = self._radio_memory.settings.clone()
 
         sett.func_dial_step = self._var_func_dial_step.get_raw()
         sett.key_beep = self._var_key_beep.get_raw()
@@ -267,6 +267,8 @@ class SettingsPage(tk.Frame):
         self._radio_memory.set_settings(sett)
 
         self._radio_memory.set_comment(self._var_comment.get())
+
+        self._radio_memory.undo_manager.commit()
 
         self.__update()
 
