@@ -41,6 +41,7 @@ class App(tk.Frame):
         self._last_file: Path | None = None
         self._radio_memory = model.RadioMemory()
         self._change_manager = model.ChangeManeger(self._radio_memory)
+        self._change_manager.on_undo_changes = self.__on_undo_change
         self._status_value = tk.StringVar()
         # safe is clone to device when data are loaded or cloned from dev
         self._safe_for_clone = False
@@ -101,7 +102,7 @@ class App(tk.Frame):
         file_menu.add_command(label="Exit", command=self.quit)
         menu_bar.add_cascade(label="File", menu=file_menu)
 
-        edit_menu = tk.Menu(menu_bar)
+        self.__menu_edit = edit_menu = tk.Menu(menu_bar)
         edit_menu.add_command(
             label="Undo",
             command=self.__on_undo,
@@ -215,6 +216,7 @@ class App(tk.Frame):
         self.__update_widgets()
         self.set_status(f"File {file} loaded")
         self._safe_for_clone = True
+        self._change_manager.reset()
 
     def __on_file_save(self, _event: tk.Event | None = None) -> None:  # type: ignore
         if not self._last_file:
@@ -299,6 +301,7 @@ class App(tk.Frame):
             self._safe_for_clone = True
             self.__set_loaded_filename(None)
             self.__update_widgets()
+            self._change_manager.reset()
 
     def __on_clone_to_radio(self, _event: tk.Event | None = None) -> None:  # type: ignore
         if not self._safe_for_clone:
@@ -349,6 +352,14 @@ class App(tk.Frame):
         except Exception as err:
             messagebox.showerror("Export error", str(err))
             return
+
+    def __on_undo_change(self, has_undo: bool, has_redo: bool) -> None:  # noqa:FBT001
+        self.__menu_edit.entryconfigure(
+            "Undo", state="normal" if has_undo else tk.DISABLED
+        )
+        self.__menu_edit.entryconfigure(
+            "Redo", state="normal" if has_redo else tk.DISABLED
+        )
 
 
 def start_gui() -> None:

@@ -1286,12 +1286,16 @@ class UndoManager:
         self.max_queue_len = 50
         self.undo_queue: list[list[UndoItem]] = []
         self.redo_queue: list[list[UndoItem]] = []
+        # temporary queue for actions; after "commit" push to undo_queue
         self.tmp_queue: list[UndoItem] = []
+        self.on_change: ty.Callable[[], None] | None = None
 
     def clear(self) -> None:
         self.undo_queue.clear()
         self.redo_queue.clear()
         self.tmp_queue.clear()
+        if self.on_change:
+            self.on_change()
 
     def push(self, kind: str, old_item: object, new_item: object) -> None:
         _LOG.debug(
@@ -1320,6 +1324,9 @@ class UndoManager:
 
         # push new action clear redo
         self.redo_queue.clear()
+
+        if self.on_change:
+            self.on_change()
 
     def abort(self) -> None:
         self.tmp_queue.clear()
@@ -1351,8 +1358,16 @@ class UndoManager:
 
 class ChangeManeger:
     def __init__(self, rm: RadioMemory) -> None:
-        self._undo_manager = UndoManager()
         self.rm = rm
+        self.on_undo_changes: ty.Callable[[bool, bool], None] | None = None
+
+        self._undo_manager = UndoManager()
+        self._undo_manager.on_change = self._on_undo_change
+
+        self._on_undo_change()
+
+    def reset(self) -> None:
+        self._undo_manager.clear()
 
     def commit(self) -> None:
         self._undo_manager.commit()
@@ -1519,6 +1534,7 @@ class ChangeManeger:
     def undo(self) -> bool:
         if actions := self._undo_manager.pop_undo():
             self._apply_undo_redo((a.kind, a.old_item) for a in actions)
+            self._on_undo_change()
             return True
 
         return False
@@ -1528,6 +1544,14 @@ class ChangeManeger:
             self._apply_undo_redo(
                 (a.kind, a.new_item) for a in reversed(actions)
             )
+            self._on_undo_change()
             return True
 
         return False
+
+    def _on_undo_change(self) -> None:
+        if self.on_undo_changes:
+            self.on_undo_changes(
+                bool(self._undo_manager.undo_queue),
+                bool(self._undo_manager.redo_queue),
+            )
