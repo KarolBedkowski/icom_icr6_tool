@@ -16,10 +16,14 @@ _LOG = logging.getLogger(__name__)
 
 class ScanEdgePage(tk.Frame):
     def __init__(
-        self, parent: tk.Widget, radio_memory: model.RadioMemory
+        self,
+        parent: tk.Widget,
+        radio_memory: model.RadioMemory,
+        cm: model.ChangeManeger,
     ) -> None:
         super().__init__(parent)
         self._radio_memory = radio_memory
+        self._change_manager = cm
         self._last_selected_se: list[int] = []
 
         self._create_list(self)
@@ -78,9 +82,9 @@ class ScanEdgePage(tk.Frame):
                 rec,
                 rec.se,
             )
-            self._radio_memory.set_scan_edge(rec.se)
+            self._change_manager.set_scan_edge(rec.se)
 
-        self._radio_memory.undo_manager.commit()
+        self._change_manager.commit()
 
     def __do_move_scan_edge(
         self, rows: ty.Collection[gui_scanedgeslist.Row]
@@ -93,12 +97,12 @@ class ScanEdgePage(tk.Frame):
             )
             changes[rec.rownum] = se.idx
             se.idx = rec.rownum
-            self._radio_memory.set_scan_edge(se)
+            self._change_manager.set_scan_edge(se)
 
         if changes:
-            self._radio_memory.remap_scan_links(changes)
+            self._change_manager.remap_scan_links(changes)
 
-        self._radio_memory.undo_manager.commit()
+        self._change_manager.commit()
         self.__update_scan_edges_list()
 
     def __on_channel_delete(self, _event: tk.Event) -> None:  # type: ignore
@@ -116,9 +120,9 @@ class ScanEdgePage(tk.Frame):
         for se_num in sel:
             se = self._radio_memory.scan_edges[se_num]
             se.delete()
-            self._radio_memory.set_scan_edge(se)
+            self._change_manager.set_scan_edge(se)
 
-        self._radio_memory.undo_manager.commit()
+        self._change_manager.commit()
         self.__update_scan_edges_list()
         self._scanedges_list.selection_set(sel)
 
@@ -215,6 +219,6 @@ class ScanEdgePage(tk.Frame):
             return False
 
         se.idx = se_num
-        self._radio_memory.set_scan_edge(se)
-        self._radio_memory.undo_manager.commit()
+        self._change_manager.set_scan_edge(se)
+        self._change_manager.commit()
         return True

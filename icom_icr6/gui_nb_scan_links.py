@@ -17,11 +17,15 @@ _LOG = logging.getLogger(__name__)
 
 class ScanLinksPage(tk.Frame):
     def __init__(
-        self, parent: tk.Widget, radio_memory: model.RadioMemory
+        self,
+        parent: tk.Widget,
+        radio_memory: model.RadioMemory,
+        cm: model.ChangeManeger,
     ) -> None:
         super().__init__(parent)
 
         self._radio_memory = radio_memory
+        self._change_manager = cm
         self._sl_name = tk.StringVar()
         self._last_selected_sl = 0
 
@@ -156,9 +160,9 @@ class ScanLinksPage(tk.Frame):
 
         sl = self._radio_memory.scan_links[sel_sl[0]].clone()
         sl.name = self._sl_name.get()
-        self._radio_memory.set_scan_link(sl)
+        self._change_manager.set_scan_link(sl)
 
-        self._radio_memory.undo_manager.commit()
+        self._change_manager.commit()
         self.__update_scan_links_list()
 
     def __on_de_select(self) -> None:
@@ -202,12 +206,12 @@ class ScanLinksPage(tk.Frame):
                 rec.selected,
             )
             se = rec.se
-            self._radio_memory.set_scan_edge(se)
+            self._change_manager.set_scan_edge(se)
 
             sl[se.idx] = rec.selected
 
-        self._radio_memory.undo_manager.commit()
-        self._radio_memory.set_scan_link(sl)
+        self._change_manager.commit()
+        self._change_manager.set_scan_link(sl)
 
     def __do_move_scan_edge(
         self, rows: ty.Collection[gui_scanlinkslist.Row]
@@ -220,12 +224,12 @@ class ScanLinksPage(tk.Frame):
             )
             changes[rec.rownum] = se.idx
             se.idx = rec.rownum
-            self._radio_memory.set_scan_edge(se)
+            self._change_manager.set_scan_edge(se)
 
         if changes:
-            self._radio_memory.remap_scan_links(changes)
+            self._change_manager.remap_scan_links(changes)
 
-        self._radio_memory.undo_manager.commit()
+        self._change_manager.commit()
         self.__update_scan_edges()
 
     def __on_scan_edge_copy(self, _event: tk.Event) -> None:  # type: ignore
@@ -318,8 +322,8 @@ class ScanLinksPage(tk.Frame):
             return False
 
         se.idx = se_num
-        self._radio_memory.set_scan_edge(se)
-        self._radio_memory.undo_manager.commit()
+        self._change_manager.set_scan_edge(se)
+        self._change_manager.commit()
         return True
 
     def __disable_widgets(self) -> None:

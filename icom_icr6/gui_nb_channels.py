@@ -20,11 +20,15 @@ class ChannelsPage(tk.Frame):
     _chan_list: gui_chanlist.ChannelsList
 
     def __init__(
-        self, parent: tk.Widget, radio_memory: model.RadioMemory
+        self,
+        parent: tk.Widget,
+        radio_memory: model.RadioMemory,
+        cm: model.ChangeManeger,
     ) -> None:
         super().__init__(parent)
         self._parent = parent
         self._radio_memory = radio_memory
+        self._change_manager = cm
         self._last_selected_group = 0
         self._last_selected_chan: tuple[int, ...] = ()
         self.__need_full_refresh = False
@@ -112,9 +116,9 @@ class ChannelsPage(tk.Frame):
             _LOG.debug("__do_delete_channels: %r", rec)
             if chan := rec.channel:
                 chan.delete()
-                self._radio_memory.set_channel(chan)
+                self._change_manager.set_channel(chan)
 
-        self._radio_memory.undo_manager.commit()
+        self._change_manager.commit()
         self.__update_chan_list()
 
     def __do_update_channels(
@@ -123,11 +127,11 @@ class ChannelsPage(tk.Frame):
         for rec in rows:
             _LOG.debug("__do_update_channels: %r", rec)
             rec.updated = False
-            self.__need_full_refresh |= self._radio_memory.set_channel(
+            self.__need_full_refresh |= self._change_manager.set_channel(
                 rec.channel
             )
 
-        self._radio_memory.undo_manager.commit()
+        self._change_manager.commit()
         if self.__need_full_refresh:
             self.__update_chan_list()
         else:
@@ -153,9 +157,9 @@ class ChannelsPage(tk.Frame):
             channum = range_start + rec.rownum
             _LOG.debug("__do_move_channels: %r -> %d", rec, channum)
             rec.channel.number = channum
-            self._radio_memory.set_channel(rec.channel)
+            self._change_manager.set_channel(rec.channel)
 
-        self._radio_memory.undo_manager.commit()
+        self._change_manager.commit()
         self.__update_chan_list()
 
     def __on_channel_select(self, rows: list[gui_chanlist.Row]) -> None:
@@ -283,8 +287,8 @@ class ChannelsPage(tk.Frame):
         # do not set bank on paste
         chan.bank = consts.BANK_NOT_SET
         chan.bank_pos = 0
-        self._radio_memory.set_channel(chan)
-        self._radio_memory.undo_manager.commit()
+        self._change_manager.set_channel(chan)
+        self._change_manager.commit()
 
         return True
 
@@ -402,9 +406,9 @@ class ChannelsPage(tk.Frame):
 
         for chan, idx in zip(channels, channels_ids, strict=True):
             chan.number = idx
-            self._radio_memory.set_channel(chan)
+            self._change_manager.set_channel(chan)
 
-        self._radio_memory.undo_manager.commit()
+        self._change_manager.commit()
         self.__update_chan_list()
 
     def __on_btn_fill(self) -> None:

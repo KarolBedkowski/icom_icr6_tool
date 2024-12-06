@@ -16,11 +16,15 @@ _ = ty
 
 class AutoWriteChannelsPage(tk.Frame):
     def __init__(
-        self, parent: tk.Widget, radio_memory: model.RadioMemory
+        self,
+        parent: tk.Widget,
+        radio_memory: model.RadioMemory,
+        cm: model.ChangeManeger,
     ) -> None:
         super().__init__(parent)
         self._parent = parent
         self._radio_memory = radio_memory
+        self._change_manager = cm
 
         self._create_channel_list(self)
 

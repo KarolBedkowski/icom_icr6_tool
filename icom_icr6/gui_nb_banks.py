@@ -28,7 +28,10 @@ _LOG = logging.getLogger(__name__)
 
 class BanksPage(tk.Frame):
     def __init__(
-        self, parent: tk.Widget, radio_memory: model.RadioMemory
+        self,
+        parent: tk.Widget,
+        radio_memory: model.RadioMemory,
+        cm: model.ChangeManeger,
     ) -> None:
         super().__init__(parent)
         self._parent = parent
@@ -38,6 +41,7 @@ class BanksPage(tk.Frame):
         self._bank_name = tk.StringVar()
         self._bank_link = gui_model.BoolVar()
         self._radio_memory = radio_memory
+        self._change_manager = cm
         self._last_selected_bank = 0
 
         pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
@@ -185,13 +189,13 @@ class BanksPage(tk.Frame):
 
         bank = self._radio_memory.banks[selected_bank].clone()
         bank.name = self._bank_name.get().strip()[:6]
-        self._radio_memory.set_bank(bank)
+        self._change_manager.set_bank(bank)
 
         bl = self._radio_memory.bank_links
         bl[selected_bank] = self._bank_link.get_raw()
-        self._radio_memory.set_bank_links(bl)
+        self._change_manager.set_bank_links(bl)
 
-        self._radio_memory.undo_manager.commit()
+        self._change_manager.commit()
         self.__update_banks_list()
 
     def __on_channel_select(self, rows: list[gui_bankchanlist.BLRow]) -> None:
@@ -230,9 +234,9 @@ class BanksPage(tk.Frame):
             )
             if chan := rec.channel:
                 chan.clear_bank()
-                self._radio_memory.set_channel(chan)
+                self._change_manager.set_channel(chan)
 
-        self._radio_memory.undo_manager.commit()
+        self._change_manager.commit()
         self.__update_chan_list()
 
     def __do_update_channels(
@@ -255,7 +259,7 @@ class BanksPage(tk.Frame):
                 if old_chan := rec.channel:
                     # clear old chan
                     old_chan.clear_bank()
-                    self._radio_memory.set_channel(old_chan)
+                    self._change_manager.set_channel(old_chan)
 
                 # add chan to bank
                 chan = self._radio_memory.channels[rec.new_channel]
@@ -273,7 +277,7 @@ class BanksPage(tk.Frame):
 
             else:
                 # no chan = deleted
-                self._radio_memory.clear_bank_pos(selected_bank, rec.rownum)
+                self._change_manager.clear_bank_pos(selected_bank, rec.rownum)
                 continue
 
             chan.bank = selected_bank
@@ -284,9 +288,9 @@ class BanksPage(tk.Frame):
                 chan.load_defaults()
                 chan.hide_channel = False
 
-            self._radio_memory.set_channel(chan)
+            self._change_manager.set_channel(chan)
 
-        self._radio_memory.undo_manager.commit()
+        self._change_manager.commit()
         self.__update_chan_list()
 
     def __do_move_channels(
@@ -298,9 +302,9 @@ class BanksPage(tk.Frame):
 
             _LOG.debug("__do_move_channels: %r -> %d", rec.channel, rec.rownum)
             rec.channel.bank_pos = rec.rownum
-            self._radio_memory.set_channel(rec.channel)
+            self._change_manager.set_channel(rec.channel)
 
-        self._radio_memory.undo_manager.commit()
+        self._change_manager.commit()
         self.__update_chan_list()
 
     def __on_channel_copy(self, _event: tk.Event) -> None:  # type: ignore
@@ -424,8 +428,8 @@ class BanksPage(tk.Frame):
         chan.bank = selected_bank
         chan.bank_pos = pos
         chan.hide_channel = False
-        self._radio_memory.set_channel(chan)
-        self._radio_memory.undo_manager.commit()
+        self._change_manager.set_channel(chan)
+        self._change_manager.commit()
         return True
 
     def __on_btn_sort(self) -> None:
@@ -503,9 +507,9 @@ class BanksPage(tk.Frame):
         for chan, idx in zip(channels, channels_bank_pos, strict=True):
             if chan:
                 chan.bank_pos = idx
-                self._radio_memory.set_channel(chan)
+                self._change_manager.set_channel(chan)
 
-        self._radio_memory.undo_manager.commit()
+        self._change_manager.commit()
         self.__update_chan_list()
 
 

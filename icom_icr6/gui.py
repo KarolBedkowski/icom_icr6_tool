@@ -40,9 +40,7 @@ class App(tk.Frame):
 
         self._last_file: Path | None = None
         self._radio_memory = model.RadioMemory()
-        self._undo_menager = self._radio_memory.undo_manager = (
-            model.RealUndoManager()
-        )
+        self._change_manager = model.ChangeManeger(self._radio_memory)
         self._status_value = tk.StringVar()
         # safe is clone to device when data are loaded or cloned from dev
         self._safe_for_clone = False
@@ -146,35 +144,37 @@ class App(tk.Frame):
 
     def __create_nb_channels(self) -> tk.Widget:
         self._nb_channels = gui_nb_channels.ChannelsPage(
-            self, self._radio_memory
+            self, self._radio_memory, self._change_manager
         )
         return self._nb_channels
 
     def __create_nb_banks(self) -> tk.Widget:
-        self._nb_banks = gui_nb_banks.BanksPage(self, self._radio_memory)
+        self._nb_banks = gui_nb_banks.BanksPage(
+            self, self._radio_memory, self._change_manager
+        )
         return self._nb_banks
 
     def __create_nb_scan_edge(self) -> tk.Frame:
         self._nb_scan_edge = gui_nb_scan_edge.ScanEdgePage(
-            self, self._radio_memory
+            self, self._radio_memory, self._change_manager
         )
         return self._nb_scan_edge
 
     def __create_nb_scan_links(self) -> tk.Widget:
         self._nb_scan_links = gui_nb_scan_links.ScanLinksPage(
-            self, self._radio_memory
+            self, self._radio_memory, self._change_manager
         )
         return self._nb_scan_links
 
     def __create_nb_awchannels(self) -> tk.Widget:
         self._nb_aw_channels = gui_nb_awchannels.AutoWriteChannelsPage(
-            self, self._radio_memory
+            self, self._radio_memory, self._change_manager
         )
         return self._nb_aw_channels
 
     def __create_nb_settings(self) -> tk.Widget:
         self._nb_settings = gui_nb_settings.SettingsPage(
-            self, self._radio_memory
+            self, self._radio_memory, self._change_manager
         )
         return self._nb_settings
 
@@ -246,20 +246,13 @@ class App(tk.Frame):
 
     def __on_undo(self, _event: tk.Event | None = None) -> None:  # type: ignore
         _LOG.info("__on_undo")
-        self._undo_menager.lock = True
-        if item := self._undo_menager.pop_undo():
-            _LOG.debug("undo item: %r", item)
-            self._radio_memory.apply_undo(item)
+        if self._change_manager.undo():
             self.__update_widgets()
 
         _LOG.info("__on_undo finished")
 
     def __on_redo(self, _event: tk.Event | None = None) -> None:  # type: ignore
-        self._undo_menager.lock = True
-
-        if item := self._undo_menager.pop_redo():
-            _LOG.debug("redo item: %r", item)
-            self._radio_memory.apply_redo(item)
+        if self._change_manager.redo():
             self.__update_widgets()
 
     def __update_widgets(self) -> None:

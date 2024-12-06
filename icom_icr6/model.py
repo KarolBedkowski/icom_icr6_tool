@@ -1020,11 +1020,9 @@ class RadioMemory:
 
         # this create all lists etc
         self.load_memory()
-        # dummy undo manager
-        self.undo_manager: UndoManager = UndoManager()
 
     def reset(self) -> None:
-        self.undo_manager.clear()
+        pass
 
     def update_from(self, rm: RadioMemory) -> None:
         self.reset()
@@ -1078,49 +1076,12 @@ class RadioMemory:
         self._save_settings()
         self._save_comment()
 
-    def set_channel(self, chan: Channel) -> bool:
-        """Set channel. return True when other channels are also changed."""
-        _LOG.debug("set_channel: %r", chan)
-        if not chan.freq or chan.hide_channel:
-            chan.bank = consts.BANK_NOT_SET
-
-        chan.validate()
-
-        self.undo_manager.push("channel", self.channels[chan.number], chan)
-
-        self.channels[chan.number] = chan
-        chan.updated = True
-
-        if chan.bank == consts.BANK_NOT_SET:
-            return False
-
-        # remove other channels from this position bank
-        res = False
-        for c in self._get_channels_in_bank(chan.bank):
-            if c.number != chan.number and c.bank_pos == chan.bank_pos:
-                _LOG.debug("set_channel clear bank in chan %r", c)
-                prev = c.clone()
-                c.clear_bank()
-                self.undo_manager.push("channel", prev, c)
-                res = True
-
-        return res
-
     def find_first_hidden_channel(self, start: int = 0) -> Channel | None:
         for chan in self.channels[start:]:
             if chan.hide_channel:
                 return chan
 
         return None
-
-    def set_scan_edge(self, se: ScanEdge) -> None:
-        _LOG.debug("set_scan_edge: %r", se)
-        se.validate()
-
-        self.undo_manager.push("scan_edge", self.scan_edges[se.idx], se)
-
-        assert self.scan_edges[se.idx] is not se
-        self.scan_edges[se.idx] = se
 
     def get_active_channels(self) -> ty.Iterable[Channel]:
         return (
@@ -1136,49 +1097,8 @@ class RadioMemory:
             raise IndexError
 
         bc = BankChannels()
-        bc.set(self._get_channels_in_bank(bank_idx))
+        bc.set(self.get_channels_in_bank(bank_idx))
         return bc
-
-    def set_bank(self, bank: Bank) -> None:
-        self.undo_manager.push("bank", self.banks[bank.idx], bank)
-
-        self.banks[bank.idx] = bank
-
-    def clear_bank_pos(
-        self, bank: int, bank_pos: int, *, channum: int | None = None
-    ) -> bool:
-        _LOG.debug(
-            "clear_bank_pos: %d, %d, channum=%r", bank, bank_pos, channum
-        )
-
-        if channum:
-            ch = self.channels[channum]
-            if ch.bank != bank and ch.bank_pos != bank_pos:
-                _LOG.error(
-                    "wrong bank; exp=%r/%r; chan=%r", bank, bank_pos, ch
-                )
-                return False
-
-            prev = ch.clone()
-            ch.clear_bank()
-            self.undo_manager.push("channel", prev, ch)
-
-            return True
-
-        deleted = False
-
-        for ch in self.get_active_channels():
-            if ch.bank == bank and ch.bank_pos == bank_pos:
-                prev = ch.clone()
-                ch.clear_bank()
-                self.undo_manager.push("channel", prev, ch)
-                deleted = True
-
-        if not deleted:
-            _LOG.debug("clear_bank_pos: no chan in pos %r/%r", bank, bank_pos)
-            return False
-
-        return True
 
     def get_dupicated_bank_pos(self) -> set[int]:
         """Return list of channels that occupy one position in bank."""
@@ -1203,39 +1123,6 @@ class RadioMemory:
                 return True
 
         return False
-
-    def set_scan_link(self, sl: ScanLink) -> None:
-        self.undo_manager.push("scan_link", self.scan_links[sl.idx], sl)
-
-        assert self.scan_links[sl.idx] is not sl
-        self.scan_links[sl.idx] = sl
-
-    def set_settings(self, sett: RadioSettings) -> None:
-        self.undo_manager.push("settings", self.settings, sett)
-
-        assert self.settings is not sett
-        self.settings = sett
-        self.settings.updated = True
-
-    def set_bank_links(self, bl: BankLinks) -> None:
-        self.undo_manager.push("bank_links", self.bank_links, bl)
-
-        assert self.bank_links is not bl
-        self.bank_links = bl
-
-    def set_comment(self, comment: str) -> None:
-        comment = comment.strip()
-        if comment == self.comment:
-            return
-
-        self.undo_manager.push("comment", self.comment, comment)
-        self.comment = comment
-
-    def remap_scan_links(self, mapping: dict[int, int]) -> None:
-        for sl in self.scan_links:
-            prev = sl.clone()
-            sl.remap_edges(mapping)
-            self.undo_manager.push("scan_links", prev, sl)
 
     def _load_channels(self) -> ty.Iterable[Channel]:
         for idx in range(consts.NUM_CHANNELS):
@@ -1322,7 +1209,7 @@ class RadioMemory:
     #     mem_flags = mv[cflags_start : cflags_start + 2]
     #     cf.to_data(mem_flags)
 
-    def _get_channels_in_bank(self, bank: int) -> ty.Iterable[Channel]:
+    def get_channels_in_bank(self, bank: int) -> ty.Iterable[Channel]:
         for chan in self.channels:
             if chan.bank == bank and not chan.hide_channel:
                 yield chan
@@ -1386,44 +1273,6 @@ class RadioMemory:
     def is_usa_model(self) -> bool:
         return self.file_etcdata == "0003"
 
-    def _apply_undo_redo(self, items: ty.Iterable[tuple[str, object]]) -> None:
-        for kind, obj in items:
-            _LOG.debug("_apply_undo_redo: kind=%s, obj=%r", kind, obj)
-            match kind:
-                case "channel":
-                    assert isinstance(obj, Channel)
-                    self.channels[obj.number] = obj
-
-                case "scan_edge":
-                    assert isinstance(obj, ScanEdge)
-                    self.scan_edges[obj.idx] = obj
-
-                case "bank":
-                    assert isinstance(obj, Bank)
-                    self.banks[obj.idx] = obj
-
-                case "scan_link":
-                    assert isinstance(obj, ScanLink)
-                    self.scan_links[obj.idx] = obj
-
-                case "bank_links":
-                    assert isinstance(obj, BankLinks)
-                    self.bank_links = obj
-
-                case "settings":
-                    assert isinstance(obj, RadioSettings)
-                    self.settings = obj
-
-                case "comment":
-                    assert isinstance(obj, str)
-                    self.comment = obj
-
-    def apply_undo(self, actions: list[UndoItem]) -> None:
-        self._apply_undo_redo((a.kind, a.old_item) for a in actions)
-
-    def apply_redo(self, actions: list[UndoItem]) -> None:
-        self._apply_undo_redo((a.kind, a.new_item) for a in reversed(actions))
-
 
 @dataclass
 class UndoItem:
@@ -1433,32 +1282,11 @@ class UndoItem:
 
 
 class UndoManager:
-    def clear(self) -> None:
-        pass
-
-    def push(self, kind: str, old_item: object, new_item: object) -> None:
-        pass
-
-    def commit(self) -> None:
-        pass
-
-    def abort(self) -> None:
-        pass
-
-    def pop_undo(self) -> list[UndoItem] | None:
-        return None
-
-    def pop_redo(self) -> list[UndoItem] | None:
-        return None
-
-
-class RealUndoManager(UndoManager):
     def __init__(self) -> None:
         self.max_queue_len = 50
         self.undo_queue: list[list[UndoItem]] = []
         self.redo_queue: list[list[UndoItem]] = []
         self.tmp_queue: list[UndoItem] = []
-        self.lock: bool = False
 
     def clear(self) -> None:
         self.undo_queue.clear()
@@ -1519,3 +1347,187 @@ class RealUndoManager(UndoManager):
             self.undo_queue.pop(0)
 
         return item
+
+
+class ChangeManeger:
+    def __init__(self, rm: RadioMemory) -> None:
+        self._undo_manager = UndoManager()
+        self.rm = rm
+
+    def commit(self) -> None:
+        self._undo_manager.commit()
+
+    def set_channel(self, chan: Channel) -> bool:
+        """Set channel. return True when other channels are also changed."""
+        _LOG.debug("set_channel: %r", chan)
+        if not chan.freq or chan.hide_channel:
+            chan.bank = consts.BANK_NOT_SET
+
+        chan.validate()
+
+        current_channel = self.rm.channels[chan.number]
+        self._undo_manager.push("channel", current_channel, chan)
+
+        self.rm.channels[chan.number] = chan
+        chan.updated = True
+
+        if chan.bank == consts.BANK_NOT_SET:
+            return False
+
+        # remove other channels from this position bank
+        res = False
+        for c in self.rm.get_channels_in_bank(chan.bank):
+            if c.number != chan.number and c.bank_pos == chan.bank_pos:
+                _LOG.debug("set_channel clear bank in chan %r", c)
+                prev = c.clone()
+
+                c.clear_bank()
+                c.updated = True
+
+                self._undo_manager.push("channel", prev, c)
+
+                res = True
+
+        return res
+
+    def set_scan_edge(self, se: ScanEdge) -> None:
+        _LOG.debug("set_scan_edge: %r", se)
+        se.validate()
+
+        current_se = self.rm.scan_edges[se.idx]
+        self._undo_manager.push("scan_edge", current_se, se)
+
+        assert current_se is not se
+        self.rm.scan_edges[se.idx] = se
+
+    def set_bank(self, bank: Bank) -> None:
+        current_bank = self.rm.banks[bank.idx]
+        self._undo_manager.push("bank", current_bank, bank)
+
+        self.rm.banks[bank.idx] = bank
+
+    def clear_bank_pos(
+        self, bank: int, bank_pos: int, *, channum: int | None = None
+    ) -> bool:
+        _LOG.debug(
+            "clear_bank_pos: %d, %d, channum=%r", bank, bank_pos, channum
+        )
+
+        if channum:
+            ch = self.rm.channels[channum]
+            if ch.bank != bank and ch.bank_pos != bank_pos:
+                _LOG.error(
+                    "wrong bank; exp=%r/%r; chan=%r", bank, bank_pos, ch
+                )
+                return False
+
+            prev = ch.clone()
+            ch.clear_bank()
+            ch.updated = True
+
+            self._undo_manager.push("channel", prev, ch)
+
+            return True
+
+        deleted = False
+
+        for ch in self.rm.get_active_channels():
+            if ch.bank == bank and ch.bank_pos == bank_pos:
+                prev = ch.clone()
+                ch.clear_bank()
+                ch.updated = True
+
+                self._undo_manager.push("channel", prev, ch)
+                deleted = True
+
+        if not deleted:
+            _LOG.debug("clear_bank_pos: no chan in pos %r/%r", bank, bank_pos)
+            return False
+
+        return True
+
+    def set_scan_link(self, sl: ScanLink) -> None:
+        current_sl = self.rm.scan_links[sl.idx]
+        self._undo_manager.push("scan_link", current_sl, sl)
+
+        assert current_sl is not sl
+        self.rm.scan_links[sl.idx] = sl
+
+    def set_settings(self, sett: RadioSettings) -> None:
+        self._undo_manager.push("settings", self.rm.settings, sett)
+
+        assert self.rm.settings is not sett
+        self.rm.settings = sett
+        self.rm.settings.updated = True
+
+    def set_bank_links(self, bl: BankLinks) -> None:
+        self._undo_manager.push("bank_links", self.rm.bank_links, bl)
+
+        assert self.rm.bank_links is not bl
+        self.bank_links = bl
+
+    def set_comment(self, comment: str) -> None:
+        comment = comment.strip()
+        if comment == self.rm.comment:
+            return
+
+        self._undo_manager.push("comment", self.rm.comment, comment)
+        self.rm.comment = comment
+
+    def remap_scan_links(self, mapping: dict[int, int]) -> None:
+        for sl in self.rm.scan_links:
+            prev = sl.clone()
+            sl.remap_edges(mapping)
+            self._undo_manager.push("scan_links", prev, sl)
+
+    def _apply_undo_redo(self, items: ty.Iterable[tuple[str, object]]) -> None:
+        for kind, obj in items:
+            _LOG.debug("_apply_undo_redo: kind=%s, obj=%r", kind, obj)
+            match kind:
+                case "channel":
+                    assert isinstance(obj, Channel)
+                    self.rm.channels[obj.number] = obj
+
+                case "scan_edge":
+                    assert isinstance(obj, ScanEdge)
+                    self.rm.scan_edges[obj.idx] = obj
+
+                case "bank":
+                    assert isinstance(obj, Bank)
+                    self.rm.banks[obj.idx] = obj
+
+                case "scan_link":
+                    assert isinstance(obj, ScanLink)
+                    self.rm.scan_links[obj.idx] = obj
+
+                case "bank_links":
+                    assert isinstance(obj, BankLinks)
+                    self.rm.bank_links = obj
+
+                case "settings":
+                    assert isinstance(obj, RadioSettings)
+                    self.rm.settings = obj
+
+                case "comment":
+                    assert isinstance(obj, str)
+                    self.rm.comment = obj
+
+                case _:
+                    errmsg = "unknown action: kind={kind!r} obj={obj!r}"
+                    raise ValueError(errmsg)
+
+    def undo(self) -> bool:
+        if actions := self._undo_manager.pop_undo():
+            self._apply_undo_redo((a.kind, a.old_item) for a in actions)
+            return True
+
+        return False
+
+    def redo(self) -> bool:
+        if actions := self._undo_manager.pop_redo():
+            self._apply_undo_redo(
+                (a.kind, a.new_item) for a in reversed(actions)
+            )
+            return True
+
+        return False

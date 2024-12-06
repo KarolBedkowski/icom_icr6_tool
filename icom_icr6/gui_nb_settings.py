@@ -16,11 +16,15 @@ _LOG = logging.getLogger(__name__)
 
 class SettingsPage(tk.Frame):
     def __init__(
-        self, parent: tk.Widget, radio_memory: model.RadioMemory
+        self,
+        parent: tk.Widget,
+        radio_memory: model.RadioMemory,
+        cm: model.ChangeManeger,
     ) -> None:
         super().__init__(parent)
 
         self._radio_memory = radio_memory
+        self._change_manager = cm
         self._create_vars()
         self._create_fields()
 
@@ -264,11 +268,9 @@ class SettingsPage(tk.Frame):
         sett.af_filer_am = self._var_af_filer_am.get_raw()
         sett.charging_type = self._var_charging_type.get_raw()
 
-        self._radio_memory.set_settings(sett)
-
-        self._radio_memory.set_comment(self._var_comment.get())
-
-        self._radio_memory.undo_manager.commit()
+        self._change_manager.set_settings(sett)
+        self._change_manager.set_comment(self._var_comment.get())
+        self._change_manager.commit()
 
         self.__update()
 
