@@ -34,6 +34,7 @@ class Row(gui_genericlist.BaseRow):
 
         se = self.se
         col = self.COLUMNS[idx][0]
+        ic(idx, col, val, se)
         match col:
             case "idx":
                 return
@@ -81,8 +82,6 @@ class ScanEdgesList(gui_genericlist.GenericList[Row, model.ScanEdge]):
     _ROW_CLASS = Row
 
     def _on_validate_edits(self, event: EventDataDict) -> object:
-        # _LOG.debug("_on_validate_edits: %r", event)
-
         column = self.columns[self.sheet.data_c(event.column)]
         row = self.sheet.data[event.row]
         value = event.value
@@ -97,6 +96,9 @@ class ScanEdgesList(gui_genericlist.GenericList[Row, model.ScanEdge]):
 
         match column[0]:
             case "start" | "end":
+                if value is None or value == "":
+                    return value
+
                 val = float(value)
                 if val < 1_310:  # entered freq  # noqa: PLR2004
                     val *= 1_000_000

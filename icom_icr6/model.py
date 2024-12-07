@@ -725,23 +725,15 @@ class ScanEdge:
     debug_info: dict[str, object] | None = None
     updated: bool = False
 
-    def human_attn(self) -> str:
-        match self.attenuator:
-            case 0:
-                return "Off"
-            case 1:
-                return "On"
-            case 2:
-                return "-"
-
-        return str(self.attenuator)
-
     def clone(self) -> ScanEdge:
         return copy.deepcopy(self)
 
     def delete(self) -> None:
         self.name = ""
         self.start = self.end = 0
+        self.attenuator = consts.ATTENUATOR.index("-")
+        self.tuning_step = consts.STEPS.index("-")
+        self.mode = consts.MODES_SCAN_EDGES.index("-")
 
     @classmethod
     def from_data(

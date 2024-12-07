@@ -9,7 +9,7 @@ import tkinter as tk
 import typing as ty
 from tkinter import messagebox
 
-from . import consts, expimp, gui_model, gui_scanedgeslist
+from . import consts, expimp, gui_model, gui_scanedgeslist, model
 from .change_manager import ChangeManeger
 from .radio_memory import RadioMemory
 
@@ -126,6 +126,7 @@ class ScanEdgePage(tk.Frame):
             changes[rec.rownum] = se.idx
             se.idx = rec.rownum
             self._change_manager.set_scan_edge(se)
+            rec.updated = False
 
         if changes:
             self._change_manager.remap_scan_links(changes)
