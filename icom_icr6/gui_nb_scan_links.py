@@ -211,6 +211,7 @@ class ScanLinksPage(tk.Frame):
             self._change_manager.set_scan_edge(se)
 
             sl[se.idx] = rec.selected
+            rec.updated = False
 
         self._change_manager.commit()
         self._change_manager.set_scan_link(sl)

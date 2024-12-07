@@ -67,13 +67,38 @@ class ScanEdgePage(tk.Frame):
     ) -> None:
         match action:
             case "delete":
-                pass
+                self.__do_delete_scan_edge(rows)
 
             case "update":
                 self.__do_update_scan_edge(rows)
 
             case "move":
                 self.__do_move_scan_edge(rows)
+
+    def __do_delete_scan_edge(
+        self, rows: ty.Collection[gui_scanedgeslist.Row]
+    ) -> None:
+        se: model.ScanEdge | None
+        if not messagebox.askyesno(
+            "Delete scan edge",
+            "Delete scan edge configuration?",
+            icon=messagebox.WARNING,
+        ):
+            return
+
+        for rec in rows:
+            _LOG.debug(
+                "__do_delete_scan_edge: row=%r, chan=%r",
+                rec,
+                rec.se,
+            )
+            if se := rec.se:
+                se = se.clone()
+                se.delete()
+                self._change_manager.set_scan_edge(se)
+
+        self._change_manager.commit()
+        self.__update_scan_edges_list()
 
     def __do_update_scan_edge(
         self, rows: ty.Collection[gui_scanedgeslist.Row]
@@ -85,6 +110,7 @@ class ScanEdgePage(tk.Frame):
                 rec.se,
             )
             self._change_manager.set_scan_edge(rec.se)
+            rec.updated = False
 
         self._change_manager.commit()
 
