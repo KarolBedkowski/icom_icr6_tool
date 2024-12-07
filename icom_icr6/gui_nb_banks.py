@@ -235,6 +235,7 @@ class BanksPage(tk.Frame):
                 rec.channel,
             )
             if chan := rec.channel:
+                chan = chan.clone()
                 chan.clear_bank()
                 self._change_manager.set_channel(chan)
 

@@ -117,6 +117,7 @@ class ChannelsPage(tk.Frame):
         for rec in rows:
             _LOG.debug("__do_delete_channels: %r", rec)
             if chan := rec.channel:
+                chan = chan.clone()
                 chan.delete()
                 self._change_manager.set_channel(chan)
 

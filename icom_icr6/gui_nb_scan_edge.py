@@ -120,7 +120,7 @@ class ScanEdgePage(tk.Frame):
             return
 
         for se_num in sel:
-            se = self._radio_memory.scan_edges[se_num]
+            se = self._radio_memory.scan_edges[se_num].clone()
             se.delete()
             self._change_manager.set_scan_edge(se)
 
