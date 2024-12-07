@@ -25,7 +25,7 @@ class UndoItem:
     new_item: object
 
 
-class UndoManager:
+class _UndoManager:
     def __init__(self) -> None:
         self.max_queue_len = 50
         self.undo_queue: list[list[UndoItem]] = []
@@ -101,11 +101,14 @@ class UndoManager:
 
 
 class ChangeManeger:
+    """Make changes in RadioMemory; manage undo/redo."""
+
     def __init__(self, rm: RadioMemory) -> None:
         self.rm = rm
+        # callback on undo queue changes
         self.on_undo_changes: ty.Callable[[bool, bool], None] | None = None
 
-        self._undo_manager = UndoManager()
+        self._undo_manager = _UndoManager()
         self._undo_manager.on_change = self._on_undo_change
 
         self._on_undo_change()
@@ -114,29 +117,36 @@ class ChangeManeger:
         self._undo_manager.clear()
 
     def commit(self) -> None:
+        """Commit changes in undo queue."""
         self._undo_manager.commit()
 
-    def set_channel(self, chan: model.Channel) -> bool:
-        """Set channel. return True when other channels are also changed."""
-        _LOG.debug("set_channel: %r", chan)
-        if not chan.freq or chan.hide_channel:
-            chan.bank = consts.BANK_NOT_SET
+    def set_channel(self, *channels: model.Channel) -> bool:
+        """Set channel(s). return True when other channels are also changed."""
+        _LOG.debug("set_channel: %r", channels)
+        for chan in channels:
+            chan.validate()
 
-        chan.validate()
+        chan_pos = {}
+        for chan in channels:
+            if not chan.freq or chan.hide_channel:
+                chan.bank = consts.BANK_NOT_SET
+            else:
+                chan_pos[chan.bank_pos] = chan.number
 
-        current_channel = self.rm.channels[chan.number]
-        self._undo_manager.push("channel", current_channel, chan)
+            current_channel = self.rm.channels[chan.number]
+            self._undo_manager.push("channel", current_channel, chan)
 
-        self.rm.channels[chan.number] = chan
-        chan.updated = True
+            self.rm.channels[chan.number] = chan
+            chan.updated = True
 
-        if chan.bank == consts.BANK_NOT_SET:
-            return False
+            if chan.bank == consts.BANK_NOT_SET:
+                return False
 
         # remove other channels from this position bank
         res = False
         for c in self.rm.get_channels_in_bank(chan.bank):
-            if c.number != chan.number and c.bank_pos == chan.bank_pos:
+            channum = chan_pos.get(c.bank_pos)
+            if channum is not None and c.number != channum:
                 _LOG.debug("set_channel clear bank in chan %r", c)
                 prev = c.clone()
 

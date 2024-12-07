@@ -114,26 +114,28 @@ class ChannelsPage(tk.Frame):
         ):
             return
 
+        channels = []
         for rec in rows:
             _LOG.debug("__do_delete_channels: %r", rec)
             if chan := rec.channel:
                 chan = chan.clone()
                 chan.delete()
-                self._change_manager.set_channel(chan)
+                channels.append(chan)
 
+        self._change_manager.set_channel(*channels)
         self._change_manager.commit()
         self.__update_chan_list()
 
     def __do_update_channels(
         self, rows: ty.Collection[gui_chanlist.Row]
     ) -> None:
+        channels = []
         for rec in rows:
             _LOG.debug("__do_update_channels: %r", rec)
             rec.updated = False
-            self.__need_full_refresh |= self._change_manager.set_channel(
-                rec.channel
-            )
+            channels.append(rec.channel)
 
+        self.__need_full_refresh |= self._change_manager.set_channel(*channels)
         self._change_manager.commit()
         if self.__need_full_refresh:
             self.__update_chan_list()
@@ -155,13 +157,15 @@ class ChannelsPage(tk.Frame):
             return
 
         range_start = selected_range * 100
+        channels = []
 
         for rec in rows:
             channum = range_start + rec.rownum
             _LOG.debug("__do_move_channels: %r -> %d", rec, channum)
             rec.channel.number = channum
-            self._change_manager.set_channel(rec.channel)
+            channels.append(rec.channel)
 
+        self._change_manager.set_channel(*channels)
         self._change_manager.commit()
         self.__update_chan_list()
 
@@ -223,6 +227,9 @@ class ChannelsPage(tk.Frame):
             self.__on_channel_paste_simple(data)
         except Exception:
             _LOG.exception("__on_channel_paste error")
+        else:
+            self._change_manager.commit()
+            self.__update_chan_list()
 
     def __on_channel_paste_channels(
         self, sel: tuple[int, ...], data: str
@@ -253,8 +260,6 @@ class ChannelsPage(tk.Frame):
                 # stop on range boundary
                 if chan_num % 100 == 99:  # noqa: PLR2004
                     break
-
-        self.__update_chan_list()
 
     def __on_channel_paste_simple(self, data: str) -> None:
         try:
@@ -291,7 +296,6 @@ class ChannelsPage(tk.Frame):
         chan.bank = consts.BANK_NOT_SET
         chan.bank_pos = 0
         self._change_manager.set_channel(chan)
-        self._change_manager.commit()
 
         return True
 
@@ -409,8 +413,8 @@ class ChannelsPage(tk.Frame):
 
         for chan, idx in zip(channels, channels_ids, strict=True):
             chan.number = idx
-            self._change_manager.set_channel(chan)
 
+        self._change_manager.set_channel(*channels)
         self._change_manager.commit()
         self.__update_chan_list()
 
