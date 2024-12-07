@@ -9,18 +9,21 @@ seq:
     size: 16
     repeat: expr
     repeat-expr: 1300
+    doc: pos=0x5F80
 
   - id: autowrite_channels
     type: channel
     size: 16
     repeat: expr
     repeat-expr: 200
+    doc: pos=0x6A30
 
   - id: scan_edges
     type: scan_edge
     size: 16
     repeat: expr
     repeat-expr: 25
+    doc: pos=0x5DC0
 
   - id: unknown1
     size: 48
@@ -31,6 +34,7 @@ seq:
     size: 2
     repeat: expr
     repeat-expr: 1300
+    doc: pos=0x5F80
 
   - id: unknown2
     size: 121
@@ -43,6 +47,7 @@ seq:
     type: u1
     repeat: expr
     repeat-expr: 200
+    doc: pos=0x6A30
 
   - id: unknown2bpad
     size: 20
@@ -59,6 +64,7 @@ seq:
   - id: settings
     type: settings
     size: 64
+    doc: pos=0x6BD0
 
   - id: unknown3
     size: 24
@@ -66,6 +72,7 @@ seq:
   - id: bank_links
     type: bank_links
     size: 3
+    doc: pos=0x6C28
 
   - id: unknown3b
     size: 1
@@ -75,6 +82,7 @@ seq:
     size: 4
     repeat: expr
     repeat-expr: 10
+    doc: pos=0x6C2C
 
   - id: unknown3a
     size: 3
@@ -87,18 +95,21 @@ seq:
     type: str
     size: 16
     encoding: ASCII
+    doc: pos=0x6D00
 
   - id: bank_names
     type: bank_name
     size: 8
     repeat: expr
     repeat-expr: 22
+    doc: pos=0x6D10
 
   - id: scanlink_names
     type: scanlink_name
     size: 8
     repeat: expr
     repeat-expr: 10
+    doc: pos=0x6DC0
 
   - id: unknown4const
     size: 64
