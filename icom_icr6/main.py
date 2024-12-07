@@ -11,17 +11,9 @@
 import logging
 import sys
 import typing as ty
-from contextlib import suppress
 from pathlib import Path
 
 from . import gui, io
-
-with suppress(ImportError):
-    import icecream
-
-    icecream.install()
-    ic = icecream.ic
-
 
 LOG = logging.getLogger(__name__)
 

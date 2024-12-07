@@ -18,10 +18,12 @@ from . import (
     model,
     validators,
 )
+from .change_manager import ChangeManeger
 from .gui_widgets import (
     new_checkbox,
     new_entry,
 )
+from .radio_memory import RadioMemory
 
 _LOG = logging.getLogger(__name__)
 
@@ -30,8 +32,8 @@ class BanksPage(tk.Frame):
     def __init__(
         self,
         parent: tk.Widget,
-        radio_memory: model.RadioMemory,
-        cm: model.ChangeManeger,
+        radio_memory: RadioMemory,
+        cm: ChangeManeger,
     ) -> None:
         super().__init__(parent)
         self._parent = parent
@@ -59,7 +61,7 @@ class BanksPage(tk.Frame):
 
         self.__update_banks_list()
 
-    def update_tab(self, radio_memory: model.RadioMemory) -> None:
+    def update_tab(self, radio_memory: RadioMemory) -> None:
         self._radio_memory = radio_memory
 
         # hide canceller in global models

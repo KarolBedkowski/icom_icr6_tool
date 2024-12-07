@@ -8,8 +8,10 @@ import logging
 import tkinter as tk
 from tkinter import ttk
 
-from . import consts, gui_model, model, validators
+from . import consts, gui_model, validators
+from .change_manager import ChangeManeger
 from .gui_widgets import new_checkbox, new_combo, new_entry
+from .radio_memory import RadioMemory
 
 _LOG = logging.getLogger(__name__)
 
@@ -18,8 +20,8 @@ class SettingsPage(tk.Frame):
     def __init__(
         self,
         parent: tk.Widget,
-        radio_memory: model.RadioMemory,
-        cm: model.ChangeManeger,
+        radio_memory: RadioMemory,
+        cm: ChangeManeger,
     ) -> None:
         super().__init__(parent)
 
@@ -28,7 +30,7 @@ class SettingsPage(tk.Frame):
         self._create_vars()
         self._create_fields()
 
-    def update_tab(self, radio_memory: model.RadioMemory) -> None:
+    def update_tab(self, radio_memory: RadioMemory) -> None:
         self._radio_memory = radio_memory
 
         self.__update()

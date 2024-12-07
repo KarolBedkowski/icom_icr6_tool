@@ -8,7 +8,9 @@ import logging
 import tkinter as tk
 import typing as ty
 
-from . import expimp, gui_awchannlist, gui_model, model
+from . import expimp, gui_awchannlist, gui_model
+from .change_manager import ChangeManeger
+from .radio_memory import RadioMemory
 
 _LOG = logging.getLogger(__name__)
 _ = ty
@@ -18,8 +20,8 @@ class AutoWriteChannelsPage(tk.Frame):
     def __init__(
         self,
         parent: tk.Widget,
-        radio_memory: model.RadioMemory,
-        cm: model.ChangeManeger,
+        radio_memory: RadioMemory,
+        cm: ChangeManeger,
     ) -> None:
         super().__init__(parent)
         self._parent = parent
@@ -28,7 +30,7 @@ class AutoWriteChannelsPage(tk.Frame):
 
         self._create_channel_list(self)
 
-    def update_tab(self, radio_memory: model.RadioMemory) -> None:
+    def update_tab(self, radio_memory: RadioMemory) -> None:
         self._radio_memory = radio_memory
 
         # hide canceller in global models

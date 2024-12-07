@@ -9,7 +9,9 @@ import tkinter as tk
 import typing as ty
 from tkinter import messagebox
 
-from . import consts, expimp, gui_model, gui_scanedgeslist, model
+from . import consts, expimp, gui_model, gui_scanedgeslist
+from .change_manager import ChangeManeger
+from .radio_memory import RadioMemory
 
 _LOG = logging.getLogger(__name__)
 
@@ -18,8 +20,8 @@ class ScanEdgePage(tk.Frame):
     def __init__(
         self,
         parent: tk.Widget,
-        radio_memory: model.RadioMemory,
-        cm: model.ChangeManeger,
+        radio_memory: RadioMemory,
+        cm: ChangeManeger,
     ) -> None:
         super().__init__(parent)
         self._radio_memory = radio_memory
@@ -28,7 +30,7 @@ class ScanEdgePage(tk.Frame):
 
         self._create_list(self)
 
-    def update_tab(self, radio_memory: model.RadioMemory) -> None:
+    def update_tab(self, radio_memory: RadioMemory) -> None:
         self._radio_memory = radio_memory
 
         self._scanedges_list.selection_set(self._last_selected_se)

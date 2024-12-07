@@ -22,15 +22,16 @@ from . import (
     gui_nb_scan_links,
     gui_nb_settings,
     io,
-    model,
 )
+from .change_manager import ChangeManeger
+from .radio_memory import RadioMemory
 
 _LOG = logging.getLogger(__name__)
 
 
 @ty.runtime_checkable
 class TabWidget(ty.Protocol):
-    def update_tab(self, radio_memory: model.RadioMemory) -> None: ...
+    def update_tab(self, radio_memory: RadioMemory) -> None: ...
 
 
 class App(tk.Frame):
@@ -39,8 +40,8 @@ class App(tk.Frame):
         self.master = master
 
         self._last_file: Path | None = None
-        self._radio_memory = model.RadioMemory()
-        self._change_manager = model.ChangeManeger(self._radio_memory)
+        self._radio_memory = RadioMemory()
+        self._change_manager = ChangeManeger(self._radio_memory)
         self._change_manager.on_undo_changes = self.__on_undo_change
         self._status_value = tk.StringVar()
         # safe is clone to device when data are loaded or cloned from dev

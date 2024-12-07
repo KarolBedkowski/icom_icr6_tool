@@ -9,8 +9,10 @@ import tkinter as tk
 import typing as ty
 from tkinter import ttk
 
-from . import consts, expimp, gui_model, gui_scanlinkslist, model, validators
+from . import consts, expimp, gui_model, gui_scanlinkslist, validators
+from .change_manager import ChangeManeger
 from .gui_widgets import new_entry
+from .radio_memory import RadioMemory
 
 _LOG = logging.getLogger(__name__)
 
@@ -19,8 +21,8 @@ class ScanLinksPage(tk.Frame):
     def __init__(
         self,
         parent: tk.Widget,
-        radio_memory: model.RadioMemory,
-        cm: model.ChangeManeger,
+        radio_memory: RadioMemory,
+        cm: ChangeManeger,
     ) -> None:
         super().__init__(parent)
 
@@ -45,7 +47,7 @@ class ScanLinksPage(tk.Frame):
 
         pw.pack(expand=True, fill=tk.BOTH, side=tk.TOP, padx=12, pady=12)
 
-    def update_tab(self, radio_memory: model.RadioMemory) -> None:
+    def update_tab(self, radio_memory: RadioMemory) -> None:
         self._radio_memory = radio_memory
 
         self._scan_links_list.selection_set(self._last_selected_sl)
