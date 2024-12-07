@@ -129,7 +129,11 @@ class RadioMemory:
             if chan.bank != consts.BANK_NOT_SET and not chan.hide_channel:
                 banks_pos[(chan.bank, chan.bank_pos)].append(channum)
 
-        return set(itertools.chain.from_iterable(banks_pos.values()))
+        return set(
+            itertools.chain.from_iterable(
+                chans for chans in banks_pos.values() if len(chans) > 1
+            )
+        )
 
     def is_bank_pos_duplicated(
         self, bank: int, bank_pos: int, channum: int
@@ -293,3 +297,11 @@ class RadioMemory:
 
     def is_usa_model(self) -> bool:
         return self.file_etcdata == "0003"
+
+    def validate_loaded_data(self) -> None:
+        # check for doubled banks entries
+        if channels := self.get_dupicated_bank_pos():
+            errmsg = "Bank with invalid (doubled) bank position: " + ", ".join(
+                map(str, channels)
+            )
+            raise ValueError(errmsg)

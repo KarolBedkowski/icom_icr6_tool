@@ -224,10 +224,22 @@ class App(tk.Frame):
             self.__on_file_save_as()
             return
 
+        try:
+            self._radio_memory.validate_loaded_data()
+        except ValueError as err:
+            messagebox.showerror("Save file error - Invalid data", str(err))
+            return
+
         io.save_icf_file(self._last_file, self._radio_memory)
         self.set_status(f"File {self._last_file} saved")
 
     def __on_file_save_as(self, _event: tk.Event | None = None) -> None:  # type: ignore
+        try:
+            self._radio_memory.validate_loaded_data()
+        except ValueError as err:
+            messagebox.showerror("Save file error - Invalid data", str(err))
+            return
+
         fname = filedialog.asksaveasfilename(
             parent=self,
             filetypes=[("Supported files", ".icf"), ("All files", "*.*")],
@@ -310,6 +322,12 @@ class App(tk.Frame):
                 "Clone to device",
                 "Please open valid icf file or clone data from device.",
             )
+            return
+
+        try:
+            self._radio_memory.validate_loaded_data()
+        except ValueError as err:
+            messagebox.showerror("Clone to device - Invalid data", str(err))
             return
 
         gui_dlg_clone.CloneToRadioDialog(self, self._radio_memory)
