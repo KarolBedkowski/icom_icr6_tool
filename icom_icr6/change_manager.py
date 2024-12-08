@@ -134,6 +134,8 @@ class ChangeManeger:
                 bank_chan_pos[chan.bank, chan.bank_pos] = chan.number
 
             current_channel = self.rm.channels[chan.number]
+            if current_channel == chan:
+                continue
 
             self._undo_manager.push("channel", current_channel, chan)
 
@@ -167,6 +169,9 @@ class ChangeManeger:
         se.validate()
 
         current_se = self.rm.scan_edges[se.idx]
+        if current_se == se:
+            return
+
         self._undo_manager.push("scan_edge", current_se, se)
 
         assert current_se is not se
@@ -174,8 +179,12 @@ class ChangeManeger:
 
     def set_bank(self, bank: model.Bank) -> None:
         current_bank = self.rm.banks[bank.idx]
+        if current_bank == bank:
+            return
+
         self._undo_manager.push("bank", current_bank, bank)
 
+        assert current_bank is not bank
         self.rm.banks[bank.idx] = bank
 
     def clear_bank_pos(
@@ -220,12 +229,19 @@ class ChangeManeger:
 
     def set_scan_link(self, sl: model.ScanLink) -> None:
         current_sl = self.rm.scan_links[sl.idx]
+        if current_sl == sl:
+            return
+
         self._undo_manager.push("scan_link", current_sl, sl)
 
         assert current_sl is not sl
         self.rm.scan_links[sl.idx] = sl
 
     def set_settings(self, sett: model.RadioSettings) -> None:
+        if self.rm.settings == sett:
+            # no changes
+            return
+
         self._undo_manager.push("settings", self.rm.settings, sett)
 
         assert self.rm.settings is not sett
@@ -233,9 +249,13 @@ class ChangeManeger:
         self.rm.settings.updated = True
 
     def set_bank_links(self, bl: model.BankLinks) -> None:
-        self._undo_manager.push("bank_links", self.rm.bank_links, bl)
+        current_bl = self.rm.bank_links
+        if current_bl == bl:
+            return
 
-        assert self.rm.bank_links is not bl
+        self._undo_manager.push("bank_links", current_bl, bl)
+
+        assert current_bl is not bl
         self.bank_links = bl
 
     def set_comment(self, comment: str) -> None:
@@ -250,7 +270,8 @@ class ChangeManeger:
         for sl in self.rm.scan_links:
             prev = sl.clone()
             sl.remap_edges(mapping)
-            self._undo_manager.push("scan_links", prev, sl)
+            if prev != sl:
+                self._undo_manager.push("scan_links", prev, sl)
 
     def _apply_undo_redo(self, items: ty.Iterable[tuple[str, object]]) -> None:
         for kind, obj in items:
