@@ -29,12 +29,7 @@ _LOG = logging.getLogger(__name__)
 
 
 class BanksPage(tk.Frame):
-    def __init__(
-        self,
-        parent: tk.Widget,
-        radio_memory: RadioMemory,
-        cm: ChangeManeger,
-    ) -> None:
+    def __init__(self, parent: tk.Widget, cm: ChangeManeger) -> None:
         super().__init__(parent)
         self._parent = parent
         self.rowconfigure(0, weight=1)
@@ -42,7 +37,6 @@ class BanksPage(tk.Frame):
 
         self._bank_name = tk.StringVar()
         self._bank_link = gui_model.BoolVar()
-        self._radio_memory = radio_memory
         self._change_manager = cm
         self._last_selected_bank = 0
 
@@ -61,17 +55,19 @@ class BanksPage(tk.Frame):
 
         self.__update_banks_list()
 
-    def update_tab(self, radio_memory: RadioMemory) -> None:
-        self._radio_memory = radio_memory
-
+    def update_tab(self) -> None:
         # hide canceller in global models
         self._chan_list.set_hide_canceller(
-            hide=not radio_memory.is_usa_model()
+            hide=not self._radio_memory.is_usa_model()
         )
 
         self.__update_banks_list()
         self._banks_list.selection_set(self._last_selected_bank)
         self.__update_chan_list()
+
+    @property
+    def _radio_memory(self) -> RadioMemory:
+        return self._change_manager.rm
 
     def __create_bank_fields(self, frame: tk.Frame) -> None:
         fields = tk.Frame(frame)

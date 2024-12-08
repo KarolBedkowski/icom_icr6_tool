@@ -17,23 +17,19 @@ _LOG = logging.getLogger(__name__)
 
 
 class SettingsPage(tk.Frame):
-    def __init__(
-        self,
-        parent: tk.Widget,
-        radio_memory: RadioMemory,
-        cm: ChangeManeger,
-    ) -> None:
+    def __init__(self, parent: tk.Widget, cm: ChangeManeger) -> None:
         super().__init__(parent)
 
-        self._radio_memory = radio_memory
         self._change_manager = cm
         self._create_vars()
         self._create_fields()
 
-    def update_tab(self, radio_memory: RadioMemory) -> None:
-        self._radio_memory = radio_memory
-
+    def update_tab(self) -> None:
         self.__update()
+
+    @property
+    def _radio_memory(self) -> RadioMemory:
+        return self._change_manager.rm
 
     def _create_vars(self) -> None:
         self._var_func_dial_step = gui_model.ListVar(

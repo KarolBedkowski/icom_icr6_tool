@@ -31,7 +31,7 @@ _LOG = logging.getLogger(__name__)
 
 @ty.runtime_checkable
 class TabWidget(ty.Protocol):
-    def update_tab(self, radio_memory: RadioMemory) -> None: ...
+    def update_tab(self) -> None: ...
 
 
 class App(tk.Frame):
@@ -146,37 +146,35 @@ class App(tk.Frame):
 
     def __create_nb_channels(self) -> tk.Widget:
         self._nb_channels = gui_nb_channels.ChannelsPage(
-            self, self._radio_memory, self._change_manager
+            self, self._change_manager
         )
         return self._nb_channels
 
     def __create_nb_banks(self) -> tk.Widget:
-        self._nb_banks = gui_nb_banks.BanksPage(
-            self, self._radio_memory, self._change_manager
-        )
+        self._nb_banks = gui_nb_banks.BanksPage(self, self._change_manager)
         return self._nb_banks
 
     def __create_nb_scan_edge(self) -> tk.Frame:
         self._nb_scan_edge = gui_nb_scan_edge.ScanEdgePage(
-            self, self._radio_memory, self._change_manager
+            self, self._change_manager
         )
         return self._nb_scan_edge
 
     def __create_nb_scan_links(self) -> tk.Widget:
         self._nb_scan_links = gui_nb_scan_links.ScanLinksPage(
-            self, self._radio_memory, self._change_manager
+            self, self._change_manager
         )
         return self._nb_scan_links
 
     def __create_nb_awchannels(self) -> tk.Widget:
         self._nb_aw_channels = gui_nb_awchannels.AutoWriteChannelsPage(
-            self, self._radio_memory, self._change_manager
+            self, self._change_manager
         )
         return self._nb_aw_channels
 
     def __create_nb_settings(self) -> tk.Widget:
         self._nb_settings = gui_nb_settings.SettingsPage(
-            self, self._radio_memory, self._change_manager
+            self, self._change_manager
         )
         return self._nb_settings
 
@@ -286,7 +284,7 @@ class App(tk.Frame):
             self._nb_aw_channels,
             self._nb_settings,
         )
-        pages[selected_tab].update_tab(self._radio_memory)
+        pages[selected_tab].update_tab()
 
     def __on_nb_page_changed(self, _event: tk.Event) -> None:  # type: ignore
         self.set_status("")

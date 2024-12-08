@@ -21,15 +21,9 @@ _LOG = logging.getLogger(__name__)
 class ChannelsPage(tk.Frame):
     _chan_list: gui_chanlist.ChannelsList
 
-    def __init__(
-        self,
-        parent: tk.Widget,
-        radio_memory: RadioMemory,
-        cm: ChangeManeger,
-    ) -> None:
+    def __init__(self, parent: tk.Widget, cm: ChangeManeger) -> None:
         super().__init__(parent)
         self._parent = parent
-        self._radio_memory = radio_memory
         self._change_manager = cm
         self._last_selected_group = 0
         self._last_selected_chan: tuple[int, ...] = ()
@@ -47,17 +41,19 @@ class ChannelsPage(tk.Frame):
 
         pw.pack(expand=True, fill=tk.BOTH, side=tk.TOP, padx=12, pady=12)
 
-    def update_tab(self, radio_memory: RadioMemory) -> None:
-        self._radio_memory = radio_memory
-
+    def update_tab(self) -> None:
         # hide canceller in global models
         self._chan_list.set_hide_canceller(
-            hide=not radio_memory.is_usa_model()
+            hide=not self._radio_memory.is_usa_model()
         )
 
         self._groups_list.selection_set(self._last_selected_group)
         self.__update_chan_list()
         self._chan_list.selection_set(self._last_selected_chan)
+
+    @property
+    def _radio_memory(self) -> RadioMemory:
+        return self._change_manager.rm
 
     def _create_channel_list(self, frame: tk.Frame) -> None:
         self._chan_list = gui_chanlist.ChannelsList(frame)

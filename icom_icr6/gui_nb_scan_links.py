@@ -18,15 +18,9 @@ _LOG = logging.getLogger(__name__)
 
 
 class ScanLinksPage(tk.Frame):
-    def __init__(
-        self,
-        parent: tk.Widget,
-        radio_memory: RadioMemory,
-        cm: ChangeManeger,
-    ) -> None:
+    def __init__(self, parent: tk.Widget, cm: ChangeManeger) -> None:
         super().__init__(parent)
 
-        self._radio_memory = radio_memory
         self._change_manager = cm
         self._sl_name = tk.StringVar()
         self._last_selected_sl = 0
@@ -47,14 +41,16 @@ class ScanLinksPage(tk.Frame):
 
         pw.pack(expand=True, fill=tk.BOTH, side=tk.TOP, padx=12, pady=12)
 
-    def update_tab(self, radio_memory: RadioMemory) -> None:
-        self._radio_memory = radio_memory
-
+    def update_tab(self) -> None:
         self._scan_links_list.selection_set(self._last_selected_sl)
 
         self.__update_scan_links_list()
         self.__update_scan_edges()
         self.__on_select_scan_link()
+
+    @property
+    def _radio_memory(self) -> RadioMemory:
+        return self._change_manager.rm
 
     def _create_fields(self, frame: tk.Frame) -> None:
         fields = tk.Frame(frame)
