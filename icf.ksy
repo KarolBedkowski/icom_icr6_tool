@@ -36,16 +36,16 @@ seq:
     repeat-expr: 1300
     doc: pos 0x5f80 - 0x69a7
 
-  - id: scan_edge_rel1
-    type: scan_edge_rel1
+  - id: scan_edge_flags
+    type: scan_edge_flags
     size: 4
-    doc: something related to scan edgel 0x7F  / 0xFF; pos 0x69a8 - 0x69e7
+    doc: something related to scan edgel 0x7F  / 0xFF; pos 0x69a8 - 0x6a0b
     repeat: expr
-    repeat-expr: 16
+    repeat-expr: 25
 
-  - id: unknown1_0x69e8
-    size: 40
-    doc: not used? pos 0x69e8 - 0x6a0f
+  - id: padding_0x6a0c
+    size: 4
+    doc: not used? pos 0x6a0c - 0x6a0f
 
   - id: aw_channels_pos_hidden
     size: 1
@@ -182,18 +182,18 @@ types:
         doc: scan edge use addidtional "-" scan edge
 
       # 9
-      - id: unknown1
+      - id: padding
         type: b2
         doc: always 0
       - id: attenuator
         type: b2
       - id: start_flags_freq
         type: b2
-        doc: start flags_freq?
+        doc: start flags_freq? probably not used by radio
         enum: freq_mul
       - id: end_flags_freq
         type: b2
-        doc: end flags_freq?
+        doc: end flags_freq? probably not used by radio
         enum: freq_mul
 
       # 10
@@ -203,20 +203,28 @@ types:
         size: 6
         eos-error: false
 
-  scan_edge_rel1:
+  scan_edge_flags:
     seq:
       # 0
+      - id: hidden1
+        type: b1
       - id: unknown1
-        type: u1
-        doc: 0x7F lub 0xFF
+        type: b7
+        doc: always 0b1111111
+
       # 1
       - id: unknown2
         type: u1
         doc: always 0xFF ?
+
       # 2
-      - id: unknown3
-        type: u1
+      - id: hidden2
+        type: b1
         doc: the same as unknown1
+      - id: unknown3
+        type: b7
+        doc: always 0b1111111
+
       # 3
       - id: unknown4
         type: u1

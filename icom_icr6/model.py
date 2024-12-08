@@ -723,12 +723,14 @@ class ScanEdge:
     idx: int
     start: int
     end: int
-    disabled: int
     mode: int
     # tuning_step include 15 - "-"
     tuning_step: int
     attenuator: int
     name: str
+
+    # from flags
+    hidden: bool
 
     debug_info: dict[str, object] | None = None
     updated: bool = False
@@ -742,29 +744,51 @@ class ScanEdge:
         self.attenuator = consts.ATTENUATOR.index("-")
         self.tuning_step = consts.STEPS.index("-")
         self.mode = consts.MODES_SCAN_EDGES.index("-")
+        self.hidden = True
+
+    def unhide(self) -> None:
+        self.end = self.end or self.start or 1_000_000
+        self.start = self.start or self.end or 1_000_000
+        self.hidden = False
 
     @classmethod
     def from_data(
-        cls: type[ScanEdge], idx: int, data: bytearray | memoryview
+        cls: type[ScanEdge],
+        idx: int,
+        data: bytearray | memoryview,
+        data_flags: bytearray | memoryview,
     ) -> ScanEdge:
         start = (data[3] << 24) | (data[2] << 16) | (data[1] << 8) | data[0]
         start //= 3
         end = (data[7] << 24) | (data[6] << 16) | (data[5] << 8) | data[4]
         end //= 3
 
+        debug_info = (
+            {
+                "raw": binascii.hexlify(data),
+                "raw_flags": binascii.hexlify(data_flags),
+                "start_flags_freq": (data[9] >> 2) & 0b11,
+                "end_flags_freq": data[9] & 0b11,
+            }
+            if DEBUG
+            else None
+        )
+
+        hidden = bool(data_flags[0] >> 7) or not start or not end
+
         return ScanEdge(
             idx=idx,
             start=start,
             end=end,
-            disabled=bool(data[8] & 0b10000000),
-            mode=(data[8] & 0b01110000) >> 4,
+            mode=(data[8] & 0b11110000) >> 4,
             tuning_step=(data[8] & 0b00001111),
             attenuator=(data[9] & 0b00110000) >> 4,
             name=bytes(data[10:16]).decode() if data[10] else "",
-            debug_info={"raw": binascii.hexlify(data)} if DEBUG else None,
+            hidden=hidden,
+            debug_info=debug_info,
         )
 
-    def to_data(self, data: MutableMemory) -> None:
+    def to_data(self, data: MutableMemory, data_flags: MutableMemory) -> None:
         start = self.start * 3
         data[0] = start & 0xFF
         data[1] = (start >> 8) & 0xFF
@@ -777,11 +801,7 @@ class ScanEdge:
         data[6] = (end >> 16) & 0xFF
         data[7] = (end >> 24) & 0xFF
 
-        data[8] = (
-            bool2bit(self.disabled, 0b10000000)
-            | (self.mode & 0b111) << 4
-            | (self.tuning_step & 0b1111)
-        )
+        data[8] = (self.mode & 0b1111) << 4 | (self.tuning_step & 0b1111)
 
         data_set(data, 9, 0b00110000, self.attenuator << 4)
 
@@ -789,6 +809,11 @@ class ScanEdge:
             data[10:16] = self.name[:6].ljust(6).encode()
         else:
             data[10:16] = bytes([0, 0, 0, 0, 0, 0])
+
+        if self.hidden:
+            data_flags[0] = data_flags[2] = 0xFF
+        else:
+            data_flags[0] = data_flags[2] = 0x7F
 
     def validate(self) -> None:
         if self.idx < 0 or self.idx >= consts.NUM_SCAN_EDGES:

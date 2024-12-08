@@ -38,17 +38,31 @@ class Row(gui_genericlist.BaseRow):
             case "idx":
                 return
 
+            case "name":
+                if val:
+                    se = self._make_clone()
+                    se.unhide()
+
             case "start":  # freq
                 se = self._make_clone()
                 se.start = val or 0  # type: ignore
+                if se.start:
+                    se.unhide()
+
                 self.data = self._from_scanedge(se)
                 return
 
             case "end":  # freq
                 se = self._make_clone()
                 se.end = val or 0  # type: ignore
+                if se.end:
+                    se.unhide()
+
                 self.data = self._from_scanedge(se)
                 return
+
+        if se.hidden:
+            return
 
         data = se.to_record()
         if data[col] == val:
@@ -74,6 +88,9 @@ class Row(gui_genericlist.BaseRow):
         return self.se
 
     def _from_scanedge(self, se: model.ScanEdge) -> list[object]:
+        if se.hidden:
+            return [se.idx, "", "", "", "", "", ""]
+
         return self._extracts_cols(se.to_record())
 
 
@@ -113,3 +130,10 @@ class ScanEdgesList(gui_genericlist.GenericList[Row, model.ScanEdge]):
 
     def update_row_state(self, row: int) -> None:
         """Set state of other cells in row (readony)."""
+        data_row = self.sheet.data[row]
+        se = data_row.se
+        hidden = se.hidden
+
+        self._set_cell_ro(row, "ts", hidden)
+        self._set_cell_ro(row, "mode", hidden)
+        self._set_cell_ro(row, "att", hidden)

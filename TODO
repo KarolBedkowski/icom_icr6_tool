@@ -6,3 +6,4 @@
 - validation / show errors
 - reorder banks
 - reorder scan links
+- reorder scan edges on delete (?)

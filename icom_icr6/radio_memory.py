@@ -207,7 +207,10 @@ class RadioMemory:
 
         for idx in range(consts.NUM_SCAN_EDGES):
             start = 0x5DC0 + idx * 16
-            yield model.ScanEdge.from_data(idx, mv[start : start + 16])
+            start_flags = 0x69A8 + 4 * idx
+            yield model.ScanEdge.from_data(
+                idx, mv[start : start + 16], mv[start_flags : start_flags + 3]
+            )
 
     def _save_scan_edges(self) -> None:
         mv = memoryview(self.mem)
@@ -219,7 +222,10 @@ class RadioMemory:
                 continue
 
             start = 0x5DC0 + se.idx * 16
-            se.to_data(mv[start : start + 16])
+            start_flags = 0x69A8 + 4 * idx
+            se.to_data(
+                mv[start : start + 16], mv[start_flags : start_flags + 4]
+            )
             se.updated = False
 
     # not used due to update via channel

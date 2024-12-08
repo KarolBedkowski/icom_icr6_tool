@@ -51,29 +51,45 @@ class Row(gui_genericlist.BaseRow):
                 self.data[1] = val
                 return
 
+            case "name":
+                if val:
+                    se = self._make_clone()
+                    se.unhide()
+
             case "start":  # freq
                 se = self._make_clone()
                 se.start = val or 0  # type: ignore
+                if se.start:
+                    se.unhide()
+
                 self.data = self._from_scanedge(se)
                 return
 
             case "end":  # freq
                 se = self._make_clone()
                 se.end = val or 0  # type: ignore
+                if se.end:
+                    se.unhide()
+
                 self.data = self._from_scanedge(se)
                 return
 
+        if se.hidden:
+            return
+
         data = se.to_record()
-        if data[col] != val:
-            se = self._make_clone()
-            try:
-                se.from_record({col: val})
-            except Exception:
-                _LOG.exception(
-                    "update scanedge from record error: %r=%r", col, val
-                )
-            else:
-                super().__setitem__(idx, val)
+        if data[col] == val:
+            return
+
+        se = self._make_clone()
+        try:
+            se.from_record({col: val})
+        except Exception:
+            _LOG.exception(
+                "update scanedge from record error: %r=%r", col, val
+            )
+        else:
+            super().__setitem__(idx, val)
 
     def _make_clone(self) -> model.ScanEdge:
         """Make copy of channel for updates."""
@@ -84,6 +100,9 @@ class Row(gui_genericlist.BaseRow):
         return self.se
 
     def _from_scanedge(self, se: model.ScanEdge) -> list[object]:
+        if se.hidden:
+            return [se.idx, self.selected, "", "", "", "", "", ""]
+
         data = se.to_record()
         return [se.idx, self.selected, *(data[c[0]] for c in self.COLUMNS[2:])]
 
@@ -127,3 +146,10 @@ class ScanLnksList(gui_genericlist.GenericList[Row, ScanLink]):
 
     def update_row_state(self, row: int) -> None:
         """Set state of other cells in row (readony)."""
+        data_row = self.sheet.data[row]
+        se = data_row.se
+        hidden = se.hidden
+
+        self._set_cell_ro(row, "ts", hidden)
+        self._set_cell_ro(row, "mode", hidden)
+        self._set_cell_ro(row, "att", hidden)
