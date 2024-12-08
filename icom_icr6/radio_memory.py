@@ -187,8 +187,16 @@ class RadioMemory:
             if (pos := chan_positiions[idx]) < consts.NUM_AUTOWRITE_CHANNELS:
                 chan_pos[pos] = idx
 
-        # load only channels that are in pos map
+        chan_hidden = list(
+            model.bitarray2bits(mv[0x6A10:], consts.NUM_AUTOWRITE_CHANNELS)
+        )
+
+        # load only channels that are in pos map and are not hidden
         for idx in range(consts.NUM_AUTOWRITE_CHANNELS):
+            if chan_hidden[idx]:
+                continue
+
+            # this check may be redundant
             if (cpos := chan_pos[idx]) != 255:  # noqa: PLR2004
                 start = idx * 16 + 0x5140
                 data = mv[start : start + 16]

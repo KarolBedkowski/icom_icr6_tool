@@ -140,6 +140,14 @@ def data_set(
     data[offset] = (data[offset] & (~mask)) | (value & mask)
 
 
+def bitarray2bits(
+    data: memoryview | bytes | list[int], number: int
+) -> ty.Iterable[bool]:
+    for n in range(number):
+        pos, bit = divmod(n, 8)
+        yield bool(data[pos] & (1 << bit))
+
+
 class ValidateError(ValueError):
     def __init__(self, field: str, value: object) -> None:
         self.field = field
