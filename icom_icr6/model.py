@@ -964,6 +964,9 @@ class BankLinks:
         bit = 1 << idx
         self.banks = (self.banks & (~bit)) | (bit if value else 0)
 
+    def clone(self) -> BankLinks:
+        return BankLinks(self.banks)
+
     def bits(self) -> ty.Iterable[bool]:
         return (bool(self.banks & (1 << i)) for i in range(consts.NUM_BANKS))
 

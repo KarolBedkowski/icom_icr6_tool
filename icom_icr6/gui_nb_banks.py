@@ -193,7 +193,7 @@ class BanksPage(tk.Frame):
         bank.name = self._bank_name.get().strip()[:6]
         self._change_manager.set_bank(bank)
 
-        bl = self._radio_memory.bank_links
+        bl = self._radio_memory.bank_links.clone()
         bl[selected_bank] = self._bank_link.get_raw()
         self._change_manager.set_bank_links(bl)
 
