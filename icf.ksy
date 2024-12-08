@@ -9,103 +9,135 @@ seq:
     size: 16
     repeat: expr
     repeat-expr: 1300
+    doc: pos 0 - 0x513f
 
   - id: autowrite_channels
     type: channel
     size: 16
     repeat: expr
     repeat-expr: 200
+    doc: pos 0x5140 - 0x5dbf
 
   - id: scan_edges
     type: scan_edge
     size: 16
     repeat: expr
     repeat-expr: 25
+    doc: pos 0x5dc0 - 0x5f4f
 
-  - id: unknown1
+  - id: padding_0x5f50
     size: 48
-    doc: 0xff ?
+    doc: all values 0xff ? pos 0x5f50 - 0x5f7f
 
   - id: channels_flag
     type: channel_flag
     size: 2
     repeat: expr
     repeat-expr: 1300
+    doc: pos 0x5f80 - 0x69a7
 
-  - id: unknown2
-    size: 121
-    doc: 0x7F  / 0xFF
+  - id: scan_edge_rel1
+    type: scan_edge_rel1
+    size: 4
+    doc: something related to scan edgel 0x7F  / 0xFF; pos 0x69a8 - 0x69e7
+    repeat: expr
+    repeat-expr: 16
 
-  - id: unknown2a
-    size: 15
+  - id: unknown1_0x69e8
+    size: 40
+    doc: not used? pos 0x69e8 - 0x6a0f
+
+  - id: aw_channels_pos_hidden
+    size: 1
+    doc: probably bit set to 1 when aw channel is hidden; pos 0x6a10 - 0x6a28
+    repeat: expr
+    repeat-expr: 25
+
+  - id: padding_0x6a29
+    size: 7
+    doc: always 0xff? not used? pos 0x6a29 - 0x6a2f
 
   - id: aw_channels_pos
     type: u1
     repeat: expr
     repeat-expr: 200
+    doc: pos 0x6a30 - 0x6af7
 
-  - id: unknown2bpad
-    size: 20
-    doc: 8x 0xff (pad)?; unknown
+  - id: padding_0x6af8
+    size: 8
+    doc: 8x 0xff (pad)?; unknown pos 0x6af8 - 0x6aff
 
-  - id: device_region
-    type: u1
-    doc: device region? 0x20 EU, 0x30 USA?
-
-  - id: unknown2b
-    size: 195
-    doc: device state?
+  - id: unknown_structs1
+    type: unknown_struct1
+    size: 16
+    doc: device state? pos 0x6b00 - 0x6bcf
+    repeat: expr
+    repeat-expr: 13
 
   - id: settings
     type: settings
     size: 64
+    doc: pos 0x6bd0 - 0x6c0f
 
-  - id: unknown3
+  - id: unknown2_0x6c10
     size: 24
+    doc: pos 0x6c10 - 0x6c27, related to settings or device state?
 
   - id: bank_links
     type: bank_links
     size: 3
+    doc: pos 0x6c28 - 0x6c2a
 
-  - id: unknown3b
+  - id: padding_0x6c2b
     size: 1
+    doc: 0xff  pos 0x6c2b unused?
 
   - id: scanlinks
     type: scanlink
     size: 4
     repeat: expr
     repeat-expr: 10
+    doc: pos 0x6c2c - 0x6c53
 
-  - id: unknown3a
-    size: 3
+  - id: unknown3_0x6c54
+    size: 2
+    doc: 0x6c54 - 0x6c55  related to settigns?
 
-  - id: unknown3aconst
+  - id: unknown4_0x6c56
+    size: 1
+    doc: 0x6c56  unused?
+
+  - id: padding_0x6c57
     size: 169
-    doc: always 0xff?
+    doc: always 0xff?; pos 0x6c57 - 0x6cff
 
   - id: comment
     type: str
     size: 16
     encoding: ASCII
+    doc: pos 0x6d00 - 0x6d0f
 
   - id: bank_names
     type: bank_name
     size: 8
     repeat: expr
     repeat-expr: 22
+    doc: pos 0x6d10 - 0x6dbf
 
   - id: scanlink_names
     type: scanlink_name
     size: 8
     repeat: expr
     repeat-expr: 10
+    doc: pos 0x6dc0 - 0x6e0f
 
-  - id: unknown4const
+  - id: padding_0x6e10
     size: 64
-    doc: always 0xff?
+    doc: always 0xff?; pos 0x6e10 - 0x6e4f
 
   - id: footer
     contents: 'IcomCloneFormat3'
+    doc: pos 0x6e50 - 0x6e5f
 
 types:
   channel_flag:
@@ -131,36 +163,64 @@ types:
 
   scan_edge:
     seq:
+      # 0
       - id: start
         type: u4le
         doc: freq * 3
+      # 4
       - id: end
         type: u4le
         doc: freq * 3
 
-      - id: disabled
-        type: b1
-        doc: always 0?
+      # 8
       - id: mode
-        type: b3
+        type: b4
         enum: mode_scan_edge
       - id: tuning_step
         type: b4
         enum: steps
         doc: scan edge use addidtional "-" scan edge
 
+      # 9
       - id: unknown1
         type: b2
+        doc: always 0
       - id: attenuator
         type: b2
-      - id: unknown2
-        type: b4
+      - id: start_flags_freq
+        type: b2
+        doc: start flags_freq?
+        enum: freq_mul
+      - id: end_flags_freq
+        type: b2
+        doc: end flags_freq?
+        enum: freq_mul
 
+      # 10
       - id: name
         type: str
         encoding: ASCII
         size: 6
         eos-error: false
+
+  scan_edge_rel1:
+    seq:
+      # 0
+      - id: unknown1
+        type: u1
+        doc: 0x7F lub 0xFF
+      # 1
+      - id: unknown2
+        type: u1
+        doc: always 0xFF ?
+      # 2
+      - id: unknown3
+        type: u1
+        doc: the same as unknown1
+      # 3
+      - id: unknown4
+        type: u1
+        doc: always 0xFF ?
 
   bank_name:
     seq:
@@ -307,6 +367,7 @@ types:
     seq:
       - id: unknown0
         size: 13
+        doc: pos 0x6bd0
 
       # @13
       - id: unknown1
@@ -493,6 +554,42 @@ types:
         type: b2
       - id: bank_link_3
         type: b6
+
+  unknown_struct1:
+    seq:
+      - id: unknown1
+        type: u4
+        doc: unknown, offset?;
+
+      - id: unknown2
+        type: u4
+        doc: unknown, offset?;
+
+      - id: unknown3
+        type: u1
+
+      - id: unknown4
+        type: u1
+
+      - id: unknown5
+        type: u1
+
+      - id: unknown6
+        type: u1
+        doc: 4bit + 4bit
+
+      - id: unknown7
+        type: u1
+        doc: |
+          device region? 0x20 EU, 0x30 USA?; pos 0x6b0c
+          2bits, 2bits, 4 bits
+
+      - id: unknown8
+        type: u1
+        doc: 4bits,  2 bits used, 1 bit, 1 bit
+
+      - id: unknown9
+        type: u2
 
 enums:
   mode:
