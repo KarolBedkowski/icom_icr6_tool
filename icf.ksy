@@ -67,10 +67,10 @@ seq:
     size: 8
     doc: 8x 0xff (pad)?; unknown pos 0x6af8 - 0x6aff
 
-  - id: unknown_structs1
-    type: unknown_struct1
+  - id: bands
+    type: band
     size: 16
-    doc: device state? pos 0x6b00 - 0x6bcf
+    doc: device state? pos 0x6b00 - 0x6bcf look like default band definition; not changing
     repeat: expr
     repeat-expr: 13
 
@@ -375,7 +375,7 @@ types:
     seq:
       - id: unknown0
         size: 13
-        doc: pos 0x6bd0
+        doc: pos 0x6bd0 ; first byte related to market
 
       # @13
       - id: unknown1
@@ -480,6 +480,7 @@ types:
       # @30
       - id: unknown8e
         size: 1
+        doc: somthing related to market
 
       # @31
       - id: unknown8f
@@ -563,38 +564,43 @@ types:
       - id: bank_link_3
         type: b6
 
-  unknown_struct1:
+  band:
     seq:
-      - id: unknown1
-        type: u4
-        doc: unknown, offset?;
+      - id: freq
+        type: u4le
+        doc: band end frequency (freq * 3)
 
-      - id: unknown2
-        type: u4
-        doc: unknown, offset?;
+      - id: offset
+        type: u4le
+        doc: offset (freq * 3)
 
-      - id: unknown3
+      - id: tuning_step
+        type: u1
+        enum: steps
+
+      - id: tsql_freq
         type: u1
 
-      - id: unknown4
+      - id: dscs_code
         type: u1
-
-      - id: unknown5
-        type: u1
+        doc: check???
 
       - id: unknown6
         type: u1
         doc: 4bit + 4bit
 
       - id: unknown7
-        type: u1
-        doc: |
-          device region? 0x20 EU, 0x30 USA?; pos 0x6b0c
-          2bits, 2bits, 4 bits
+        type: b2
+        doc: duplex?
+      - id: mode
+        type: b2
+        enum: mode
+      - id: unknown7a
+        type: b4
 
       - id: unknown8
         type: u1
-        doc: 4bits,  2 bits used, 1 bit, 1 bit
+        doc: 4bits (padding?),  2 bits used, 1 bit, 1 bit
 
       - id: unknown9
         type: u2
