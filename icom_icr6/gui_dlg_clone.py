@@ -10,6 +10,7 @@ from pathlib import Path
 from tkinter import simpledialog, ttk
 
 from . import consts, io, model
+from .radio_memory import RadioMemory
 
 _LOG = logging.getLogger(__name__)
 
@@ -60,7 +61,7 @@ class _CloneDialog(simpledialog.Dialog):
 
 class CloneFromRadioDialog(_CloneDialog):
     def __init__(self, parent: tk.Widget) -> None:
-        self.radio_memory: model.RadioMemory | None = None
+        self.radio_memory: RadioMemory | None = None
         super().__init__(parent, "Clone from radio")
 
     def __progress_cb(self, progress: int) -> bool:
@@ -87,9 +88,7 @@ class CloneFromRadioDialog(_CloneDialog):
 
 
 class CloneToRadioDialog(_CloneDialog):
-    def __init__(
-        self, parent: tk.Widget, radio_memory: model.RadioMemory
-    ) -> None:
+    def __init__(self, parent: tk.Widget, radio_memory: RadioMemory) -> None:
         self._radio_memory = radio_memory
         self.result = False
         super().__init__(parent, "Clone to radio")

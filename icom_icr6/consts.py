@@ -23,9 +23,9 @@ MAX_OFFSET: ty.Final[int] = 159_995_000
 
 TONE_MODES: ty.Final = ["", "TSQL", "TSQL-R", "DTCS", "DTCS-R"]
 DUPLEX_DIRS: ty.Final = ["", "-", "+"]
+MODES: ty.Final = ["FM", "WFM", "AM"]
 # auto is probably not used
 # "-" is used only in scanedge
-MODES: ty.Final = ["FM", "WFM", "AM"]
 MODES_SCAN_EDGES: ty.Final = ["FM", "WFM", "AM", "Auto", "-"]
 STEPS: ty.Final = [
     "5",

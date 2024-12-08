@@ -30,7 +30,7 @@ def _fix_frequency(freq: int, base_freq: int) -> int:
     if not freq % 5000 or not freq % 6250:
         return freq
 
-    if consts.is_broadcast_band(freq) and not freq % 9000:
+    if consts.is_broadcast_band(base_freq) and not freq % 9000:
         return freq
 
     if consts.is_air_band(base_freq):
@@ -47,7 +47,7 @@ def _fix_frequency(freq: int, base_freq: int) -> int:
     nfreqs = [f5 * 5000, (f5 + 1) * 5000, f62 * 6250, (f62 + 1) * 6250]
 
     # TODO: 9k is not used for rounding?
-    if consts.is_broadcast_band(freq):
+    if consts.is_broadcast_band(base_freq):
         f9 = freq // 9000
         nfreqs.extend((f9 * 9000, (f9 + 1) * 9000))
 
@@ -79,7 +79,7 @@ def fix_offset(freq: int, offset: int) -> int:
     offset = max(offset, 5000)
     offset = min(offset, 159995000)
 
-    if offset % 9000 == 0:
+    if offset % 9000 == freq % 9000 == 0:
         # 9k is used only if match exactly
         return offset
 

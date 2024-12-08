@@ -22,15 +22,16 @@ from . import (
     gui_nb_scan_links,
     gui_nb_settings,
     io,
-    model,
 )
+from .change_manager import ChangeManeger
+from .radio_memory import RadioMemory
 
 _LOG = logging.getLogger(__name__)
 
 
 @ty.runtime_checkable
 class TabWidget(ty.Protocol):
-    def update_tab(self, radio_memory: model.RadioMemory) -> None: ...
+    def update_tab(self) -> None: ...
 
 
 class App(tk.Frame):
@@ -39,7 +40,9 @@ class App(tk.Frame):
         self.master = master
 
         self._last_file: Path | None = None
-        self._radio_memory = model.RadioMemory()
+        self._radio_memory = RadioMemory()
+        self._change_manager = ChangeManeger(self._radio_memory)
+        self._change_manager.on_undo_changes = self.__on_undo_change
         self._status_value = tk.StringVar()
         # safe is clone to device when data are loaded or cloned from dev
         self._safe_for_clone = False
@@ -88,7 +91,7 @@ class App(tk.Frame):
             command=self.__on_file_save_as,
             accelerator="Shift+Ctrl+S",
         )
-        master.bind_all("<Shift-Control-S>", self.__on_file_save_as)
+        master.bind_all("<Shift-Control-s>", self.__on_file_save_as)
 
         file_menu.add_separator()
 
@@ -99,6 +102,21 @@ class App(tk.Frame):
 
         file_menu.add_command(label="Exit", command=self.quit)
         menu_bar.add_cascade(label="File", menu=file_menu)
+
+        self.__menu_edit = edit_menu = tk.Menu(menu_bar)
+        edit_menu.add_command(
+            label="Undo",
+            command=self.__on_undo,
+            accelerator="Ctrl+Z",
+        )
+        master.bind_all("<Control-z>", self.__on_undo)
+        edit_menu.add_command(
+            label="Redo",
+            command=self.__on_redo,
+            accelerator="Ctrl+Y",
+        )
+        master.bind_all("<Control-y>", self.__on_redo)
+        menu_bar.add_cascade(label="Edit", menu=edit_menu)
 
         radio_menu = tk.Menu(menu_bar)
         radio_menu.add_command(
@@ -128,35 +146,35 @@ class App(tk.Frame):
 
     def __create_nb_channels(self) -> tk.Widget:
         self._nb_channels = gui_nb_channels.ChannelsPage(
-            self, self._radio_memory
+            self, self._change_manager
         )
         return self._nb_channels
 
     def __create_nb_banks(self) -> tk.Widget:
-        self._nb_banks = gui_nb_banks.BanksPage(self, self._radio_memory)
+        self._nb_banks = gui_nb_banks.BanksPage(self, self._change_manager)
         return self._nb_banks
 
     def __create_nb_scan_edge(self) -> tk.Frame:
         self._nb_scan_edge = gui_nb_scan_edge.ScanEdgePage(
-            self, self._radio_memory
+            self, self._change_manager
         )
         return self._nb_scan_edge
 
     def __create_nb_scan_links(self) -> tk.Widget:
         self._nb_scan_links = gui_nb_scan_links.ScanLinksPage(
-            self, self._radio_memory
+            self, self._change_manager
         )
         return self._nb_scan_links
 
     def __create_nb_awchannels(self) -> tk.Widget:
         self._nb_aw_channels = gui_nb_awchannels.AutoWriteChannelsPage(
-            self, self._radio_memory
+            self, self._change_manager
         )
         return self._nb_aw_channels
 
     def __create_nb_settings(self) -> tk.Widget:
         self._nb_settings = gui_nb_settings.SettingsPage(
-            self, self._radio_memory
+            self, self._change_manager
         )
         return self._nb_settings
 
@@ -197,16 +215,29 @@ class App(tk.Frame):
         self.__update_widgets()
         self.set_status(f"File {file} loaded")
         self._safe_for_clone = True
+        self._change_manager.reset()
 
     def __on_file_save(self, _event: tk.Event | None = None) -> None:  # type: ignore
         if not self._last_file:
             self.__on_file_save_as()
             return
 
+        try:
+            self._radio_memory.validate_loaded_data()
+        except ValueError as err:
+            messagebox.showerror("Save file error - Invalid data", str(err))
+            return
+
         io.save_icf_file(self._last_file, self._radio_memory)
         self.set_status(f"File {self._last_file} saved")
 
     def __on_file_save_as(self, _event: tk.Event | None = None) -> None:  # type: ignore
+        try:
+            self._radio_memory.validate_loaded_data()
+        except ValueError as err:
+            messagebox.showerror("Save file error - Invalid data", str(err))
+            return
+
         fname = filedialog.asksaveasfilename(
             parent=self,
             filetypes=[("Supported files", ".icf"), ("All files", "*.*")],
@@ -226,6 +257,17 @@ class App(tk.Frame):
             self.__set_loaded_filename(Path(fname))
             self.set_status(f"File {fname} saved")
 
+    def __on_undo(self, _event: tk.Event | None = None) -> None:  # type: ignore
+        _LOG.info("__on_undo")
+        if self._change_manager.undo():
+            self.__update_widgets()
+
+        _LOG.info("__on_undo finished")
+
+    def __on_redo(self, _event: tk.Event | None = None) -> None:  # type: ignore
+        if self._change_manager.redo():
+            self.__update_widgets()
+
     def __update_widgets(self) -> None:
         try:
             selected_tab = self._ntb.tabs().index(self._ntb.select())  # type: ignore
@@ -242,7 +284,7 @@ class App(tk.Frame):
             self._nb_aw_channels,
             self._nb_settings,
         )
-        pages[selected_tab].update_tab(self._radio_memory)
+        pages[selected_tab].update_tab()
 
     def __on_nb_page_changed(self, _event: tk.Event) -> None:  # type: ignore
         self.set_status("")
@@ -270,6 +312,7 @@ class App(tk.Frame):
             self._safe_for_clone = True
             self.__set_loaded_filename(None)
             self.__update_widgets()
+            self._change_manager.reset()
 
     def __on_clone_to_radio(self, _event: tk.Event | None = None) -> None:  # type: ignore
         if not self._safe_for_clone:
@@ -277,6 +320,12 @@ class App(tk.Frame):
                 "Clone to device",
                 "Please open valid icf file or clone data from device.",
             )
+            return
+
+        try:
+            self._radio_memory.validate_loaded_data()
+        except ValueError as err:
+            messagebox.showerror("Clone to device - Invalid data", str(err))
             return
 
         gui_dlg_clone.CloneToRadioDialog(self, self._radio_memory)
@@ -320,6 +369,14 @@ class App(tk.Frame):
         except Exception as err:
             messagebox.showerror("Export error", str(err))
             return
+
+    def __on_undo_change(self, has_undo: bool, has_redo: bool) -> None:  # noqa:FBT001
+        self.__menu_edit.entryconfigure(
+            "Undo", state="normal" if has_undo else tk.DISABLED
+        )
+        self.__menu_edit.entryconfigure(
+            "Redo", state="normal" if has_redo else tk.DISABLED
+        )
 
 
 def start_gui() -> None:

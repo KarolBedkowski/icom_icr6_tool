@@ -10,25 +10,27 @@ import typing as ty
 from tkinter import messagebox
 
 from . import consts, expimp, gui_model, gui_scanedgeslist, model
+from .change_manager import ChangeManeger
+from .radio_memory import RadioMemory
 
 _LOG = logging.getLogger(__name__)
 
 
 class ScanEdgePage(tk.Frame):
-    def __init__(
-        self, parent: tk.Widget, radio_memory: model.RadioMemory
-    ) -> None:
+    def __init__(self, parent: tk.Widget, cm: ChangeManeger) -> None:
         super().__init__(parent)
-        self._radio_memory = radio_memory
+        self._change_manager = cm
         self._last_selected_se: list[int] = []
 
         self._create_list(self)
 
-    def update_tab(self, radio_memory: model.RadioMemory) -> None:
-        self._radio_memory = radio_memory
-
+    def update_tab(self) -> None:
         self._scanedges_list.selection_set(self._last_selected_se)
         self.__update_scan_edges_list()
+
+    @property
+    def _radio_memory(self) -> RadioMemory:
+        return self._change_manager.rm
 
     def _create_list(self, frame: tk.Frame) -> None:
         self._scanedges_list = gui_scanedgeslist.ScanEdgesList(frame)
@@ -61,13 +63,38 @@ class ScanEdgePage(tk.Frame):
     ) -> None:
         match action:
             case "delete":
-                pass
+                self.__do_delete_scan_edge(rows)
 
             case "update":
                 self.__do_update_scan_edge(rows)
 
             case "move":
                 self.__do_move_scan_edge(rows)
+
+    def __do_delete_scan_edge(
+        self, rows: ty.Collection[gui_scanedgeslist.Row]
+    ) -> None:
+        se: model.ScanEdge | None
+        if not messagebox.askyesno(
+            "Delete scan edge",
+            "Delete scan edge configuration?",
+            icon=messagebox.WARNING,
+        ):
+            return
+
+        for rec in rows:
+            _LOG.debug(
+                "__do_delete_scan_edge: row=%r, chan=%r",
+                rec,
+                rec.se,
+            )
+            if se := rec.se:
+                se = se.clone()
+                se.delete()
+                self._change_manager.set_scan_edge(se)
+
+        self._change_manager.commit()
+        self.__update_scan_edges_list()
 
     def __do_update_scan_edge(
         self, rows: ty.Collection[gui_scanedgeslist.Row]
@@ -78,7 +105,10 @@ class ScanEdgePage(tk.Frame):
                 rec,
                 rec.se,
             )
-            self._radio_memory.set_scan_edge(rec.se)
+            self._change_manager.set_scan_edge(rec.se)
+            rec.updated = False
+
+        self._change_manager.commit()
 
     def __do_move_scan_edge(
         self, rows: ty.Collection[gui_scanedgeslist.Row]
@@ -91,11 +121,13 @@ class ScanEdgePage(tk.Frame):
             )
             changes[rec.rownum] = se.idx
             se.idx = rec.rownum
-            self._radio_memory.set_scan_edge(se)
+            self._change_manager.set_scan_edge(se)
+            rec.updated = False
 
         if changes:
-            self._radio_memory.remap_scan_links(changes)
+            self._change_manager.remap_scan_links(changes)
 
+        self._change_manager.commit()
         self.__update_scan_edges_list()
 
     def __on_channel_delete(self, _event: tk.Event) -> None:  # type: ignore
@@ -111,10 +143,11 @@ class ScanEdgePage(tk.Frame):
             return
 
         for se_num in sel:
-            se = self._radio_memory.scan_edges[se_num]
+            se = self._radio_memory.scan_edges[se_num].clone()
             se.delete()
-            self._radio_memory.set_scan_edge(se)
+            self._change_manager.set_scan_edge(se)
 
+        self._change_manager.commit()
         self.__update_scan_edges_list()
         self._scanedges_list.selection_set(sel)
 
@@ -211,5 +244,6 @@ class ScanEdgePage(tk.Frame):
             return False
 
         se.idx = se_num
-        self._radio_memory.set_scan_edge(se)
+        self._change_manager.set_scan_edge(se)
+        self._change_manager.commit()
         return True

@@ -8,26 +8,28 @@ import logging
 import tkinter as tk
 from tkinter import ttk
 
-from . import consts, gui_model, model, validators
+from . import consts, gui_model, validators
+from .change_manager import ChangeManeger
 from .gui_widgets import new_checkbox, new_combo, new_entry
+from .radio_memory import RadioMemory
 
 _LOG = logging.getLogger(__name__)
 
 
 class SettingsPage(tk.Frame):
-    def __init__(
-        self, parent: tk.Widget, radio_memory: model.RadioMemory
-    ) -> None:
+    def __init__(self, parent: tk.Widget, cm: ChangeManeger) -> None:
         super().__init__(parent)
 
-        self._radio_memory = radio_memory
+        self._change_manager = cm
         self._create_vars()
         self._create_fields()
 
-    def update_tab(self, radio_memory: model.RadioMemory) -> None:
-        self._radio_memory = radio_memory
-
+    def update_tab(self) -> None:
         self.__update()
+
+    @property
+    def _radio_memory(self) -> RadioMemory:
+        return self._change_manager.rm
 
     def _create_vars(self) -> None:
         self._var_func_dial_step = gui_model.ListVar(
@@ -233,7 +235,7 @@ class SettingsPage(tk.Frame):
         self._var_comment.set(self._radio_memory.comment)
 
     def __on_update(self) -> None:
-        sett = self._radio_memory.settings
+        sett = self._radio_memory.settings.clone()
 
         sett.func_dial_step = self._var_func_dial_step.get_raw()
         sett.key_beep = self._var_key_beep.get_raw()
@@ -264,9 +266,9 @@ class SettingsPage(tk.Frame):
         sett.af_filer_am = self._var_af_filer_am.get_raw()
         sett.charging_type = self._var_charging_type.get_raw()
 
-        self._radio_memory.set_settings(sett)
-
-        self._radio_memory.set_comment(self._var_comment.get())
+        self._change_manager.set_settings(sett)
+        self._change_manager.set_comment(self._var_comment.get())
+        self._change_manager.commit()
 
         self.__update()
 

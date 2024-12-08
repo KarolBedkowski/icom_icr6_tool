@@ -18,6 +18,7 @@ from tksheet import (
     int_formatter,
     num2alpha,
 )
+from tksheet.other_classes import Box_nt
 
 _LOG = logging.getLogger(__name__)
 
@@ -30,6 +31,7 @@ class BaseRow(UserList[object]):
     def __init__(self, rownum: int, data: ty.Iterable[object]) -> None:
         super().__init__(data)
         self.rownum = rownum
+        self.updated: bool = False
 
     def _extracts_cols(self, data: dict[str, object]) -> list[object]:
         return [data[col] for col, *_ in self.COLUMNS]
@@ -89,6 +91,7 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
             data=[],
             default_column_width=40,
             alternate_color=self._ALTERNATE_COLOR,
+            max_undos=0,
         )
         self.sheet.pack(expand=True, fill=tk.BOTH, side=tk.TOP)
 
@@ -96,13 +99,13 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
         self.sheet.edit_validation(self.__on_validate_edits)
         self.sheet.bind("<<SheetModified>>", self._on_sheet_modified)
         self.sheet.bind("<<SheetSelect>>", self._on_sheet_select)
-        self.sheet.extra_bindings("begin_delete", self._on_delete)
+        self.sheet.bind("<Delete>", self._on_delete_key)
         # disable column moving
         self.sheet.extra_bindings(
             "begin_move_columns", self._on_begin_col_move
         )
         # disable popup menu
-        self.sheet.disable_bindings("right_click_popup_menu")
+        self.sheet.disable_bindings("right_click_popup_menu", "undo")
 
         self.columns = self._ROW_CLASS.COLUMNS
         self.colmap = {
@@ -122,6 +125,7 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
             yield r
 
     def set_data(self, data: ty.Iterable[RT]) -> None:
+        _LOG.debug("set_data")
         self.sheet.set_sheet_data(
             list(starmap(self._ROW_CLASS, enumerate(data)))
         )
@@ -330,9 +334,14 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
         for row, data in rows:
             sheet.span((row, col), emit_event=True).data = data
 
-    def _on_delete(self, event: EventDataDict) -> None:
-        if event.selected.type_ == "rows":
-            box = event.selected.box
+    def _on_delete_key(self, event: tk.Event) -> None:  # type: ignore
+        _LOG.debug("_on_delete_key: event=%r", event)
+        selected = self.sheet.get_currently_selected()
+        if not selected:
+            return
+
+        if selected.type_ == "rows":
+            box = selected.box
             data = [self.sheet.data[r] for r in range(box.from_r, box.upto_r)]
 
             if data and self.on_record_update:
@@ -341,14 +350,17 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
             for row in range(box.from_r, box.upto_r):
                 self.update_row_state(row)
 
-        elif event.selected.type_ == "cells":
-            r = event.selected.row
-            data = [self.sheet.data[r]]
+        elif selected.type_ == "cells":
+            box = self.adjust_box(selected.box)
+            self.sheet[box].clear()
+
+            data = [self.sheet.data[r] for r in range(box.from_r, box.upto_r)]
 
             if data and self.on_record_update:
                 self.on_record_update("update", data)
 
-            self.update_row_state(r)
+            for r in range(box.from_r, box.upto_r):
+                self.update_row_state(r)
 
     def update_row_state(self, row: int) -> None:
         """Set state of other cells in row (readony)."""
@@ -389,3 +401,12 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
     def _on_begin_col_move(self, _event: EventDataDict) -> None:
         # prevent moving columns
         raise ValueError
+
+    def adjust_box(self, box: Box_nt) -> Box_nt:
+        """fix box to match hidden columns."""
+        return Box_nt(
+            box.from_r,
+            self.sheet.data_c(box.from_c),
+            box.upto_r,
+            self.sheet.data_c(box.upto_c - 1) + 1,
+        )

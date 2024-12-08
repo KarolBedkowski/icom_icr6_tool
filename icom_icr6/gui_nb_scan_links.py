@@ -7,21 +7,21 @@
 import logging
 import tkinter as tk
 import typing as ty
-from tkinter import ttk
+from tkinter import messagebox, ttk
 
 from . import consts, expimp, gui_model, gui_scanlinkslist, model, validators
+from .change_manager import ChangeManeger
 from .gui_widgets import new_entry
+from .radio_memory import RadioMemory
 
 _LOG = logging.getLogger(__name__)
 
 
 class ScanLinksPage(tk.Frame):
-    def __init__(
-        self, parent: tk.Widget, radio_memory: model.RadioMemory
-    ) -> None:
+    def __init__(self, parent: tk.Widget, cm: ChangeManeger) -> None:
         super().__init__(parent)
 
-        self._radio_memory = radio_memory
+        self._change_manager = cm
         self._sl_name = tk.StringVar()
         self._last_selected_sl = 0
 
@@ -41,14 +41,16 @@ class ScanLinksPage(tk.Frame):
 
         pw.pack(expand=True, fill=tk.BOTH, side=tk.TOP, padx=12, pady=12)
 
-    def update_tab(self, radio_memory: model.RadioMemory) -> None:
-        self._radio_memory = radio_memory
-
+    def update_tab(self) -> None:
         self._scan_links_list.selection_set(self._last_selected_sl)
 
         self.__update_scan_links_list()
         self.__update_scan_edges()
         self.__on_select_scan_link()
+
+    @property
+    def _radio_memory(self) -> RadioMemory:
+        return self._change_manager.rm
 
     def _create_fields(self, frame: tk.Frame) -> None:
         fields = tk.Frame(frame)
@@ -156,8 +158,9 @@ class ScanLinksPage(tk.Frame):
 
         sl = self._radio_memory.scan_links[sel_sl[0]].clone()
         sl.name = self._sl_name.get()
-        self._radio_memory.set_scan_link(sl)
+        self._change_manager.set_scan_link(sl)
 
+        self._change_manager.commit()
         self.__update_scan_links_list()
 
     def __on_de_select(self) -> None:
@@ -176,13 +179,39 @@ class ScanLinksPage(tk.Frame):
     ) -> None:
         match action:
             case "delete":
-                pass
+                # TODO: implement
+                self.__do_delete_scan_edge(rows)
 
             case "update":
                 self.__do_update_scan_edge(rows)
 
             case "move":
                 self.__do_move_scan_edge(rows)
+
+    def __do_delete_scan_edge(
+        self, rows: ty.Collection[gui_scanlinkslist.Row]
+    ) -> None:
+        se: model.ScanEdge | None
+        if not messagebox.askyesno(
+            "Delete scan edge",
+            "Delete scan edge configuration?",
+            icon=messagebox.WARNING,
+        ):
+            return
+
+        for rec in rows:
+            _LOG.debug(
+                "__do_delete_scan_edge: row=%r, chan=%r",
+                rec,
+                rec.se,
+            )
+            if se := rec.se:
+                se = se.clone()
+                se.delete()
+                self._change_manager.set_scan_edge(se)
+
+        self._change_manager.commit()
+        self.__update_scan_edges()
 
     def __do_update_scan_edge(
         self, rows: ty.Collection[gui_scanlinkslist.Row]
@@ -201,11 +230,13 @@ class ScanLinksPage(tk.Frame):
                 rec.selected,
             )
             se = rec.se
-            self._radio_memory.set_scan_edge(se)
+            self._change_manager.set_scan_edge(se)
 
             sl[se.idx] = rec.selected
+            rec.updated = False
 
-        self._radio_memory.set_scan_link(sl)
+        self._change_manager.commit()
+        self._change_manager.set_scan_link(sl)
 
     def __do_move_scan_edge(
         self, rows: ty.Collection[gui_scanlinkslist.Row]
@@ -218,11 +249,12 @@ class ScanLinksPage(tk.Frame):
             )
             changes[rec.rownum] = se.idx
             se.idx = rec.rownum
-            self._radio_memory.set_scan_edge(se)
+            self._change_manager.set_scan_edge(se)
 
         if changes:
-            self._radio_memory.remap_scan_links(changes)
+            self._change_manager.remap_scan_links(changes)
 
+        self._change_manager.commit()
         self.__update_scan_edges()
 
     def __on_scan_edge_copy(self, _event: tk.Event) -> None:  # type: ignore
@@ -315,7 +347,8 @@ class ScanLinksPage(tk.Frame):
             return False
 
         se.idx = se_num
-        self._radio_memory.set_scan_edge(se)
+        self._change_manager.set_scan_edge(se)
+        self._change_manager.commit()
         return True
 
     def __disable_widgets(self) -> None:

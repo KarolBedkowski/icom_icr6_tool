@@ -8,14 +8,8 @@
 """ """
 
 import binascii
-from contextlib import suppress
 
 import pytest
-
-with suppress(ImportError):
-    import icecream
-
-    icecream.install()
 
 from . import consts, model
 

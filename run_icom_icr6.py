@@ -6,8 +6,7 @@
 """
 
 """
-import icecream
-icecream.install()
+import logging
 
 try:
     import stackprinter
@@ -21,11 +20,26 @@ except ImportError:
         install(show_locals=True)
     except ImportError:
         pass
+
+try:
+    from rich.logging import RichHandler
+
+    logging.basicConfig(
+        level="NOTSET",
+        format="%(message)s",
+        datefmt="[%X]",
+        handlers=[RichHandler()],
+    )
+except ImportError:
+    logging.basicConfig()
+
 try:
     import icecream
 
     icecream.install()
-    icecream.ic.configureOutput(includeContext=True)
+    icecream.ic.configureOutput(
+        includeContext=True, outputFunction=logging.warn
+    )
 
     import traceback
 
@@ -58,6 +72,14 @@ try:
 
 except ImportError:  # Graceful fallback if IceCream isn't installed.
     pass
+
+try:
+    import snoop
+
+    snoop.install()
+except ImportError:
+    pass
+
 
 import typing as ty
 

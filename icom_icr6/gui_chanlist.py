@@ -46,7 +46,10 @@ class Row(gui_genericlist.BaseRow):
         self.errors: tuple[str, ...] = ()
 
     def __repr__(self) -> str:
-        return f"ROW: data={self.data!r} channel={self.channel}"
+        return (
+            f"ROW: data={self.data!r} channel={self.channel} "
+            f"updated={self.updated}"
+        )
 
     def __setitem__(self, idx: int, val: object, /) -> None:  # type: ignore
         if val == self.data[idx]:
@@ -63,6 +66,8 @@ class Row(gui_genericlist.BaseRow):
                 return
 
             case "freq":  # freq
+                chan = self._make_clone()
+
                 if val:
                     assert isinstance(val, int)
 
@@ -82,6 +87,8 @@ class Row(gui_genericlist.BaseRow):
         if current_val == val or (current_val == "" and val is None):
             return
 
+        chan = self._make_clone()
+
         try:
             chan.from_record({col: val})
         except Exception:
@@ -89,6 +96,14 @@ class Row(gui_genericlist.BaseRow):
             return
 
         super().__setitem__(idx, val)
+
+    def _make_clone(self) -> model.Channel:
+        """Make copy of channel for updates."""
+        if not self.updated:
+            self.updated = True
+            self.channel = self.channel.clone()
+
+        return self.channel
 
     def _from_channel(self, channel: model.Channel) -> list[object]:
         if channel is None:

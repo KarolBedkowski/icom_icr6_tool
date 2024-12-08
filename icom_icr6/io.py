@@ -15,6 +15,7 @@ from pathlib import Path
 import serial
 
 from . import consts, model
+from .radio_memory import RadioMemory
 
 ADDR_PC: ty.Final = 0xEE
 # TODO: configurable
@@ -242,7 +243,7 @@ class Radio:
         return None
 
     def _process_clone_from_frame(
-        self, idx: int, frame: Frame, mem: model.RadioMemory
+        self, idx: int, frame: Frame, mem: RadioMemory
     ) -> tuple[bool, int]:
         if frame.is_echo():
             # echo, skip
@@ -289,7 +290,7 @@ class Radio:
 
     def clone_from(
         self, cb: ty.Callable[[int], bool] | None = None
-    ) -> model.RadioMemory:
+    ) -> RadioMemory:
         self._check_radio()
 
         total_length = 0
@@ -298,7 +299,7 @@ class Radio:
             # clone out
             self._write(s, Frame(CMD_CLONE_OUT, b"\x32\x50\x00\x01").pack())
 
-            mem = model.RadioMemory()
+            mem = RadioMemory()
             for idx in itertools.count():
                 if frame := self.read_frame(s):
                     _LOG.debug("read: %d: %r", idx, frame)
@@ -317,7 +318,7 @@ class Radio:
 
     def clone_to(
         self,
-        mem: model.RadioMemory,
+        mem: RadioMemory,
         cb: ty.Callable[[int], bool] | None = None,
     ) -> bool:
         self._check_radio()
@@ -424,10 +425,10 @@ def _update_from_icf_file(mv: memoryview, line: str) -> None:
     mv[addr : addr + size] = data
 
 
-def load_icf_file(file: Path) -> model.RadioMemory:
+def load_icf_file(file: Path) -> RadioMemory:
     """Load icf file as RadioMemory."""
     _LOG.info("loading %s", file)
-    mem = model.RadioMemory()
+    mem = RadioMemory()
     mv = memoryview(mem.mem)
 
     with file.open("rt") as inp:
@@ -464,8 +465,8 @@ def load_icf_file(file: Path) -> model.RadioMemory:
     return mem
 
 
-def load_raw_memory(file: Path) -> model.RadioMemory:
-    mem = model.RadioMemory()
+def load_raw_memory(file: Path) -> RadioMemory:
+    mem = RadioMemory()
     with file.open("rb") as inp:
         mem.mem = bytearray(inp.read())
 
@@ -485,7 +486,7 @@ def _dump_memory(mem: bytearray, step: int = 16) -> ty.Iterator[str]:
         yield res.upper()
 
 
-def save_icf_file(file: Path, mem: model.RadioMemory) -> None:
+def save_icf_file(file: Path, mem: RadioMemory) -> None:
     """Write RadioMemory to icf file."""
     _LOG.info("write %s", file)
     mem.commit()
@@ -505,7 +506,7 @@ def save_icf_file(file: Path, mem: model.RadioMemory) -> None:
     _LOG.info("write %s done", file)
 
 
-def save_raw_memory(file: Path, mem: model.RadioMemory) -> None:
+def save_raw_memory(file: Path, mem: RadioMemory) -> None:
     """Write RadioMemory to binary file."""
     with file.open("wb") as out:
         out.write(mem.mem)
