@@ -34,7 +34,6 @@ class Row(gui_genericlist.BaseRow):
 
         se = self.se
         col = self.COLUMNS[idx][0]
-        ic(idx, col, val, se)
         match col:
             case "idx":
                 return
