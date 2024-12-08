@@ -126,34 +126,37 @@ class ChangeManeger:
         for chan in channels:
             chan.validate()
 
-        chan_pos = {}
+        bank_chan_pos : dict[tuple[int, int], int] = {}
         for chan in channels:
             if not chan.freq or chan.hide_channel:
                 chan.bank = consts.BANK_NOT_SET
             else:
-                chan_pos[chan.bank_pos] = chan.number
+                bank_chan_pos[chan.bank, chan.bank_pos] = chan.number
 
             current_channel = self.rm.channels[chan.number]
+
             self._undo_manager.push("channel", current_channel, chan)
 
             self.rm.channels[chan.number] = chan
             chan.updated = True
 
-            if chan.bank == consts.BANK_NOT_SET:
-                return False
+        if not bank_chan_pos:
+            # no channels have bank set
+            return False
 
         # remove other channels from this position bank
         res = False
-        for c in self.rm.get_channels_in_bank(chan.bank):
-            channum = chan_pos.get(c.bank_pos)
-            if channum is not None and c.number != channum:
-                _LOG.debug("set_channel clear bank in chan %r", c)
-                prev = c.clone()
+        for chan in self.rm.get_active_channels():
+            if chan.bank == consts.BANK_NOT_SET:
+                continue
 
-                c.clear_bank()
-                c.updated = True
-
-                self._undo_manager.push("channel", prev, c)
+            channum = bank_chan_pos.get((chan.bank, chan.bank_pos))
+            if channum is not None and chan.number != channum:
+                _LOG.debug("set_channel clear bank in chan %r", chan)
+                prev = chan.clone()
+                chan.clear_bank()
+                chan.updated = True
+                self._undo_manager.push("channel", prev, chan)
 
                 res = True
 
