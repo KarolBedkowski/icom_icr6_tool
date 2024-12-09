@@ -252,3 +252,19 @@ def default_tuning_step_for_freq(freq: int) -> int:
         return STEPS.index("25")
 
     return STEPS.index("5")
+
+
+# predefined bands
+BANDS: ty.Final = [
+    0,
+    495_000,
+    1_625_000,
+    30_000_000,
+    108_000_000,
+    137_000_000,
+    255_100_000,
+    382_100_000,
+    769_800_000,
+    960_100_000,
+    1310_000_000,
+]
