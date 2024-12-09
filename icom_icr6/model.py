@@ -419,7 +419,7 @@ class Channel:
         canc_freq = self.canceller_freq // 10
         data[9] = (canc_freq & 0b111111110) >> 1
         data_set(data, 10, 0b10000000, (canc_freq & 1) << 7)
-        # vsc & cancelelr
+        # vsc & canceller
         if self.vsc:
             # set vsc, disable canceller
             data_set(data, 10, 0b00000111, 0b100)
@@ -584,6 +584,23 @@ class Channel:
         self.polarity = 0
         self.vsc = False
         self.skip = 0
+
+    def load_defaults_from_band(self, band: BandDefaults) -> None:
+        self.name = ""
+        self.mode = band.mode
+        self.af_filter = band.af_filter
+        self.attenuator = band.attenuator
+        self.tuning_step = band.tuning_step
+        self.duplex = band.duplex
+        self.offset = band.offset
+        self.tone_mode = band.tone_mode
+        self.tsql_freq = band.tsql_freq
+        self.dtsc = band.dtcs
+        self.polarity = band.polarity
+        self.vsc = band.vsc
+        self.skip = 0
+        self.canceller = band.canceller
+        self.canceller_freq = band.canceller_freq
 
 
 @dataclass
@@ -1022,4 +1039,64 @@ class BankLinks:
         return "".join(
             bn if self.banks & (1 << idx) else " "
             for idx, bn in enumerate(consts.BANK_NAMES)
+        )
+
+
+@dataclass
+class BandDefaults:
+    idx: int
+    freq: int
+    offset: int
+    tuning_step: int
+    tsql_freq: int
+    dtcs: int
+    mode: int
+    canceller_freq: int
+    duplex: int
+    tone_mode: int
+    vsc: bool
+    canceller: int
+    polarity: int
+    af_filter: bool
+    attenuator: bool
+
+    debug_info: dict[str, object] | None
+
+    @classmethod
+    def from_data(
+        cls: type[BandDefaults],
+        idx: int,
+        data: bytearray | memoryview,
+    ) -> BandDefaults:
+        freq = (data[3] << 24) | (data[2] << 16) | (data[1] << 8) | data[0]
+        freq //= 3
+        offset = (data[7] << 24) | (data[6] << 16) | (data[5] << 8) | data[4]
+        offset //= 3
+
+        debug_info = (
+            {
+                "raw": binascii.hexlify(data),
+                "unknown6": data[11],
+            }
+            if DEBUG
+            else None
+        )
+
+        return BandDefaults(
+            idx=idx,
+            freq=freq,
+            offset=offset,
+            tuning_step=data[8] & 0b1111,
+            tsql_freq=data[9] & 0b111,
+            dtcs=data[10] & 0b01111111,
+            mode=(data[12] & 0b00110000) >> 4,
+            canceller_freq=(data[14] << 8) | data[15],
+            duplex=(data[12] >> 6),
+            tone_mode=data[12] & 0b1111,
+            vsc=bool(data[13] & 0b01000000),
+            canceller=(data[13] & 0b00110000) >> 4,
+            polarity=int(data[3] & 0b00000100) >> 2,
+            af_filter=bool(data[13] & 0b00000010),
+            attenuator=bool(data[13] & 0b0000001),
+            debug_info=debug_info,
         )

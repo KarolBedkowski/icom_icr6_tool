@@ -565,51 +565,73 @@ types:
         type: b6
 
   band:
+    # this is mostly guess
     seq:
       - id: freq
         type: u4le
         doc: band end frequency (freq * 3)
 
+      # @4
       - id: offset
         type: u4le
         doc: offset (freq * 3)
 
+      # @8
       - id: tuning_step
         type: u1
         enum: steps
 
+      # @9
       - id: tsql_freq
         type: u1
 
+      # @10
       - id: dscs_code
         type: u1
-        doc: check???
+        doc: with polarity? rather not
 
+      # @11
       - id: unknown6
         type: u1
-        doc: 4bit + 4bit
+        doc: unknown flags for offset & freq?
 
-      - id: unknown7
+      # @12
+      - id: duplex
         type: b2
         doc: duplex?
       - id: mode
         type: b2
         enum: mode
-      - id: unknown7a
+      - id: tone_mode
         type: b4
+        doc: tone mode?
 
+      # @13
       - id: unknown8
-        type: u1
-        doc: 4bits (padding?),  2 bits used, 1 bit, 1 bit
+        type: b1
+      - id: vsc
+        type: b1
+      - id: canceller
+        type: b2
+      - id: unknown8a
+        type: b1
+      - id: polarity
+        type: b1
+      - id: af
+        type: b1
+      - id: attenuator
+        type: b1
 
-      - id: unknown9
-        type: u2
+      # @14
+      - id: canceller_freq
+        type: u2le
 
 enums:
   mode:
     0: fm
     1: wfm
     2: am
+    3: mode_auto
 
   mode_scan_edge:
     0: fm
