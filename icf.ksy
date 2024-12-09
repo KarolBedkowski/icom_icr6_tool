@@ -71,7 +71,7 @@ seq:
   - id: bands
     type: band
     size: 16
-    doc: device state? pos 0x6b00 - 0x6bcf look like default band definition; not changing
+    doc: pos 0x6b00 - 0x6bcf look like default band definition; not changing
     repeat: expr
     repeat-expr: 13
 
@@ -81,8 +81,16 @@ seq:
     doc: pos 0x6bd0 - 0x6c0f
 
   - id: unknown2_0x6c10
-    size: 24
-    doc: pos 0x6c10 - 0x6c27, related to settings or device state?
+    size: 22
+    doc: pos 0x6c10 - 0x6c1, always 0?
+
+  - id: unknown2_0x6c2
+    type: u1
+    doc: pos 0x6c2, related to settings or device state?
+
+  - id: padding_0x6c27
+    type: u1
+    doc: pos 0x6c27, 0xff - padding?
 
   - id: bank_links
     type: bank_links
@@ -375,8 +383,12 @@ types:
   settings:
     seq:
       - id: unknown0
-        size: 13
-        doc: pos 0x6bd0 ; first byte related to market
+        size: 12
+        doc: pos 0x6bd0; 12x 0x20
+
+      - id: unknown0_1
+        size: 1
+        doc: pos 0x6bdc - 0 - padding?
 
       # @13
       - id: unknown1
@@ -387,6 +399,7 @@ types:
       # @14
       - id: unknown2
         size: 1
+        doc: 0?
 
       # @15
       - id: unknown3
@@ -518,14 +531,19 @@ types:
         type: b1
 
       # @37
-      - id: unknown11a
+      - id: unknown10a
         type: b7
       - id: charging_type
         type: b1
 
       # @38
       - id: unknown11
-        size: 14
+        size: 9
+        doc: padding? 9x 0xff
+
+      # @47
+      - id: unknown11b
+        size: 5
 
       # @52
       - id: unknown12
@@ -589,12 +607,14 @@ types:
       # @10
       - id: dscs_code
         type: u1
-        doc: with polarity? rather not
+        doc: dscs
 
       # @11
       - id: unknown6
         type: u1
-        doc: unknown flags for offset & freq?
+        doc: |
+          unknown flags for offset & freq?; look like 4bit for offset
+          and 4bit for frequency multpiler; not used
 
       # @12
       - id: duplex
