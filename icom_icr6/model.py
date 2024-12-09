@@ -213,9 +213,9 @@ class Channel:
     tone_mode: int
     # tsql freq
     tsql_freq: int
-    # dtsc code
-    dtsc: int
-    # dtsc polarity
+    # dtcs code
+    dtcs: int
+    # dtcs polarity
     polarity: int
     vsc: bool
 
@@ -268,7 +268,7 @@ class Channel:
             f"tone_mode={consts.TONE_MODES[self.tone_mode]}, "
             f"offset={self.offset}, "
             f"tsql_freq={_try_get(consts.CTCSS_TONES, self.tsql_freq)}, "
-            f"dtsc={_try_get(consts.DTCS_CODES, self.dtsc)}, "
+            f"dtcs={_try_get(consts.DTCS_CODES, self.dtcs)}, "
             f"cf={self.canceller_freq}, "
             f"vsc={self.vsc}, "
             f"c={self.canceller}, "
@@ -348,7 +348,7 @@ class Channel:
         tsql_freq = (
             ts if (ts := data[7] & 0b00111111) < len(consts.CTCSS_TONES) else 0
         )
-        dtsc = d if (d := data[8] & 0b01111111) < len(consts.DTCS_CODES) else 0
+        dtcs = d if (d := data[8] & 0b01111111) < len(consts.DTCS_CODES) else 0
         vsc = bool(data[10] & 0b00000100)
         return Channel(
             number=idx,
@@ -363,7 +363,7 @@ class Channel:
             offset=offset_real,
             tsql_freq=tsql_freq,
             polarity=(data[8] & 0b10000000) >> 7,
-            dtsc=dtsc,
+            dtcs=dtcs,
             canceller_freq=10
             * ((data[9] << 1) | ((data[10] & 0b10000000) >> 7)),
             vsc=vsc,
@@ -411,9 +411,9 @@ class Channel:
         data_set(data, 7, 0b11000000, 0)
         # tsql_freq
         data_set(data, 7, 0b00111111, min(self.tsql_freq, 49))
-        # polarity, dtsc
+        # polarity, dtcs
         data[8] = bool2bit(self.polarity, 0b10000000) | (
-            self.dtsc & 0b01111111
+            self.dtcs & 0b01111111
         )
         # canceller freq
         canc_freq = self.canceller_freq // 10
@@ -457,7 +457,7 @@ class Channel:
         _is_valid_index(consts.TONE_MODES, self.tone_mode, "tone mode")
         # TSQL
         _is_valid_index(consts.CTCSS_TONES, self.tsql_freq, "tsql freq")
-        _is_valid_index(consts.DTCS_CODES, self.dtsc, "dtsc")
+        _is_valid_index(consts.DTCS_CODES, self.dtcs, "dtcs")
         _is_valid_index(consts.POLARITY, self.polarity, "polarity")
 
         if self.bank < 0 or (
@@ -490,7 +490,7 @@ class Channel:
             "tone_mode": consts.TONE_MODES[self.tone_mode],
             "offset": self.offset,
             "tsql_freq": _try_get(consts.CTCSS_TONES, self.tsql_freq),
-            "dtsc": _try_get(consts.DTCS_CODES, self.dtsc),
+            "dtcs": _try_get(consts.DTCS_CODES, self.dtcs),
             "canceller freq": self.canceller_freq,
             "vsc": self.vsc,
             "canceller": consts.CANCELLER[self.canceller],
@@ -534,8 +534,8 @@ class Channel:
         if (tf := data.get("tsql_freq")) is not None:
             self.tsql_freq = get_index_or_default(consts.CTCSS_TONES, tf)
 
-        if (dtsc := data.get("dtsc")) is not None:
-            self.dtsc = get_index_or_default(consts.DTCS_CODES, dtsc)
+        if (dtcs := data.get("dtcs")) is not None:
+            self.dtcs = get_index_or_default(consts.DTCS_CODES, dtcs)
 
         if (cf := data.get("canceller freq")) is not None:
             self.canceller_freq = int(cf or 300)  # type: ignore
@@ -580,7 +580,7 @@ class Channel:
         self.offset = 0
         self.tone_mode = 0
         self.tsql_freq = 0
-        self.dtsc = 0
+        self.dtcs = 0
         self.polarity = 0
         self.vsc = False
         self.skip = 0
@@ -595,7 +595,7 @@ class Channel:
         self.offset = band.offset
         self.tone_mode = band.tone_mode
         self.tsql_freq = band.tsql_freq
-        self.dtsc = band.dtcs
+        self.dtcs = band.dtcs
         self.polarity = band.polarity
         self.vsc = band.vsc
         self.skip = 0

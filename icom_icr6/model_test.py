@@ -64,7 +64,7 @@ class TestDecodeChannel:
         assert consts.TONE_MODES[chan.tone_mode] == ""
         assert consts.CTCSS_TONES[chan.tsql_freq] == "88,5"
         assert consts.POLARITY[chan.polarity] == "Normal"
-        assert consts.DTCS_CODES[chan.dtsc] == "023"
+        assert consts.DTCS_CODES[chan.dtcs] == "023"
         assert not chan.vsc
         assert consts.CANCELLER[chan.canceller] == "Off"
         assert chan.canceller_freq == 2280
@@ -93,7 +93,7 @@ class TestDecodeChannel:
         assert consts.TONE_MODES[chan.tone_mode] == "DTCS-R"
         assert consts.CTCSS_TONES[chan.tsql_freq] == "71,9"
         assert consts.POLARITY[chan.polarity] == "Reverse"
-        assert consts.DTCS_CODES[chan.dtsc] == "032"
+        assert consts.DTCS_CODES[chan.dtcs] == "032"
         assert not chan.vsc
         assert consts.CANCELLER[chan.canceller] == "Off"
         assert chan.canceller_freq == 2280
@@ -122,7 +122,7 @@ class TestDecodeChannel:
         assert consts.TONE_MODES[chan.tone_mode] == "DTCS-R"
         assert consts.CTCSS_TONES[chan.tsql_freq] == "225,75"
         assert consts.POLARITY[chan.polarity] == "Reverse"
-        assert consts.DTCS_CODES[chan.dtsc] == "346"
+        assert consts.DTCS_CODES[chan.dtcs] == "346"
         assert chan.vsc
         assert consts.CANCELLER[chan.canceller] == "Off"
         assert chan.canceller_freq == 2280

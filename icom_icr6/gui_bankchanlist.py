@@ -35,7 +35,7 @@ class BLRow(gui_genericlist.BaseRow):
         ("vsc", "VSC", "bool"),  # 10
         ("tone_mode", "Tone", consts.TONE_MODES),
         ("tsql_freq", "TSQL", consts.CTCSS_TONES),
-        ("dtsc", "DTSC", consts.DTCS_CODES),
+        ("dtcs", "DTCS", consts.DTCS_CODES),
         ("polarity", "Polarity", consts.POLARITY),
         ("canceller", "Canceller", consts.CANCELLER),
         ("canceller freq", "Canceller freq", "int"),

@@ -30,7 +30,7 @@ class AWCRow(gui_genericlist.BaseRow):
         ("vsc", "VSC", "bool"),  # 10
         ("tone_mode", "Tone", consts.TONE_MODES),
         ("tsql_freq", "TSQL", consts.CTCSS_TONES),
-        ("dtsc", "DTSC", consts.DTCS_CODES),
+        ("dtcs", "DTCS", consts.DTCS_CODES),
         ("polarity", "Polarity", consts.POLARITY),
         ("canceller", "Canceller", consts.CANCELLER),
         ("canceller freq", "Canceller freq", "int"),
@@ -77,9 +77,9 @@ class ChannelsList(gui_chanlist.ChannelsList):
         self._set_cell_ro(row, "offset", not chan.duplex)
         self._set_cell_ro(row, "tsql_freq", chan.tone_mode not in (1, 2))
 
-        dtsc = chan.tone_mode in (3, 4)
-        self._set_cell_ro(row, "dtsc", not dtsc)
-        self._set_cell_ro(row, "polarity", not dtsc)
+        dtcs = chan.tone_mode in (3, 4)
+        self._set_cell_ro(row, "dtcs", not dtcs)
+        self._set_cell_ro(row, "polarity", not dtcs)
 
         self._set_cell_ro(row, "bank_pos", chan.bank == consts.BANK_NOT_SET)
         self._set_cell_ro(row, "canceller", not chan.canceller)
