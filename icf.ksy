@@ -1,3 +1,4 @@
+---
 meta:
   id: icr6
   title: icom ic-r6 memory map
@@ -101,7 +102,7 @@ seq:
 
   - id: unknown3_0x6c54
     size: 2
-    doc: 0x6c54 - 0x6c55  related to settigns?
+    doc: 0x6c54 - 0x6c55  related to settings?
 
   - id: unknown4_0x6c56
     size: 1
@@ -480,7 +481,7 @@ types:
       # @30
       - id: unknown8e
         size: 1
-        doc: somthing related to market
+        doc: something related to market
 
       # @31
       - id: unknown8f

@@ -126,7 +126,7 @@ class ChangeManeger:
         for chan in channels:
             chan.validate()
 
-        bank_chan_pos : dict[tuple[int, int], int] = {}
+        bank_chan_pos: dict[tuple[int, int], int] = {}
         for chan in channels:
             if not chan.freq or chan.hide_channel:
                 chan.bank = consts.BANK_NOT_SET
