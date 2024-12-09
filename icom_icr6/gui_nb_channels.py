@@ -129,7 +129,17 @@ class ChannelsPage(tk.Frame):
         for rec in rows:
             _LOG.debug("__do_update_channels: %r", rec)
             rec.updated = False
-            channels.append(rec.channel)
+            chan = rec.channel
+
+            if rec.new_freq:
+                chan = chan.clone()
+                band = self._change_manager.rm.get_band_for_freq(rec.new_freq)
+                chan.load_defaults_from_band(band)
+                chan.freq = rec.new_freq
+                chan.hide_channel = False
+                self.__need_full_refresh = True
+
+            channels.append(chan)
 
         self.__need_full_refresh |= self._change_manager.set_channel(*channels)
         self._change_manager.commit()

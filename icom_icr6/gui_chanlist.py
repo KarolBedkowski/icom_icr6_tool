@@ -42,6 +42,7 @@ class Row(gui_genericlist.BaseRow):
 
     def __init__(self, rownum: int, channel: model.Channel) -> None:
         self.channel = channel
+        self.new_freq = 0
         super().__init__(rownum, self._from_channel(channel))
         self.errors: tuple[str, ...] = ()
 
@@ -66,19 +67,20 @@ class Row(gui_genericlist.BaseRow):
                 return
 
             case "freq":  # freq
-                chan = self._make_clone()
+                try:
+                    value = int(val)  # type: ignore
+                except (ValueError, TypeError):
+                    return
 
-                if val:
-                    assert isinstance(val, int)
+                if not chan.freq or chan.hide_channel:
+                    self.new_freq = value
+                    return
 
-                    if not chan.freq or chan.hide_channel:
-                        chan.load_defaults(val)
-
-                chan.freq = val or 0  # type: ignore
+                chan = chan.clone()
+                chan.freq = value
                 chan.tuning_step = fixers.fix_tuning_step(
                     chan.freq, chan.tuning_step
                 )
-                chan.hide_channel = not val
                 self.data = self._from_channel(chan)
                 return
 

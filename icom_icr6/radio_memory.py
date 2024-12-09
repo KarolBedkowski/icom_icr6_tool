@@ -36,6 +36,7 @@ class RadioMemory:
         self.awchannels: list[model.Channel] = []
         self.bank_links: model.BankLinks
         self.comment = ""
+        self.bands: list[model.BandDefaults] = []
 
         # this create all lists etc
         self.load_memory()
@@ -84,6 +85,8 @@ class RadioMemory:
 
         self.settings = self._load_settings()
         self.comment = self._load_comment()
+
+        self.bands = list(self._load_bands())
 
     def commit(self) -> None:
         """Write data to mem."""
@@ -150,14 +153,15 @@ class RadioMemory:
         return False
 
     def _load_channels(self) -> ty.Iterable[model.Channel]:
+        mv = memoryview(self.mem)
         for idx in range(consts.NUM_CHANNELS):
             start = idx * 16
             cflags_start = idx * 2 + 0x5F80
 
             yield model.Channel.from_data(
                 idx,
-                self.mem[start : start + 16],
-                self.mem[cflags_start : cflags_start + 2],
+                mv[start : start + 16],
+                mv[cflags_start : cflags_start + 2],
             )
 
     def _save_channels(self) -> None:
@@ -254,9 +258,10 @@ class RadioMemory:
                 yield chan
 
     def _load_banks(self) -> ty.Iterable[model.Bank]:
+        mv = memoryview(self.mem)
         for idx in range(consts.NUM_BANKS):
             start = 0x6D10 + idx * 8
-            yield model.Bank.from_data(idx, self.mem[start : start + 8])
+            yield model.Bank.from_data(idx, mv[start : start + 8])
 
     def _save_banks(self) -> None:
         mv = memoryview(self.mem)
@@ -266,13 +271,14 @@ class RadioMemory:
             bank.to_data(mv[start : start + 8])
 
     def _load_scan_links(self) -> ty.Iterable[model.ScanLink]:
+        mv = memoryview(self.mem)
         for idx in range(consts.NUM_SCAN_LINKS):
             start = 0x6DC0 + idx * 8
             # edges
             estart = 0x6C2C + 4 * idx
 
             yield model.ScanLink.from_data(
-                idx, self.mem[start : start + 8], self.mem[estart : estart + 4]
+                idx, mv[start : start + 8], mv[estart : estart + 4]
             )
 
     def _save_scan_links(self) -> None:
@@ -319,3 +325,18 @@ class RadioMemory:
                 map(str, channels)
             )
             raise ValueError(errmsg)
+
+    def _load_bands(self) -> ty.Iterable[model.BandDefaults]:
+        mv = memoryview(self.mem)
+        for idx in range(13):
+            start = 0x6B00 + idx * 16
+            yield model.BandDefaults.from_data(idx, mv[start : start + 16])
+
+    def get_band_for_freq(self, freq: int) -> model.BandDefaults:
+        for band in self.bands:
+            if freq <= band.freq:
+                _LOG.debug("get_band_for_freq: %d: %r", freq, band)
+                return band
+
+        _LOG.error("get_band_for_freq: %d: not found", freq)
+        raise ValueError

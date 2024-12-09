@@ -194,6 +194,21 @@ def main_print_settings() -> None:
     print(bl)
 
 
+def main_print_bands() -> None:
+    """cmd: bands
+    args: <icf file>
+    """
+    if len(sys.argv) < 3:
+        print("file name required")
+        return
+
+    mem = io.load_icf_file(Path(sys.argv[2]))
+
+    print("Bands")
+    for idx, band in enumerate(mem.bands):
+        print(idx, band)
+
+
 def get_commands(
     *functions: ty.Callable[[], None],
 ) -> ty.Iterable[tuple[str, tuple[str, ty.Callable[[], None]]]]:
@@ -231,6 +246,7 @@ def main() -> None:
             main_print_aw_channels,
             main_radio_info,
             main_print_settings,
+            main_print_bands,
             # debug, for tests
             main_print_channels_4test,
         )

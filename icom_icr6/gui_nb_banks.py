@@ -284,7 +284,8 @@ class BanksPage(tk.Frame):
             # if new channel - make it visible
             if chan.hide_channel or not chan.freq:
                 chan.freq = fixers.fix_frequency(chan.freq)
-                chan.load_defaults()
+                band = self._change_manager.rm.get_band_for_freq(chan.freq)
+                chan.load_defaults_from_band(band)
                 chan.hide_channel = False
 
             channels.append(chan)
