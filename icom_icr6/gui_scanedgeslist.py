@@ -115,12 +115,8 @@ class ScanEdgesList(gui_genericlist.GenericList[Row, model.ScanEdge]):
                 if value is None or value == "":
                     return value
 
-                val = float(value)
-                if val < 1_310:  # entered freq  # noqa: PLR2004
-                    val *= 1_000_000
-
-                if value := int(val):
-                    value = fixers.fix_frequency(value)
+                val = gui_genericlist.to_freq(value)
+                value = fixers.fix_frequency(val)
 
             case "name":
                 value = fixers.fix_name(value)

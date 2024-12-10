@@ -183,20 +183,14 @@ class ChannelsList(gui_genericlist.GenericList[Row, model.Channel]):
                     return None
 
             case "freq":
-                val = float(value)
-                if val < 1_310:  # entered freq  # noqa: PLR2004
-                    val *= 1_000_000
-
-                value = fixers.fix_frequency(int(val))
+                val = gui_genericlist.to_freq(value)
+                value = fixers.fix_frequency(val)
 
             case "name":
                 value = fixers.fix_name(value)
 
             case "offset":
-                val = float(value)
-                if val and val < 1_310:  # entered freq  # noqa: PLR2004
-                    val *= 1_000_000
-
+                val = gui_genericlist.to_freq(value)
                 value = (
                     fixers.fix_offset(chan.freq, off)
                     if (off := int(val))

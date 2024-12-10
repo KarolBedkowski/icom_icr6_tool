@@ -62,6 +62,9 @@ class Row(gui_genericlist.BaseRow):
                 if se.start:
                     se.unhide()
 
+                if se.start > se.end:
+                    se.start, se.end = se.end, se.start
+
                 self.data = self._from_scanedge(se)
                 return
 
@@ -70,6 +73,9 @@ class Row(gui_genericlist.BaseRow):
                 se.end = val or 0  # type: ignore
                 if se.end:
                     se.unhide()
+
+                if se.start > se.end:
+                    se.start, se.end = se.end, se.start
 
                 self.data = self._from_scanedge(se)
                 return
@@ -131,12 +137,8 @@ class ScanLnksList(gui_genericlist.GenericList[Row, ScanLink]):
 
         match column[0]:
             case "start" | "end":
-                val = float(value)
-                if val < 1_310:  # entered freq  # noqa: PLR2004
-                    val *= 1_000_000
-
-                if value := int(val):
-                    value = fixers.fix_frequency(value)
+                val = gui_genericlist.to_freq(value)
+                value = fixers.fix_frequency(val)
 
             case "name":
                 value = fixers.fix_name(value)

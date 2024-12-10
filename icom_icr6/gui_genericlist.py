@@ -66,14 +66,18 @@ class RecordSelectedCallback(ty.Protocol[T]):
     ) -> None: ...
 
 
-def to_int(o: object, **_kwargs: object) -> int:
+def to_freq(o: object, **_kwargs: object) -> int:
+    val = 0.0
     if isinstance(o, int):
-        return o
+        val = o
+    elif isinstance(o, str):
+        val = float(o.replace(" ", "").replace(",", "."))
+    elif isinstance(o, float):
+        pass
+    else:
+        val = float(o)  # type: ignore
 
-    if isinstance(o, str):
-        return int(o.replace(" ", ""))
-
-    return int(o)  # type: ignore
+    return int(val * 1_000_000 if 0 < val < 1400.0 else val)  # noqa:PLR2004
 
 
 def format_freq(freq: int, **_kwargs: object) -> str:
@@ -170,7 +174,7 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
         elif values == "freq":
             span.format(
                 int_formatter(
-                    format_function=to_int,
+                    format_function=to_freq,
                     to_str_function=format_freq,
                     invalid_value="",
                 )
