@@ -66,24 +66,8 @@ class Row(gui_genericlist.BaseRow):
             case "number":
                 return
 
-            case "freq":  # freq
-                try:
-                    value = int(val or 0)  # type: ignore
-                except (ValueError, TypeError):
-                    return
-
-                if (not chan.freq or chan.hide_channel) and value:
-                    self.new_freq = value
-                    return
-
-                chan = self._make_clone()
-                chan.freq = value
-                if value:
-                    chan.tuning_step = fixers.fix_tuning_step(
-                        chan.freq, chan.tuning_step
-                    )
-                chan.hide_channel = not value
-                self.data = self._from_channel(chan)
+            case "freq":
+                self._update_freq(val)
                 return
 
         data = chan.to_record()
@@ -117,6 +101,28 @@ class Row(gui_genericlist.BaseRow):
             return [channel.number, *([""] * 18)]
 
         return self._extracts_cols(channel.to_record())
+
+    def _update_freq(self, value: object) -> None:
+        try:
+            freq = int(value or 0)  # type: ignore
+        except (ValueError, TypeError):
+            return
+
+        chan = self.channel
+
+        if (not chan.freq or chan.hide_channel) and freq:
+            self.new_freq = freq
+            return
+
+        chan = self._make_clone()
+        chan.freq = freq
+        if freq:
+            chan.tuning_step = fixers.fix_tuning_step(
+                chan.freq, chan.tuning_step
+            )
+
+        chan.hide_channel = not freq
+        self.data = self._from_channel(chan)
 
 
 @ty.runtime_checkable
@@ -194,9 +200,7 @@ class ChannelsList(gui_genericlist.GenericList[Row, model.Channel]):
             case "offset":
                 val = gui_genericlist.to_freq(value)
                 value = (
-                    fixers.fix_offset(chan.freq, off)
-                    if (off := int(val))
-                    else 0
+                    fixers.fix_offset(chan.freq, off) if (off := val) else 0
                 )
 
             case "canceller freq":

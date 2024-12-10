@@ -40,62 +40,30 @@ class Row(gui_genericlist.BaseRow):
         if val == self.data[idx]:
             return
 
-        se = self.se
         col = self.COLUMNS[idx][0]
         match col:
             case "idx":
-                return
+                pass
 
             case "selected":
                 self.selected = bool(val)
                 self.data[1] = val
-                return
 
             case "name":
                 if val:
                     se = self._make_clone()
                     se.unhide()
 
+                self._update_se(idx, col, val)
+
             case "start":  # freq
-                se = self._make_clone()
-                se.start = val or 0  # type: ignore
-                if se.start:
-                    se.unhide()
-
-                if se.start > se.end:
-                    se.start, se.end = se.end, se.start
-
-                self.data = self._from_scanedge(se)
-                return
+                self._update_start(val)
 
             case "end":  # freq
-                se = self._make_clone()
-                se.end = val or 0  # type: ignore
-                if se.end:
-                    se.unhide()
+                self._update_end(val)
 
-                if se.start > se.end:
-                    se.start, se.end = se.end, se.start
-
-                self.data = self._from_scanedge(se)
-                return
-
-        if se.hidden:
-            return
-
-        data = se.to_record()
-        if data[col] == val:
-            return
-
-        se = self._make_clone()
-        try:
-            se.from_record({col: val})
-        except Exception:
-            _LOG.exception(
-                "update scanedge from record error: %r=%r", col, val
-            )
-        else:
-            super().__setitem__(idx, val)
+            case _:
+                self._update_se(idx, col, val)
 
     def _make_clone(self) -> model.ScanEdge:
         """Make copy of channel for updates."""
@@ -111,6 +79,44 @@ class Row(gui_genericlist.BaseRow):
 
         data = se.to_record()
         return [se.idx, self.selected, *(data[c[0]] for c in self.COLUMNS[2:])]
+
+    def _update_start(self, value: object) -> None:
+        se = self.se
+        se = self._make_clone()
+        se.start = value or 0  # type: ignore
+        if se.start:
+            se.unhide()
+
+        if se.start > se.end:
+            se.start, se.end = se.end, se.start
+
+        self.data = self._from_scanedge(se)
+
+    def _update_end(self, value: object) -> None:
+        se = self._make_clone()
+        se.end = value or 0  # type: ignore
+        if se.end:
+            se.unhide()
+
+        if se.start > se.end:
+            se.start, se.end = se.end, se.start
+
+        self.data = self._from_scanedge(se)
+
+    def _update_se(self, idx: int, col: str, value: object) -> None:
+        se = self.se
+        if se.hidden or se.to_record()[col] == value:
+            return
+
+        se = self._make_clone()
+        try:
+            se.from_record({col: value})
+        except Exception:
+            _LOG.exception(
+                "update scanedge from record error: %r=%r", col, value
+            )
+        else:
+            super().__setitem__(idx, value)
 
 
 class ScanLnksList(gui_genericlist.GenericList[Row, ScanLink]):
