@@ -68,19 +68,21 @@ class Row(gui_genericlist.BaseRow):
 
             case "freq":  # freq
                 try:
-                    value = int(val)  # type: ignore
+                    value = int(val or 0)  # type: ignore
                 except (ValueError, TypeError):
                     return
 
-                if not chan.freq or chan.hide_channel:
+                if (not chan.freq or chan.hide_channel) and value:
                     self.new_freq = value
                     return
 
-                chan = chan.clone()
+                chan = self._make_clone()
                 chan.freq = value
-                chan.tuning_step = fixers.fix_tuning_step(
-                    chan.freq, chan.tuning_step
-                )
+                if value:
+                    chan.tuning_step = fixers.fix_tuning_step(
+                        chan.freq, chan.tuning_step
+                    )
+                chan.hide_channel = not value
                 self.data = self._from_channel(chan)
                 return
 
