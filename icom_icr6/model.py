@@ -26,17 +26,14 @@ class RadioModel:
     # Data format - 40B
     # model: 4B
     # unknown: 1B - is this mapped to region?
-    #        TODO: check
-    #        0-0xc -> 1; 0xd-0x22 -> 2; 0x23 -> 3; 0x2e -> 5; other -> error
-    #        1,2,5 = > us; 3 -> global (??)
     # rev: 1B
     # comment: 16B
     # unknown: 3B
     # serial 14B
-    #    4b
+    #    4B
     #    1B unknown
-    #    2b
-    #    7b unknown
+    #    2B
+    # unknown 7B
     model: bytes
     rev: int
     comment: str
