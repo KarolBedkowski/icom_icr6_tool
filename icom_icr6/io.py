@@ -7,6 +7,7 @@
 import binascii
 import itertools
 import logging
+import time
 import typing as ty
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -24,6 +25,7 @@ CMD_MODEL: ty.Final = 0xE0  # todo: check - 0xE1?
 CMD_CLONE_OUT: ty.Final = 0xE2
 CMD_CLONE_IN: ty.Final = 0xE3
 CMD_CLONE_DAT: ty.Final = 0xE4
+CMD_CLONE_HISPEED: ty.Final = 0xE8
 CMD_END: ty.Final = 0xE5
 CMD_OK: ty.Final = 0xE6
 
@@ -72,6 +74,8 @@ class Serial(ty.Protocol):
 
     def close(self) -> None: ...
 
+    def switch_to_hispeed(self) -> None: ...
+
 
 class StreamLogger:
     """
@@ -102,6 +106,9 @@ class StreamLogger:
         data = self._impl.read_frame()
         self._log.write(f">{binascii.hexlify(data)!r}\n")
         return data
+
+    def switch_to_hispeed(self) -> None:
+        self._impl.switch_to_hispeed()
 
 
 class RealSerial:
@@ -134,6 +141,11 @@ class RealSerial:
                 break
 
         return b"".join(buf)
+
+    def switch_to_hispeed(self) -> None:
+        _LOG.debug("switch_to_hispeed")
+        self._serial.flush()
+        self._serial.baudrate = 38400
 
 
 class FakeSerial:
@@ -168,15 +180,19 @@ class FakeSerial:
 
         return b"".join(buf)
 
+    def switch_to_hispeed(self) -> None:
+        _LOG.debug("switch_to_hispeed")
+
 
 def calc_checksum(data: bytes) -> int:
     return ((sum(data) ^ 0xFFFF) + 1) & 0xFF
 
 
 class Radio:
-    def __init__(self, port: str = "") -> None:
+    def __init__(self, port: str = "", *, hispeed: bool = False) -> None:
         self._port = port
         self._logger = None
+        self._hispeed = hispeed
 
     @contextmanager
     def _open_serial(self, stream: str) -> ty.Iterator[Serial]:
@@ -228,6 +244,27 @@ class Radio:
 
         # ic(data)
         return Frame(data[4], data[5:], data[2], data[3])
+
+    def _start_clone(self, s: Serial, cmd: int) -> None:
+        if not self._hispeed:
+            self._write(s, Frame(cmd, b"\x32\x50\x00\x01").pack())
+            return
+
+        self._write(s, b"\xfe" * 20)
+        self._write(
+            s,
+            Frame(
+                CMD_CLONE_HISPEED, b"\x32\x50\x00\x01\x00\x00\x02\x01\xfd"
+            ).pack(),
+        )
+
+        resp = s.read(128)
+        _LOG.debug("response: %r", resp)
+
+        s.switch_to_hispeed()
+
+        self._write(s, b"\xfe" * 14)
+        self._write(s, Frame(cmd, b"\x32\x50\x00\x00").pack())
 
     def get_model(self) -> model.RadioModel | None:
         with self._open_serial("get_model") as s:
@@ -297,7 +334,7 @@ class Radio:
 
         with self._open_serial("clone_from") as s:
             # clone out
-            self._write(s, Frame(CMD_CLONE_OUT, b"\x32\x50\x00\x01").pack())
+            self._start_clone(s, CMD_CLONE_OUT)
 
             mem = RadioMemory()
             for idx in itertools.count():
@@ -323,9 +360,11 @@ class Radio:
     ) -> bool:
         self._check_radio()
 
+        time.sleep(1)
+
         with self._open_serial("clone_to") as s:
             # clone in
-            self._write(s, Frame(CMD_CLONE_IN, b"\x32\x50\x00\x01").pack())
+            self._start_clone(s, CMD_CLONE_IN)
 
             # send in 32bytes chunks
             for addr in range(0, consts.MEM_SIZE, 32):
