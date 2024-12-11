@@ -35,6 +35,9 @@ _LOG = logging.getLogger(__name__)
 # log input/output data
 _ENABLE_LOGGER = False
 
+# TODO: why for 0xE* commands src and dst are swapped?
+# according to documentation first is receiver (dst) and then
+# controller (src) and this work for command 0x01 eth
 
 @dataclass
 class Frame:
@@ -213,6 +216,16 @@ class Radio:
             _LOG.debug("write: %s", binascii.hexlify(payload))
 
         s.write(payload)
+
+    def write_read(self, cmd: int, payload: bytes) -> ty.Iterable[Frame]:
+        with self._open_serial("write_read") as s:
+            frame = Frame(cmd, payload, dst=ADDR_PC, src=ADDR_RADIO).pack()
+            _LOG.debug("send: %r", frame)
+            self._write(s, frame)
+
+            while res := self.read_frame(s):
+                _LOG.debug("recv: %r", res)
+                yield res
 
     def read_frame(self, s: Serial) -> Frame | None:
         data = s.read_frame()

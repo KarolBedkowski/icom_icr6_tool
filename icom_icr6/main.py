@@ -12,6 +12,7 @@ import logging
 import sys
 import typing as ty
 from pathlib import Path
+import binascii
 
 from . import gui, io
 
@@ -209,6 +210,31 @@ def main_print_bands() -> None:
         print(idx, band)
 
 
+def main_send_command() -> None:
+    """cmd: send
+    args: <port> <command> <payload>
+    """
+    if len(sys.argv) < 4:
+        print("file name required")
+        return
+
+    port = sys.argv[2]
+    cmd = int(sys.argv[3], 16)
+    payload = binascii.unhexlify(sys.argv[4]) if len(sys.argv) > 4 else b""
+
+    r = io.Radio(port)
+    print("Response: ")
+    try:
+        for res in r.write_read(cmd, payload):
+            print(binascii.hexlify(res.payload))
+
+    except KeyboardInterrupt:
+        pass
+
+    except io.NoDataError:
+        print("no more data")
+
+
 def get_commands(
     *functions: ty.Callable[[], None],
 ) -> ty.Iterable[tuple[str, tuple[str, ty.Callable[[], None]]]]:
@@ -247,6 +273,7 @@ def main() -> None:
             main_radio_info,
             main_print_settings,
             main_print_bands,
+            main_send_command,
             # debug, for tests
             main_print_channels_4test,
         )
