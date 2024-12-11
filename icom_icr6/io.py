@@ -189,9 +189,10 @@ def calc_checksum(data: bytes) -> int:
 
 
 class Radio:
-    def __init__(self, port: str = "") -> None:
+    def __init__(self, port: str = "", *, hispeed: bool = False) -> None:
         self._port = port
         self._logger = None
+        self._hispeed = hispeed
 
     @contextmanager
     def _open_serial(self, stream: str) -> ty.Iterator[Serial]:
@@ -244,8 +245,8 @@ class Radio:
         # ic(data)
         return Frame(data[4], data[5:], data[2], data[3])
 
-    def _start_clone(self, s: Serial, cmd: int, *, hispeed: bool) -> None:
-        if not hispeed:
+    def _start_clone(self, s: Serial, cmd: int) -> None:
+        if not self._hispeed:
             self._write(s, Frame(cmd, b"\x32\x50\x00\x01").pack())
             return
 
@@ -333,8 +334,7 @@ class Radio:
 
         with self._open_serial("clone_from") as s:
             # clone out
-            self._start_clone(s, CMD_CLONE_OUT, hispeed=True)
-            # self._write(s, Frame(CMD_CLONE_OUT, b"\x32\x50\x00\x01").pack())
+            self._start_clone(s, CMD_CLONE_OUT)
 
             mem = RadioMemory()
             for idx in itertools.count():
@@ -364,8 +364,7 @@ class Radio:
 
         with self._open_serial("clone_to") as s:
             # clone in
-            # self._write(s, Frame(CMD_CLONE_IN, b"\x32\x50\x00\x01").pack())
-            self._start_clone(s, CMD_CLONE_IN, hispeed=True)
+            self._start_clone(s, CMD_CLONE_IN)
 
             # send in 32bytes chunks
             for addr in range(0, consts.MEM_SIZE, 32):

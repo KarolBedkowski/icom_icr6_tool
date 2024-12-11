@@ -2,8 +2,8 @@
 - clone in background
 - handle errors
 - how to read region from radio? from serial number? - add support for clone from US radio
-- fast clone
 - validation / show errors
 - reorder banks
 - reorder scan links
 - reorder scan edges on delete (?)
+- repeat on clone errors
