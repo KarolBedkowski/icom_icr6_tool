@@ -8,11 +8,11 @@
 
 """ """
 
+import binascii
 import logging
 import sys
 import typing as ty
 from pathlib import Path
-import binascii
 
 from . import gui, io
 
@@ -226,7 +226,7 @@ def main_send_command() -> None:
     print("Response: ")
     try:
         for res in r.write_read(cmd, payload):
-            print(binascii.hexlify(res.payload))
+            print(repr(res))
 
     except KeyboardInterrupt:
         pass

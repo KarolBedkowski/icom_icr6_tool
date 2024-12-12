@@ -18,9 +18,10 @@ import serial
 from . import consts, model
 from .radio_memory import RadioMemory
 
-ADDR_PC: ty.Final = 0xEE
-# TODO: configurable
+ADDR_PC: ty.Final = 0xE0
 ADDR_RADIO: ty.Final = 0x7E
+# for clone there is used other address
+ADDR_RADIO_CLONE: ty.Final = 0xEE
 CMD_MODEL: ty.Final = 0xE0  # todo: check - 0xE1?
 CMD_CLONE_OUT: ty.Final = 0xE2
 CMD_CLONE_IN: ty.Final = 0xE3
@@ -39,6 +40,7 @@ _ENABLE_LOGGER = False
 # according to documentation first is receiver (dst) and then
 # controller (src) and this work for command 0x01 eth
 
+
 @dataclass
 class Frame:
     cmd: int = 0
@@ -49,7 +51,7 @@ class Frame:
     def pack(self) -> bytes:
         return b"".join(
             (
-                bytes([0xFE, 0xFE, self.src, self.dst, self.cmd]),
+                bytes([0xFE, 0xFE, self.dst, self.src, self.cmd]),
                 self.payload,
                 b"\xfd",
             )
@@ -61,8 +63,31 @@ class Frame:
             for i in range(0, len(self.payload) - 1, 2)
         )
 
-    def is_echo(self) -> bool:
-        return self.src == ADDR_PC and self.dst == ADDR_RADIO
+    def __repr__(self) -> str:
+        res = [
+            "Frame(",
+            f"src={self.src:02x} (",
+            _what_addr(self.src),
+            "), ",
+            f"dst={self.dst:02x} (",
+            _what_addr(self.dst),
+            "), ",
+            f"cmd={self.cmd:02x}, ",
+            "payload=",
+            binascii.hexlify(self.payload).decode(),
+            ")",
+        ]
+
+        return "".join(res)
+
+
+def _what_addr(addr: int) -> str:
+    if addr == ADDR_PC:
+        return "pc"
+    if addr == ADDR_RADIO:
+        return "radio"
+
+    return "unknown"
 
 
 @ty.runtime_checkable
@@ -196,6 +221,8 @@ class Radio:
         self._port = port
         self._logger = None
         self._hispeed = hispeed
+        self.addr_radio = ADDR_RADIO
+        self.addr_pc = ADDR_PC
 
     @contextmanager
     def _open_serial(self, stream: str) -> ty.Iterator[Serial]:
@@ -219,7 +246,9 @@ class Radio:
 
     def write_read(self, cmd: int, payload: bytes) -> ty.Iterable[Frame]:
         with self._open_serial("write_read") as s:
-            frame = Frame(cmd, payload, dst=ADDR_PC, src=ADDR_RADIO).pack()
+            frame = Frame(
+                cmd, payload, dst=self.addr_radio, src=self.addr_pc
+            ).pack()
             _LOG.debug("send: %r", frame)
             self._write(s, frame)
 
@@ -247,7 +276,6 @@ class Radio:
         if len(data) < 5:  # noqa: PLR2004
             return None
 
-        # ic(data, len(data))
         while data.startswith(b"\xfe\xfe\xfe"):
             _LOG.debug("remove prefix")
             data = data[1:]
@@ -256,18 +284,29 @@ class Radio:
             return None
 
         # ic(data)
-        return Frame(data[4], data[5:], data[2], data[3])
+        return Frame(cmd=data[4], payload=data[5:], src=data[3], dst=data[2])
 
     def _start_clone(self, s: Serial, cmd: int) -> None:
         if not self._hispeed:
-            self._write(s, Frame(cmd, b"\x32\x50\x00\x01").pack())
+            self._write(
+                s,
+                Frame(
+                    cmd,
+                    b"\x32\x50\x00\x01",
+                    src=self.addr_pc,
+                    dst=ADDR_RADIO_CLONE,
+                ).pack(),
+            )
             return
 
         self._write(s, b"\xfe" * 20)
         self._write(
             s,
             Frame(
-                CMD_CLONE_HISPEED, b"\x32\x50\x00\x01\x00\x00\x02\x01\xfd"
+                CMD_CLONE_HISPEED,
+                b"\x32\x50\x00\x01\x00\x00\x02\x01\xfd",
+                src=self.addr_pc,
+                dst=ADDR_RADIO_CLONE,
             ).pack(),
         )
 
@@ -277,13 +316,30 @@ class Radio:
         s.switch_to_hispeed()
 
         self._write(s, b"\xfe" * 14)
-        self._write(s, Frame(cmd, b"\x32\x50\x00\x00").pack())
+        self._write(
+            s,
+            Frame(
+                cmd,
+                b"\x32\x50\x00\x00",
+                src=self.addr_pc,
+                dst=ADDR_RADIO_CLONE,
+            ).pack(),
+        )
 
     def get_model(self) -> model.RadioModel | None:
+        addr_pc = self.addr_pc
         with self._open_serial("get_model") as s:
-            self._write(s, Frame(CMD_MODEL, b"\x00\x00\x00\x00").pack())
+            self._write(
+                s,
+                Frame(
+                    CMD_MODEL,
+                    b"\x32\x50\x00\x00",
+                    dst=ADDR_RADIO_CLONE,
+                    src=addr_pc,
+                ).pack(),
+            )
             while frame := self.read_frame(s):
-                if frame.is_echo():
+                if frame.src == addr_pc:
                     continue
 
                 pl = frame.payload
@@ -295,8 +351,8 @@ class Radio:
     def _process_clone_from_frame(
         self, idx: int, frame: Frame, mem: RadioMemory
     ) -> tuple[bool, int]:
-        if frame.is_echo():
-            # echo, skip
+        if frame.src == self.addr_pc:
+            # echo, skip - for clone addresses are swapped
             return True, 0
 
         length = 0
@@ -328,12 +384,7 @@ class Radio:
                 mem.update_mem_region(daddr, length, data)
 
             case _:
-                _LOG.error(
-                    "unknown cmd=%r idx=%d frame=%s",
-                    frame.cmd,
-                    idx,
-                    binascii.hexlify(frame.payload),
-                )
+                _LOG.error("unknown frame idx=%d frame=%r", idx, frame)
                 raise ValueError
 
         return True, length
@@ -390,7 +441,12 @@ class Radio:
                 chunk += bytes([calc_checksum(chunk)])
                 # encode paload
                 payload = "".join(f"{d:02X}" for d in chunk)
-                frame = Frame(CMD_CLONE_DAT, payload.encode())
+                frame = Frame(
+                    CMD_CLONE_DAT,
+                    payload.encode(),
+                    dst=ADDR_RADIO_CLONE,
+                    src=self.addr_pc,
+                )
 
                 data = frame.pack()
                 if _LOG.isEnabledFor(logging.DEBUG):
@@ -407,7 +463,15 @@ class Radio:
 
             _LOG.debug("send clone end")
             # clone end
-            self._write(s, Frame(CMD_END, b"Icom Inc\x2e73").pack())
+            self._write(
+                s,
+                Frame(
+                    CMD_END,
+                    b"Icom Inc\x2e73",
+                    dst=ADDR_RADIO_CLONE,
+                    src=self.addr_pc,
+                ).pack(),
+            )
             # one more packet?
 
             result_frame = None
