@@ -324,6 +324,7 @@ class App(tk.Frame):
 
         try:
             self._radio_memory.validate_loaded_data()
+            self._radio_memory.commit()
         except ValueError as err:
             messagebox.showerror("Clone to device - Invalid data", str(err))
             return
