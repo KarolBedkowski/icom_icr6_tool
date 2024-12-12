@@ -36,10 +36,6 @@ _LOG = logging.getLogger(__name__)
 # log input/output data
 _ENABLE_LOGGER = False
 
-# TODO: why for 0xE* commands src and dst are swapped?
-# according to documentation first is receiver (dst) and then
-# controller (src) and this work for command 0x01 eth
-
 
 @dataclass
 class Frame:

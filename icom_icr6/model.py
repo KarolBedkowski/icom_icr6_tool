@@ -57,8 +57,7 @@ class RadioModel:
                 "raw": binascii.hexlify(data),
                 "unk1": data[4],
                 "unk2": data[22:25],
-                "unk3": data[29],
-                "unk4": data[32:],
+                "unk_ser": serial[4],
             }
             if DEBUG
             else None
