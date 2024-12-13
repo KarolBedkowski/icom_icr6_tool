@@ -10,11 +10,17 @@ import itertools
 import logging
 import typing as ty
 from collections import defaultdict
+from enum import StrEnum
 
 from . import consts, fixers, model
 
 _LOG = logging.getLogger(__name__)
 DEBUG = True
+
+class Region(StrEnum):
+    GLOBAL = "global"
+    FRANCE = "france"
+    US = "us"
 
 
 class RadioMemory:
@@ -26,6 +32,7 @@ class RadioMemory:
         # 001A = EU, 0003 = USA, 002A - ?
         # for USA - canceller is available
         self.file_etcdata = "001A"
+        self.region = Region.GLOBAL
 
         self.channels: list[model.Channel] = []
         self.banks: list[model.Bank] = []
@@ -87,6 +94,12 @@ class RadioMemory:
         self.comment = self._load_comment()
 
         self.bands = list(self._load_bands())
+
+        match self.file_etcdata:
+            case "0003": # us
+                self.region = Region.US
+            case _:
+                self.region = Region.GLOBAL
 
     def commit(self) -> None:
         """Write data to mem."""
@@ -316,7 +329,7 @@ class RadioMemory:
         mv[0x6D00 : 0x6D00 + 16] = cmt
 
     def is_usa_model(self) -> bool:
-        return self.file_etcdata == "0003"
+        return self.region == Region.US
 
     def validate_loaded_data(self) -> None:
         # check for doubled banks entries
@@ -333,9 +346,9 @@ class RadioMemory:
             yield model.BandDefaults.from_data(idx, mv[start : start + 16])
 
     def get_band_for_freq(self, freq: int) -> model.BandDefaults:
-        bands = (
-            consts.BANDS_REG_2 if self.is_usa_model() else consts.BANDS_REG_1
-        )
+        # TODO: don't know how to detect other regions
+        # for US and EUR/Global is the same
+        bands = consts.BANDS_DEF
 
         for idx, max_freq in enumerate(bands):
             if freq < max_freq:

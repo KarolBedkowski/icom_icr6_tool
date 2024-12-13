@@ -271,8 +271,8 @@ BANDS_REG_JAP: ty.Final = [
 ]
 
 # predefined bands
-# EU, Africa, Australia and New Zealand
-BANDS_REG_1: ty.Final = [
+# France probably
+BANDS_FRANCE: ty.Final = [
     495_000,
     1_625_000,
     30_000_000,
@@ -287,7 +287,7 @@ BANDS_REG_1: ty.Final = [
 ]
 
 # Americas
-BANDS_REG_2: ty.Final = [
+BANDS_DEF: ty.Final = [
     495_000,
     1_625_000,
     30_000_000,
