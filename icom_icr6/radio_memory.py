@@ -333,7 +333,11 @@ class RadioMemory:
             yield model.BandDefaults.from_data(idx, mv[start : start + 16])
 
     def get_band_for_freq(self, freq: int) -> model.BandDefaults:
-        for idx, max_freq in enumerate(consts.BANDS):
+        bands = (
+            consts.BANDS_REG_2 if self.is_usa_model() else consts.BANDS_REG_1
+        )
+
+        for idx, max_freq in enumerate(bands):
             if freq < max_freq:
                 band = self.bands[idx]
                 _LOG.debug("get_band_for_freq: %d: %r", freq, band)
