@@ -409,6 +409,13 @@ class App(tk.Frame):
                     self._ntb.select(self._ntb.tabs()[1]) # type: ignore
                     self._nb_channels.update_tab()
 
+            case "awchannel":
+                assert isinstance(index, int)
+                if selected_tab != 4:  #  noqa: PLR2004
+                    self._ntb.select(self._ntb.tabs()[4])  # type: ignore
+                    self._nb_aw_channels.update_tab(index)
+                else:
+                    self._nb_aw_channels.select(index)
                 bank, bank_pos = index
                 self._nb_banks.select(bank, bank_pos)
 

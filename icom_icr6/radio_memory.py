@@ -381,3 +381,7 @@ class RadioMemory:
 
                 if chan.bank != consts.BANK_NOT_SET:
                     yield "bank_pos", chan
+
+        for se in self.awchannels:
+            if str(se.freq).startswith(query):
+                yield "awchannel", se

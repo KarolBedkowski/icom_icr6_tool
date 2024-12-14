@@ -90,6 +90,12 @@ class FindDialog(tk.Toplevel):
                     )
                     if obj.name:
                         line += f" channel name: {obj.name}"
+                case "awchannel":
+                    assert isinstance(obj, model.Channel)
+                    line = (
+                        f"Autowrite channel {obj.number}  "
+                        f"frequency: {obj.freq}"
+                    )
 
                 case _:
                     line = str(obj)
@@ -114,3 +120,7 @@ class FindDialog(tk.Toplevel):
             case "bank_pos":
                 assert isinstance(obj, model.Channel)
                 self._on_select_result("bank_pos", (obj.bank, obj.bank_pos))
+
+            case "awchannel":
+                assert isinstance(obj, model.Channel)
+                self._on_select_result("awchannel", obj.number)
