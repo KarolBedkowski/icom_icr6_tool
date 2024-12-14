@@ -77,19 +77,20 @@ class FindDialog(tk.Toplevel):
             match kind:
                 case "channel":
                     assert isinstance(obj, model.Channel)
-                    line = f"Channel {obj.number}  frequency: {obj.freq} "
+                    line = f"Channel {obj.number}  frequency: {obj.freq}  "
                     if obj.name:
-                        line += f" name: {obj.name}"
+                        line += f"name: {obj.name}"
 
                 case "bank_pos":
                     assert isinstance(obj, model.Channel)
                     bank = consts.BANK_NAMES[obj.bank]
                     line = (
-                        f"Bank {bank} pos: {obj.bank_pos} "
-                        f" channel: {obj.number} frequency: {obj.freq} "
+                        f"Bank {bank}  pos: {obj.bank_pos}  "
+                        f"channel: {obj.number}   frequency: {obj.freq}"
                     )
                     if obj.name:
-                        line += f" channel name: {obj.name}"
+                        line += f"  channel name: {obj.name}"
+
                 case "awchannel":
                     assert isinstance(obj, model.Channel)
                     line = (

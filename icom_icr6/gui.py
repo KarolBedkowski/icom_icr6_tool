@@ -398,16 +398,20 @@ class App(tk.Frame):
             case "channel":
                 assert isinstance(index, int)
                 if selected_tab != 0:
-                    self._ntb.select(self._ntb.tabs()[0]) # type: ignore
-                    self._nb_channels.update_tab()
-
-                self._nb_channels.select(index)
+                    self._ntb.select(self._ntb.tabs()[0])  # type: ignore
+                    self._nb_channels.update_tab(index)
+                else:
+                    self._nb_channels.select(index)
 
             case "bank_pos":
                 assert isinstance(index, tuple)
+                bank, bank_pos = index
+
                 if selected_tab != 1:
-                    self._ntb.select(self._ntb.tabs()[1]) # type: ignore
-                    self._nb_channels.update_tab()
+                    self._ntb.select(self._ntb.tabs()[1])  # type: ignore
+                    self._nb_banks.update_tab(bank, bank_pos)
+                else:
+                    self._nb_banks.select(bank, bank_pos)
 
             case "awchannel":
                 assert isinstance(index, int)
@@ -416,8 +420,6 @@ class App(tk.Frame):
                     self._nb_aw_channels.update_tab(index)
                 else:
                     self._nb_aw_channels.select(index)
-                bank, bank_pos = index
-                self._nb_banks.select(bank, bank_pos)
 
 
 def start_gui() -> None:

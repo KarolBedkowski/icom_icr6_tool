@@ -56,11 +56,17 @@ class BanksPage(tk.Frame):
 
         self.__update_banks_list()
 
-    def update_tab(self) -> None:
+    def update_tab(
+        self, bank: int | None = None, bank_pos: int | None = None
+    ) -> None:
         # hide canceller in global models
         self._chan_list.set_hide_canceller(
             hide=not self._radio_memory.is_usa_model()
         )
+
+        if bank is not None:
+            self._last_selected_bank = bank
+            self.__select_after_refresh = bank_pos
 
         self.__update_banks_list()
         self._banks_list.selection_set(self._last_selected_bank)
@@ -170,7 +176,8 @@ class BanksPage(tk.Frame):
         self._show_stats()
 
         if self.__select_after_refresh is not None:
-            self._chan_list.selection_set([self.__select_after_refresh])
+            sel = self.__select_after_refresh
+            self.after(100, lambda: self._chan_list.selection_set([sel]))
             self.__select_after_refresh = None
 
     def _show_stats(self) -> None:
