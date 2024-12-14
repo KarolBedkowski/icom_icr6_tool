@@ -242,8 +242,8 @@ class Channel:
         self.bank_pos = 0
 
     @property
-    def not_hidden(self) -> bool:
-        return not self.hide_channel and self.freq > 0
+    def hidden(self) -> bool:
+        return self.hide_channel or self.freq == 0
 
     def __str__(self) -> str:
         try:

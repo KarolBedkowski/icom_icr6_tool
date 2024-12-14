@@ -28,6 +28,7 @@ class ChannelsPage(tk.Frame):
         self._last_selected_group = 0
         self._last_selected_chan: tuple[int, ...] = ()
         self.__need_full_refresh = False
+        self.__select_after_refresh: int | None = None
 
         pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
         self._groups_list = tk.Listbox(pw, selectmode=tk.SINGLE)
@@ -41,15 +42,26 @@ class ChannelsPage(tk.Frame):
 
         pw.pack(expand=True, fill=tk.BOTH, side=tk.TOP, padx=12, pady=12)
 
-    def update_tab(self) -> None:
+    def update_tab(self, channel_number: int | None = None) -> None:
         # hide canceller in global models
         self._chan_list.set_hide_canceller(
             hide=not self._radio_memory.is_usa_model()
         )
 
+        if channel_number is not None:
+            group, chanpos = divmod(channel_number, 100)
+            self._last_selected_chan = (group,)
+            self.__select_after_refresh = chanpos
+
         self._groups_list.selection_set(self._last_selected_group)
         self.__update_chan_list()
         self._chan_list.selection_set(self._last_selected_chan)
+
+    def select(self, channel_number: int) -> None:
+        group, chanpos = divmod(channel_number, 100)
+        self.__select_after_refresh = chanpos
+
+        self._groups_list.selection_set(group)
 
     @property
     def _radio_memory(self) -> RadioMemory:
@@ -197,6 +209,11 @@ class ChannelsPage(tk.Frame):
 
         self._show_stats()
         self.__need_full_refresh = False
+
+        if self.__select_after_refresh is not None:
+            sel = self.__select_after_refresh
+            self.after(100, lambda: self._chan_list.selection_set([sel]))
+            self.__select_after_refresh = None
 
     def __on_channel_copy(self, _event: tk.Event) -> None:  # type: ignore
         selected = self._chan_list.sheet.get_currently_selected()

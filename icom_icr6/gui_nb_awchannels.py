@@ -25,13 +25,16 @@ class AutoWriteChannelsPage(tk.Frame):
 
         self._create_channel_list(self)
 
-    def update_tab(self) -> None:
+    def update_tab(self, channel_number: int | None = None) -> None:
         # hide canceller in global models
         self._chan_list.set_hide_canceller(
             hide=not self._radio_memory.is_usa_model()
         )
 
-        self.__update_channels_list(None)
+        self.__update_channels_list(select=channel_number)
+
+    def select(self, channel_number: int) -> None:
+        self._chan_list.selection_set([channel_number])
 
     @property
     def _radio_memory(self) -> RadioMemory:
@@ -44,9 +47,15 @@ class AutoWriteChannelsPage(tk.Frame):
         )
         self._chan_list.sheet.bind("<Control-c>", self.__on_channel_copy)
 
-    def __update_channels_list(self, _event: tk.Event | None) -> None:  # type: ignore
+    def __update_channels_list(
+        self,
+        _event: tk.Event | None = None,  # type: ignore
+        select: int | None = None,
+    ) -> None:
         self._chan_list.set_data(self._radio_memory.awchannels)
         self._show_stats()
+        if select is not None:
+            self.after(100, lambda: self._chan_list.selection_set([select]))
 
     def __on_channel_copy(self, _event: tk.Event) -> None:  # type: ignore
         selected = self._chan_list.sheet.get_currently_selected()

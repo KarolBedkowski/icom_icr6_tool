@@ -39,6 +39,7 @@ class BanksPage(tk.Frame):
         self._bank_link = gui_model.BoolVar()
         self._change_manager = cm
         self._last_selected_bank = 0
+        self.__select_after_refresh: int | None = None
 
         pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
         banks = self._banks_list = tk.Listbox(pw, selectmode=tk.SINGLE)
@@ -55,15 +56,25 @@ class BanksPage(tk.Frame):
 
         self.__update_banks_list()
 
-    def update_tab(self) -> None:
+    def update_tab(
+        self, bank: int | None = None, bank_pos: int | None = None
+    ) -> None:
         # hide canceller in global models
         self._chan_list.set_hide_canceller(
             hide=not self._radio_memory.is_usa_model()
         )
 
+        if bank is not None:
+            self._last_selected_bank = bank
+            self.__select_after_refresh = bank_pos
+
         self.__update_banks_list()
         self._banks_list.selection_set(self._last_selected_bank)
         self.__update_chan_list()
+
+    def select(self, bank: int, bank_pos: int | None = None) -> None:
+        self._banks_list.selection_set(bank)
+        self.__select_after_refresh = bank_pos
 
     @property
     def _radio_memory(self) -> RadioMemory:
@@ -163,6 +174,11 @@ class BanksPage(tk.Frame):
         self._field_bank_link["state"] = "normal"
         self._btn_update["state"] = "normal"
         self._show_stats()
+
+        if self.__select_after_refresh is not None:
+            sel = self.__select_after_refresh
+            self.after(100, lambda: self._chan_list.selection_set([sel]))
+            self.__select_after_refresh = None
 
     def _show_stats(self) -> None:
         active = sum(

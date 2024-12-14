@@ -148,7 +148,7 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
         """Set selection on `sel` rows"""
         for r in sel:
             self.sheet.select_row(r)
-            self.sheet.set_xview(r)
+            self.sheet.see(row=r, column=0)
 
     def _configure(self) -> None:
         self.sheet.headers([c[1] for c in self.columns])
