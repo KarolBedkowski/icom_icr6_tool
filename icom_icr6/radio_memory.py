@@ -18,9 +18,14 @@ _LOG = logging.getLogger(__name__)
 DEBUG = True
 
 class Region(StrEnum):
+    # global model, no restrictions
     GLOBAL = "global"
+    # gaps 30-50.2 51.2-87.5 108-144 146-430 440-1240 1300-1310
     FRANCE = "france"
+    # gaps: 824-851, 867-896
     US = "us"
+    # other? Japan - 253-255, 262-266, 271-275, 380-382, 412-415, 810-834,
+    # 860-889, 915-950
 
 
 class RadioMemory:
@@ -31,6 +36,11 @@ class RadioMemory:
         self.file_maprev = "1"
         # 001A = EU, 0003 = USA, 002A - ?
         # for USA - canceller is available
+        # probably last 4bits are region:
+        # - 0,6,8,9,b,e,f -> Japan ?
+        # - 3 -> USA ?
+        # - d -> France
+        # - other -> global
         self.file_etcdata = "001A"
         self.region = Region.GLOBAL
 
@@ -348,6 +358,7 @@ class RadioMemory:
     def get_band_for_freq(self, freq: int) -> model.BandDefaults:
         # TODO: don't know how to detect other regions
         # for US and EUR/Global is the same
+        # there is only difference in WFM minimal frequency
         bands = consts.BANDS_DEF
 
         for idx, max_freq in enumerate(bands):

@@ -558,6 +558,7 @@ types:
       # @53
       - id: unknown14a
         type: b4
+        doc: 0100 - when 1 - block forbidden freq?
       - id: program_skip_scan
         type: b1
       - id: unknown14b
