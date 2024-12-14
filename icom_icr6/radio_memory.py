@@ -373,5 +373,11 @@ class RadioMemory:
 
     def find(self, query: str) -> ty.Iterable[tuple[str, object]]:
         for chan in self.channels:
+            if chan.hidden:
+                continue
+
             if str(chan.freq).startswith(query) or chan.name.startswith(query):
                 yield "channel", chan
+
+                if chan.bank != consts.BANK_NOT_SET:
+                    yield "bank_pos", chan

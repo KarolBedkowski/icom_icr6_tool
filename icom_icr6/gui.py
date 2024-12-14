@@ -23,7 +23,6 @@ from . import (
     gui_nb_scan_links,
     gui_nb_settings,
     io,
-    model,
 )
 from .change_manager import ChangeManeger
 from .radio_memory import RadioMemory
@@ -393,9 +392,25 @@ class App(tk.Frame):
             "Redo", state="normal" if has_redo else tk.DISABLED
         )
 
-    def __on_find_object_select(self, kind: str, index: int) -> None:
-        if kind == "channel":
-            self._nb_channels.select(index)
+    def __on_find_object_select(self, kind: str, index: object) -> None:
+        selected_tab = self._ntb.tabs().index(self._ntb.select())  # type: ignore
+        match kind:
+            case "channel":
+                assert isinstance(index, int)
+                if selected_tab != 0:
+                    self._ntb.select(self._ntb.tabs()[0]) # type: ignore
+                    self._nb_channels.update_tab()
+
+                self._nb_channels.select(index)
+
+            case "bank_pos":
+                assert isinstance(index, tuple)
+                if selected_tab != 1:
+                    self._ntb.select(self._ntb.tabs()[1]) # type: ignore
+                    self._nb_channels.update_tab()
+
+                bank, bank_pos = index
+                self._nb_banks.select(bank, bank_pos)
 
 
 def start_gui() -> None:

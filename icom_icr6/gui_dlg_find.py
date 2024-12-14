@@ -9,7 +9,7 @@ import tkinter as tk
 import typing as ty
 from tkinter import ttk
 
-from . import model
+from . import consts, model
 from .radio_memory import RadioMemory
 
 _LOG = logging.getLogger(__name__)
@@ -17,7 +17,7 @@ _LOG = logging.getLogger(__name__)
 
 @ty.runtime_checkable
 class ResultSelectCallback(ty.Protocol):
-    def __call__(self, kind: str, index: int) -> None: ...
+    def __call__(self, kind: str, index: object) -> None: ...
 
 
 class FindDialog(tk.Toplevel):
@@ -74,13 +74,25 @@ class FindDialog(tk.Toplevel):
         self._result = list(self._radio_memory.find(query))
 
         for kind, obj in self._result:
-            if kind == "channel":
-                assert isinstance(obj, model.Channel)
-                line = f"Channel {obj.number}  frequency: {obj.freq} "
-                if obj.name:
-                    line += f" name: {obj.name}"
-            else:
-                line = str(obj)
+            match kind:
+                case "channel":
+                    assert isinstance(obj, model.Channel)
+                    line = f"Channel {obj.number}  frequency: {obj.freq} "
+                    if obj.name:
+                        line += f" name: {obj.name}"
+
+                case "bank_pos":
+                    assert isinstance(obj, model.Channel)
+                    bank = consts.BANK_NAMES[obj.bank]
+                    line = (
+                        f"Bank {bank} pos: {obj.bank_pos} "
+                        f" channel: {obj.number} frequency: {obj.freq} "
+                    )
+                    if obj.name:
+                        line += f" channel name: {obj.name}"
+
+                case _:
+                    line = str(obj)
 
             listbox.insert(tk.END, line)
 
@@ -98,3 +110,7 @@ class FindDialog(tk.Toplevel):
             case "channel":
                 assert isinstance(obj, model.Channel)
                 self._on_select_result("channel", obj.number)
+
+            case "bank_pos":
+                assert isinstance(obj, model.Channel)
+                self._on_select_result("bank_pos", (obj.bank, obj.bank_pos))
