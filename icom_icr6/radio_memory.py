@@ -17,6 +17,7 @@ from . import consts, fixers, model
 _LOG = logging.getLogger(__name__)
 DEBUG = True
 
+
 class Region(StrEnum):
     # global model, no restrictions
     GLOBAL = "global"
@@ -106,7 +107,7 @@ class RadioMemory:
         self.bands = list(self._load_bands())
 
         match self.file_etcdata:
-            case "0003": # us
+            case "0003":  # us
                 self.region = Region.US
             case _:
                 self.region = Region.GLOBAL
@@ -369,3 +370,8 @@ class RadioMemory:
 
         _LOG.error("get_band_for_freq: %d: not found", freq)
         raise ValueError
+
+    def find(self, query: str) -> ty.Iterable[tuple[str, object]]:
+        for chan in self.channels:
+            if str(chan.freq).startswith(query) or chan.name.startswith(query):
+                yield "channel", chan

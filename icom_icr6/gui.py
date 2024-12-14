@@ -14,6 +14,7 @@ from tkinter import filedialog, messagebox, ttk
 from . import (
     expimp,
     gui_dlg_clone,
+    gui_dlg_find,
     gui_model,
     gui_nb_awchannels,
     gui_nb_banks,
@@ -22,6 +23,7 @@ from . import (
     gui_nb_scan_links,
     gui_nb_settings,
     io,
+    model,
 )
 from .change_manager import ChangeManeger
 from .radio_memory import RadioMemory
@@ -116,6 +118,13 @@ class App(tk.Frame):
             accelerator="Ctrl+Y",
         )
         master.bind_all("<Control-y>", self.__on_redo)
+        edit_menu.add_separator()
+        edit_menu.add_command(
+            label="Find...",
+            command=self.__on_find,
+            accelerator="Ctrl+F",
+        )
+        master.bind_all("<Control-f>", self.__on_find)
         menu_bar.add_cascade(label="Edit", menu=edit_menu)
 
         radio_menu = tk.Menu(menu_bar)
@@ -268,6 +277,11 @@ class App(tk.Frame):
         if self._change_manager.redo():
             self.__update_widgets()
 
+    def __on_find(self, _event: tk.Event | None = None) -> None:  # type: ignore
+        gui_dlg_find.FindDialog(
+            self, self._radio_memory, self.__on_find_object_select
+        )
+
     def __update_widgets(self) -> None:
         try:
             selected_tab = self._ntb.tabs().index(self._ntb.select())  # type: ignore
@@ -378,6 +392,10 @@ class App(tk.Frame):
         self.__menu_edit.entryconfigure(
             "Redo", state="normal" if has_redo else tk.DISABLED
         )
+
+    def __on_find_object_select(self, kind: str, index: int) -> None:
+        if kind == "channel":
+            self._nb_channels.select(index)
 
 
 def start_gui() -> None:
