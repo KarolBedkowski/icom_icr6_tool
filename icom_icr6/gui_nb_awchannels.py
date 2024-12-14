@@ -2,7 +2,9 @@
 #
 # Distributed under terms of the GPLv3 license.
 
-""" """
+"""
+Notebook page containing auto written channels.
+"""
 
 import logging
 import tkinter as tk
@@ -31,7 +33,7 @@ class AutoWriteChannelsPage(tk.Frame):
             hide=not self._radio_memory.is_usa_model()
         )
 
-        self.__update_channels_list(select=channel_number)
+        self._update_channels_list(select=channel_number)
 
     def select(self, channel_number: int) -> None:
         self._chan_list.selection_set([channel_number])
@@ -47,7 +49,7 @@ class AutoWriteChannelsPage(tk.Frame):
         )
         self._chan_list.sheet.bind("<Control-c>", self.__on_channel_copy)
 
-    def __update_channels_list(
+    def _update_channels_list(
         self,
         _event: tk.Event | None = None,  # type: ignore
         select: int | None = None,
