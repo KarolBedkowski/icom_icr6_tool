@@ -98,6 +98,7 @@ class CloneFromRadioDialog(_CloneDialog):
 
         try:
             self._var_progress.set("Starting...")
+            self.update_idletasks()
             self.radio_memory = radio.clone_from(self.__progress_cb)
             self._var_progress.set("Done")
 
@@ -133,6 +134,7 @@ class CloneToRadioDialog(_CloneDialog):
         radio = io.Radio(port, hispeed=bool(hispeed))
         try:
             self._var_progress.set("Starting...")
+            self.update_idletasks()
             radio.clone_to(self._radio_memory, self.__progress_cb)
             self._var_progress.set("Done")
 
