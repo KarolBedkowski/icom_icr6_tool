@@ -256,7 +256,7 @@ class ChangeManeger:
         self._undo_manager.push("bank_links", current_bl, bl)
 
         assert current_bl is not bl
-        self.bank_links = bl
+        self.rm.bank_links = bl
 
     def set_comment(self, comment: str) -> None:
         comment = comment.strip()
