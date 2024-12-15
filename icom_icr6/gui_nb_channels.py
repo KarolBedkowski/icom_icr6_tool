@@ -8,10 +8,16 @@ import logging
 import tkinter as tk
 import typing as ty
 from contextlib import suppress
-from operator import attrgetter
 from tkinter import messagebox, ttk
 
-from . import consts, expimp, fixers, gui_chanlist, gui_model, model
+from . import (
+    consts,
+    expimp,
+    fixers,
+    gui_chanlist,
+    gui_model,
+    model_support,
+)
 from .change_manager import ChangeManeger
 from .radio_memory import RadioMemory
 
@@ -408,31 +414,7 @@ class ChannelsPage(tk.Frame):
         channels = [chan.clone() for row in rows if (chan := row.channel)]
         channels_ids = [chan.number for chan in channels]
 
-        sfunc: ty.Callable[[model.Channel], str | int]
-
-        match field:
-            case "name":
-
-                def sfunc(chan: model.Channel) -> str:
-                    return chan.name or "\xff"
-
-            case "name2":
-                sfunc = attrgetter(field)
-
-            case "freq":
-
-                def sfunc(chan: model.Channel) -> int:
-                    return 0 if chan.hide_channel else chan.freq
-
-            case "pack":
-
-                def sfunc(chan: model.Channel) -> int:
-                    return 1 if (chan.hide_channel or not chan.freq) else 0
-
-            case _:
-                raise ValueError
-
-        channels.sort(key=sfunc)
+        model_support.sort_channels(channels, field)
 
         for chan, idx in zip(channels, channels_ids, strict=True):
             chan.number = idx

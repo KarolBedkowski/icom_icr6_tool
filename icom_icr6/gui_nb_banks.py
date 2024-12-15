@@ -18,6 +18,7 @@ from . import (
     gui_bankchanlist,
     gui_model,
     model,
+    model_support,
     validators,
 )
 from .change_manager import ChangeManeger
@@ -494,28 +495,7 @@ class BanksPage(tk.Frame):
         ]
         channels_bank_pos = [row.rownum for row in rows]
 
-        sfunc: ty.Callable[[model.Channel | None], str | int]
-
-        match field:
-            case "name":
-                sfunc = _sort_func_name
-
-            case "name2":
-                sfunc = _sort_func_name2
-
-            case "freq":
-                sfunc = _sort_func_freq
-
-            case "pack":
-                sfunc = _sort_func_pack
-
-            case "channel":
-                sfunc = _sort_func_channel
-
-            case _:
-                raise ValueError
-
-        channels.sort(key=sfunc)
+        model_support.sort_channels(channels, field)
 
         for chan, idx in zip(channels, channels_bank_pos, strict=True):
             if chan:
@@ -538,23 +518,3 @@ def validate_bank_name(name: str | None) -> bool:
         return False
 
     return True
-
-
-def _sort_func_name(chan: model.Channel | None) -> str:
-    return chan.name or "\xff" if chan else "\xff"
-
-
-def _sort_func_name2(chan: model.Channel | None) -> str:
-    return chan.name if chan else ""
-
-
-def _sort_func_freq(chan: model.Channel | None) -> int:
-    return chan.freq if chan and not chan.hide_channel else 0
-
-
-def _sort_func_pack(chan: model.Channel | None) -> int:
-    return 0 if chan else 1
-
-
-def _sort_func_channel(chan: model.Channel | None) -> int:
-    return chan.number if chan else 1400
