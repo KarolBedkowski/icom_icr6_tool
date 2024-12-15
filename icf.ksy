@@ -1,4 +1,3 @@
----
 meta:
   id: icr6
   title: icom ic-r6 memory map
@@ -363,7 +362,7 @@ types:
         doc: range 30-300 -> 300Hz-3kHz; EU 228=2280Hz
       - id: unknown4
         type: b4
-        doc: always 0 - paddign
+        doc: always 0 - paddign; probably canceller_freq lower 4 bits
       - id: vcs
         type: b1
         doc: enabling vcs - disable canceller
@@ -398,8 +397,11 @@ types:
 
       # @14
       - id: unknown2
-        size: 1
+        type: b5
         doc: 0?
+      - id: priority_scan_type
+        type: b3
+        enum: priority_scan_type
 
       # @15
       - id: unknown3
@@ -542,31 +544,80 @@ types:
         doc: padding? 9x 0xff
 
       # @47
+      - id: scanning_band
+        type: u1
+        enum: scanning_band
+
+      # @48
       - id: unknown11b
-        size: 5
+        size: 2
+
+      # @50
+      - id: scanning_bank
+        type: u1
+        doc: 0=ALL; rest - banks num
+        enum: scanning_bank
+
+      # @51
+      - id: unknown11c
+        size: 1
 
       # @52
       - id: unknown12
-        type: b3
+        type: b1
+      - id: scan_enabled
+        type: b1
+      - id: unknown12b
+        type: b1
       - id: dial_function
         type: b1
-      - id: unknown13
-        type: b2
+      - id: mem_scan_priority
+        type: b1
+      - id: scan_mode
+        type: b1
+        doc: 0=VF0, 1=MEM
       - id: mem_display_type
         type: b2
+        enum: mem_display_type
 
       # @53
       - id: unknown14a
-        type: b4
-        doc: 0100 - when 1 - block forbidden freq?
+        type: b1
+        doc: refresh flag?
+      - id: unprotected_frequency_flag
+        type: b1
+      - id: autowrite_memory
+        type: b1
+      - id: keylock
+        type: b1
       - id: program_skip_scan
         type: b1
-      - id: unknown14b
-        type: b3
+      - id: unknown15b
+        type: b1
+      - id: priority_scan
+        type: b1
+      - id: scan_direction
+        type: b1
+        doc: 0=down; 1=up
 
       # @54
+      - id: scan_vfo_type
+        type: u1
+        enum: scan_vfo_type
+
+      # @55
+      - id: scan_mem_type
+        type: u1
+        enum: scan_mem_type
+
+      # @56
+      - id: mem_chan_data
+        type: u2le
+        doc: current memory selected; 0-1300 -> channel; 1300+ ????
+
+      # @58
       - id: unknown14
-        size: 10
+        size: 6
 
   bank_links:
     seq:
@@ -701,3 +752,120 @@ enums:
   polarity:
     0: normal
     1: reverse
+
+  scan_vfo_type:
+    0: all
+    1: band
+    2: p_link0
+    3: p_link1
+    4: p_link2
+    5: p_link3
+    6: p_link4
+    7: p_link5
+    8: p_link6
+    9: p_link7
+    10: p_link8
+    11: p_link9
+    12: prog0
+    13: prog1
+    14: prog2
+    15: prog3
+    16: prog4
+    17: prog5
+    18: prog6
+    19: prog7
+    20: prog8
+    21: prog9
+    22: prog10
+    23: prog11
+    24: prog12
+    25: prog13
+    26: prog14
+    27: prog15
+    28: prog16
+    29: prog17
+    31: prog18
+    32: prog19
+    33: prog20
+    34: prog21
+    35: prog22
+    36: prog23
+    37: prog24
+
+  scan_mem_type:
+    0: m_all
+    1: b_all
+    2: b_link
+    3: bank_a
+    4: bank_b
+    5: bank_c
+    6: bank_d
+    7: bank_e
+    8: bank_f
+    9: bank_g
+    10: bank_h
+    11: bank_i
+    12: bank_j
+    13: bank_k
+    14: bank_l
+    15: bank_m
+    16: bank_n
+    17: bank_o
+    18: bank_p
+    19: bank_q
+    20: bank_r
+    21: bank_t
+    22: bank_u
+    23: bank_w
+    24: bank_y
+
+  scanning_bank:
+    0: m_all
+    1: bank_a
+    2: bank_b
+    3: bank_c
+    4: bank_d
+    5: bank_e
+    6: bank_f
+    7: bank_g
+    8: bank_h
+    9: bank_i
+    10: bank_j
+    11: bank_k
+    12: bank_l
+    13: bank_m
+    14: bank_n
+    15: bank_o
+    16: bank_p
+    17: bank_q
+    18: bank_r
+    19: bank_t
+    20: bank_u
+    21: bank_w
+    22: bank_y
+
+  scanning_band:
+    1: broadcast
+    2: f5m
+    3: f50m
+    4: fm
+    5: air
+    6: f144m
+    7: f300m
+    8: f430m
+    9: f800m
+    10: f1200m
+
+  priority_scan_type:
+    0: off
+    1: mem_ch
+    2: mem_ch_beep
+    5: mem_scan
+    6: mem_scan_beep
+
+
+  mem_display_type:
+    0: freq
+    1: b_name
+    2: m_name
+    3: chanl

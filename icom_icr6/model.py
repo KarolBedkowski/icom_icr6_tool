@@ -937,6 +937,29 @@ class RadioSettings:
     def from_data(
         cls: type[RadioSettings], data: bytearray | memoryview
     ) -> RadioSettings:
+        debug_info = (
+            {
+                "raw": binascii.hexlify(data),
+                "priority_scan_type": data[14] & 0b111,
+                "scanning_band": data[47],
+                "scanning_bank": data[50],
+                "scan_enabled": bool(data[52] & 0b01000000),
+                "mem_scan_priority": bool(data[52] & 0b00001000),
+                "scan_mode": (data[52] & 0b00000100) >> 2,
+                "refresh_flag": bool(data[53] & 0b10000000),
+                "unprotected_frequency_flag": bool(data[53] & 0b01000000),
+                "autowrite_memory": bool(data[53] & 0b00100000),
+                "keylock": bool(data[53] & 0b00010000),
+                "priority_scan": bool(data[53] & 0b00000010),
+                "scan_direction": bool(data[53] & 0b00000001),
+                "scan_vfo_type": data[54],
+                "scan_mem_type": data[55],
+                "mem_chan_data": data[56],
+            }
+            if DEBUG
+            else None
+        )
+
         return RadioSettings(
             func_dial_step=data[13] & 0b00000011,
             key_beep=bool(data[15] & 1),
@@ -964,7 +987,7 @@ class RadioSettings:
             dial_function=(data[52] & 0b00010000) >> 4,
             mem_display_type=data[52] & 0b00000011,
             program_skip_scan=bool(data[53] & 0b00001000),
-            debug_info={"raw": binascii.hexlify(data)} if DEBUG else None,
+            debug_info=debug_info,
         )
 
     def to_data(self, data: MutableMemory) -> None:
