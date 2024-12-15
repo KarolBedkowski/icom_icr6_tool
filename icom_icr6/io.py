@@ -222,7 +222,7 @@ class FakeSerial:
         _LOG.debug("switch_to_hispeed")
 
 
-def calc_checksum(data: bytes) -> int:
+def calc_checksum(data: bytes | list[int]) -> int:
     return ((sum(data) ^ 0xFFFF) + 1) & 0xFF
 
 
@@ -291,7 +291,7 @@ class Radio:
             return None
 
         # ic(data)
-        return Frame(cmd=data[4], payload=data[5:], src=data[3], dst=data[2])
+        return Frame(cmd=data[4], payload=data[5:-1], src=data[3], dst=data[2])
 
     def _start_clone(self, s: Serial, cmd: int) -> None:
         if not self._hispeed:
@@ -418,6 +418,7 @@ class Radio:
         mv = memoryview(mem.mem)
 
         time.sleep(1)
+        prev_send_frame: Frame | None = None
 
         with self._open_serial("clone_to") as s:
             # clone in
@@ -427,38 +428,39 @@ class Radio:
             for addr in range(0, consts.MEM_SIZE, 32):
                 _LOG.debug("process addr: %d", addr)
 
-                chunk = bytes(
-                    [(addr >> 8), addr & 0xFF, 32, *mv[addr : addr + 32]]
-                )
-                # add checksum
-                chunk += bytes([calc_checksum(chunk)])
+                chunk = [(addr >> 8), addr & 0xFF, 32, *mv[addr : addr + 32]]
                 # encode paload
                 payload = "".join(f"{d:02X}" for d in chunk)
+                # add checksum
+                payload += f"{calc_checksum(chunk):02X}"
                 frame = Frame(
                     CMD_CLONE_DAT,
                     payload.encode(),
                     dst=ADDR_RADIO_CLONE,
                 )
-
-                data = frame.pack()
-                if _LOG.isEnabledFor(logging.DEBUG):
-                    _LOG.debug("write: %s", binascii.hexlify(data))
-
-                self._write(s, data)
+                self._write(s, frame.pack())
 
                 recv_frame = self.read_frame(s)
                 _LOG.debug("read: %r", recv_frame)
-                if recv_frame != frame:
+                # received frame should be previous sent frame
+                if not recv_frame or (
+                    prev_send_frame
+                    and recv_frame.payload != prev_send_frame.payload
+                ):
                     # we got invalid data - abort?
                     _LOG.warning(
                         "clone_to got invalid response on echo; "
-                        "send=%r, recv=%r",
+                        "send=%r, recv=%r, prev=%r",
                         frame,
                         recv_frame,
+                        prev_send_frame,
                     )
+                    raise OutOfSyncError
 
                 if cb and not cb(addr):
                     raise AbortError
+
+                prev_send_frame = frame
 
             return self._clone_to_send_end(s)
 
