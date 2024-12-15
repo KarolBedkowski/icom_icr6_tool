@@ -489,10 +489,12 @@ class BanksPage(tk.Frame):
         if len(rows) <= 1:
             return
 
-        channels = [row.channel for row in rows]
+        channels = [
+            row.channel.clone() if row.channel else None for row in rows
+        ]
         channels_bank_pos = [row.rownum for row in rows]
 
-        sfunc: ty.Callable[[model.Channel], str | int]
+        sfunc: ty.Callable[[model.Channel | None], str | int]
 
         match field:
             case "name":
@@ -519,7 +521,9 @@ class BanksPage(tk.Frame):
             if chan:
                 chan.bank_pos = idx
 
-        self._change_manager.set_channel(*channels)
+        final_channels = [c for c in channels if c]
+
+        self._change_manager.set_channel(*final_channels)
         self._change_manager.commit()
         self._update_chan_list()
 

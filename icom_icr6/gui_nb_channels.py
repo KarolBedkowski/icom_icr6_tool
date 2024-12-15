@@ -405,7 +405,7 @@ class ChannelsPage(tk.Frame):
         if len(rows) <= 1:
             return
 
-        channels = [chan for row in rows if (chan := row.channel)]
+        channels = [chan.clone() for row in rows if (chan := row.channel)]
         channels_ids = [chan.number for chan in channels]
 
         sfunc: ty.Callable[[model.Channel], str | int]
