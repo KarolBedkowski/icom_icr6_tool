@@ -6,4 +6,4 @@
 - reorder banks
 - reorder scan links
 - reorder scan edges on delete (?)
-- repeat on clone errors
+- repeat on clone errors, collision detect; abort with xfc;

@@ -115,7 +115,7 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
         self.colmap = {
             name: idx for idx, (name, *_) in enumerate(self.columns)
         }
-        self._configure()
+        self._configure_sheet()
 
         self.on_record_update: RecordActionCallback[T] | None = None
         self.on_record_selected: RecordSelectedCallback[T] | None = None
@@ -125,8 +125,7 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
 
     @property
     def data(self) -> ty.Iterable[T | None]:
-        for r in self.sheet.data:
-            yield r
+        yield from self.sheet.data
 
     def set_data(self, data: ty.Iterable[RT]) -> None:
         _LOG.debug("set_data")
@@ -150,7 +149,7 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
             self.sheet.select_row(r)
             self.sheet.see(row=r, column=0)
 
-    def _configure(self) -> None:
+    def _configure_sheet(self) -> None:
         self.sheet.headers([c[1] for c in self.columns])
 
         for idx, column in enumerate(self.columns):

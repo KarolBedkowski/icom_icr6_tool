@@ -57,7 +57,7 @@ class RadioModel:
                 "raw": binascii.hexlify(data),
                 "unk1": data[4],
                 "unk2": data[22:25],
-                "unk_ser": serial[4],
+                "unk_serial": serial[4],
             }
             if DEBUG
             else None
@@ -145,8 +145,8 @@ def bitarray2bits(
 
 
 class ValidateError(ValueError):
-    def __init__(self, field: str, value: object) -> None:
-        self.field = field
+    def __init__(self, field_name: str, value: object) -> None:
+        self.field = field_name
         self.value = value
 
     def __str__(self) -> str:

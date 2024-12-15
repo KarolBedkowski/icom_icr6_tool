@@ -51,7 +51,7 @@ class _UndoManager:
 
         if old_item is new_item:
             # no changes - but check
-            _LOG.warn("old is new: old=%r, new=%r", old_item, new_item)
+            _LOG.warning("old is new: old=%r, new=%r", old_item, new_item)
         else:
             self.tmp_queue.append(UndoItem(kind, old_item, new_item))
 

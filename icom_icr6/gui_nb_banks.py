@@ -430,7 +430,7 @@ class BanksPage(tk.Frame):
         else:
             chan = self._radio_memory.find_first_hidden_channel()  # type: ignore
             if not chan:
-                _LOG.warn("no hidden channel found")
+                _LOG.warning("no hidden channel found")
                 return False
 
         chan = chan.clone()
@@ -484,7 +484,7 @@ class BanksPage(tk.Frame):
         finally:
             popup_menu.grab_release()
 
-    def _do_sort(self, field: str) -> None:  # noqa: C901
+    def _do_sort(self, field: str) -> None:
         rows = self._chan_list.selected_rows_data()
         if len(rows) <= 1:
             return
@@ -496,29 +496,19 @@ class BanksPage(tk.Frame):
 
         match field:
             case "name":
-
-                def sfunc(chan: model.Channel | None) -> str:
-                    return chan.name or "\xff" if chan else "\xff"
+                sfunc = _sort_func_name
 
             case "name2":
-
-                def sfunc(chan: model.Channel | None) -> str:
-                    return chan.name if chan else ""
+                sfunc = _sort_func_name2
 
             case "freq":
-
-                def sfunc(chan: model.Channel | None) -> int:
-                    return chan.freq if chan and not chan.hide_channel else 0
+                sfunc = _sort_func_freq
 
             case "pack":
-
-                def sfunc(chan: model.Channel | None) -> int:
-                    return 0 if chan else 1
+                sfunc = _sort_func_pack
 
             case "channel":
-
-                def sfunc(chan: model.Channel | None) -> int:
-                    return chan.number if chan else 1400
+                sfunc = _sort_func_channel
 
             case _:
                 raise ValueError
@@ -544,3 +534,23 @@ def validate_bank_name(name: str | None) -> bool:
         return False
 
     return True
+
+
+def _sort_func_name(chan: model.Channel | None) -> str:
+    return chan.name or "\xff" if chan else "\xff"
+
+
+def _sort_func_name2(chan: model.Channel | None) -> str:
+    return chan.name if chan else ""
+
+
+def _sort_func_freq(chan: model.Channel | None) -> int:
+    return chan.freq if chan and not chan.hide_channel else 0
+
+
+def _sort_func_pack(chan: model.Channel | None) -> int:
+    return 0 if chan else 1
+
+
+def _sort_func_channel(chan: model.Channel | None) -> int:
+    return chan.number if chan else 1400
