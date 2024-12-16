@@ -48,6 +48,8 @@ def new_combo(  # noqa: PLR0913
     label: str,
     var: tk.Variable,
     values: list[str],
+    *,
+    colspan: int = 1,
 ) -> ttk.Combobox:
     tk.Label(parent, text=label).grid(
         row=row, column=col, sticky=tk.N + tk.W, padx=6, pady=6
@@ -60,7 +62,12 @@ def new_combo(  # noqa: PLR0913
         textvariable=var,
     )
     combo.grid(
-        row=row, column=col + 1, sticky=tk.N + tk.W + tk.E, padx=6, pady=6
+        row=row,
+        column=col + 1,
+        sticky=tk.N + tk.W + tk.E,
+        padx=6,
+        pady=6,
+        columnspan=colspan,
     )
     return combo
 
