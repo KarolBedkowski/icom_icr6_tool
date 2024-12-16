@@ -61,7 +61,7 @@ class SettingsPage(tk.Frame):
         self._var_af_filer_fm = gui_model.BoolVar()
         self._var_af_filer_wfm = gui_model.BoolVar()
         self._var_af_filer_am = gui_model.BoolVar()
-        self._var_charging_type = gui_model.ListVar(consts.SETT_CHARGE_TYPE)
+        self._var_charging_type = gui_model.ListVar(consts.SETT_CHARGER_TYPE)
 
         self._var_comment = tk.StringVar()
 
@@ -154,7 +154,8 @@ class SettingsPage(tk.Frame):
             0,
             "Charge type",
             self._var_charging_type,
-            consts.SETT_CHARGE_TYPE,
+            consts.SETT_CHARGER_TYPE,
+            colspan=3,
         )
 
         new_checkbox(frame, 8, 0, "Set expand", self._var_set_expand)
