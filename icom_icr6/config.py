@@ -22,6 +22,8 @@ class Config:
     last_port: str = "/dev/ttyUSB0"
     hispeed: bool = True
 
+    main_window_geometry: str = "1024x768"
+
     def push_last_file(self, file: str) -> None:
         if file in self.last_files:
             self.last_files.remove(file)
@@ -49,12 +51,18 @@ def load(file: Path) -> Config:
     )
     CONFIG.hispeed = cfg.getboolean("main", "hispeed", fallback=True)
 
+    CONFIG.main_window_geometry = (
+        cfg.get("main_wnd", "geometry", fallback="")
+        or CONFIG.main_window_geometry
+    )
+
     _LOG.debug("config %r", CONFIG)
     return CONFIG
 
 
 def save(file: Path) -> None:
     _LOG.info("saving %s", file)
+    _LOG.debug("config %r", CONFIG)
 
     cfg = configparser.ConfigParser()
     cfg["main"] = {
@@ -62,6 +70,7 @@ def save(file: Path) -> None:
         "last_port": CONFIG.last_port,
         "hispeed": "yes" if CONFIG.hispeed else "no",
     }
+    cfg["main_wnd"] = {"geometry": CONFIG.main_window_geometry}
 
     file.parent.mkdir(parents=True, exist_ok=True)
     with file.open(mode="w") as fout:

@@ -72,6 +72,8 @@ class App(tk.Frame):
         if file:
             self.load_icf(file)
 
+        self.bind("<Destroy>", self.__on_destroy)
+
     def set_status(self, msg: str) -> None:
         self._status_value.set(msg)
 
@@ -447,6 +449,9 @@ class App(tk.Frame):
     def __on_last_file(self, fname: str) -> None:
         self.load_icf(Path(fname))
 
+    def __on_destroy(self, _event: tk.Event) -> None:  # type: ignore
+        config.CONFIG.main_window_geometry = self.master.geometry() # type: ignore
+
 
 def start_gui() -> None:
     config_path = config.default_config_path()
@@ -462,7 +467,7 @@ def start_gui() -> None:
     style.theme_use("clam")
     style.configure("pad.TEntry", padding="1 1 1 1")
     myapp = App(root, file)
-    root.geometry("1024x768")
+    root.geometry(config.CONFIG.main_window_geometry)
     root.wait_visibility()
     root.grab_set()
     root.lift()
