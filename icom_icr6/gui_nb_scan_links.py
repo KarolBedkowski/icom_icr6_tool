@@ -26,7 +26,7 @@ class ScanLinksPage(tk.Frame):
         self._last_selected_sl = 0
 
         pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
-        self._scan_links_list = tk.Listbox(pw, selectmode=tk.SINGLE)
+        self._scan_links_list = tk.Listbox(pw, selectmode=tk.SINGLE, width=10)
 
         self._scan_links_list.bind(
             "<<ListboxSelect>>", self.__on_select_scan_link

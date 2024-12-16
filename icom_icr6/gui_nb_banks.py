@@ -45,7 +45,9 @@ class BanksPage(tk.Frame):
         self._select_after_refresh: int | None = None
 
         pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
-        banks = self._banks_list = tk.Listbox(pw, selectmode=tk.SINGLE)
+        banks = self._banks_list = tk.Listbox(
+            pw, selectmode=tk.SINGLE, width=10
+        )
 
         banks.bind("<<ListboxSelect>>", self._on_bank_select)
         pw.add(banks, weight=0)

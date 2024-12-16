@@ -37,7 +37,7 @@ class ChannelsPage(tk.Frame):
         self.__select_after_refresh: int | None = None
 
         pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
-        self._groups_list = tk.Listbox(pw, selectmode=tk.SINGLE)
+        self._groups_list = tk.Listbox(pw, selectmode=tk.SINGLE, width=10)
         self._groups_list.insert(tk.END, *gui_model.CHANNEL_RANGES)
         self._groups_list.bind("<<ListboxSelect>>", self.__on_group_select)
         pw.add(self._groups_list, weight=0)
