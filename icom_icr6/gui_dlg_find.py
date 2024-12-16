@@ -9,7 +9,7 @@ import tkinter as tk
 import typing as ty
 from tkinter import ttk
 
-from . import consts, model
+from . import config, consts, model
 from .radio_memory import RadioMemory
 
 _LOG = logging.getLogger(__name__)
@@ -27,7 +27,8 @@ class FindDialog(tk.Toplevel):
         radio_memory: RadioMemory,
         on_select_result: ResultSelectCallback,
     ) -> None:
-        super().__init__(parent)  # ,  "Clone to radio")
+        super().__init__(parent)
+        self.title("Find")
 
         self._radio_memory = radio_memory
         self._query = tk.StringVar()
@@ -38,19 +39,22 @@ class FindDialog(tk.Toplevel):
         self._body(frame_body)
         frame_body.pack(side=tk.TOP, fill=tk.BOTH, padx=12, pady=12)
 
-        self._result_lb = tk.Listbox(
-            self, selectmode=tk.SINGLE, width=100, height=20
-        )
+        self._result_lb = tk.Listbox(self, selectmode=tk.SINGLE)
         self._result_lb.pack(
             side=tk.TOP, fill=tk.BOTH, expand=True, padx=12, pady=12
         )
         self._result_lb.bind("<<ListboxSelect>>", self._on_select_result_list)
 
         self.bind("<Escape>", self._on_close)
+        self.geometry(config.CONFIG.find_window_geometry)
 
     def _body(self, master: tk.Widget) -> None:
+        ttk.Label(master, text="Find what: ").pack(
+            side=tk.LEFT, expand=False, fill=tk.Y, padx=6
+        )
+
         ttk.Entry(master, textvariable=self._query).pack(
-            side=tk.LEFT, fill=tk.X, padx=6, pady=6, expand=True
+            side=tk.LEFT, fill=tk.X, pady=6, expand=True
         )
 
         tk.Button(
@@ -59,7 +63,7 @@ class FindDialog(tk.Toplevel):
             width=10,
             command=self._on_search,
             default=tk.ACTIVE,
-        ).pack(side=tk.RIGHT, padx=6, pady=6)
+        ).pack(side=tk.RIGHT, padx=6)
 
         self.bind("<Return>", self._on_search)
 
@@ -104,6 +108,7 @@ class FindDialog(tk.Toplevel):
             listbox.insert(tk.END, line)
 
     def _on_close(self, _event: tk.Event | None = None) -> None:  # type:ignore
+        config.CONFIG.find_window_geometry = self.geometry()
         self.grab_release()
         self.destroy()
 

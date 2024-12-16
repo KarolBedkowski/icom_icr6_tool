@@ -24,6 +24,8 @@ class Config:
 
     main_window_geometry: str = "1024x768"
 
+    find_window_geometry: str = "600x300"
+
     def push_last_file(self, file: str) -> None:
         if file in self.last_files:
             self.last_files.remove(file)
@@ -55,6 +57,10 @@ def load(file: Path) -> Config:
         cfg.get("main_wnd", "geometry", fallback="")
         or CONFIG.main_window_geometry
     )
+    CONFIG.find_window_geometry = (
+        cfg.get("find_wnd", "geometry", fallback="")
+        or CONFIG.find_window_geometry
+    )
 
     _LOG.debug("config %r", CONFIG)
     return CONFIG
@@ -71,6 +77,7 @@ def save(file: Path) -> None:
         "hispeed": "yes" if CONFIG.hispeed else "no",
     }
     cfg["main_wnd"] = {"geometry": CONFIG.main_window_geometry}
+    cfg["find_wnd"] = {"geometry": CONFIG.find_window_geometry}
 
     file.parent.mkdir(parents=True, exist_ok=True)
     with file.open(mode="w") as fout:
