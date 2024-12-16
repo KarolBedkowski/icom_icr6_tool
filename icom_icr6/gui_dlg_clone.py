@@ -9,16 +9,13 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import simpledialog, ttk
 
-from . import consts, io, model
+from . import config, consts, io, model
 from .radio_memory import RadioMemory
 
 _LOG = logging.getLogger(__name__)
 
 
 class _CloneDialog(simpledialog.Dialog):
-    last_port = "/dev/ttyUSB0"
-    last_hispeed = 1
-
     def body(self, master: tk.Widget) -> None:
         self._var_port = tk.StringVar()
         self._var_progress = tk.StringVar()
@@ -30,8 +27,8 @@ class _CloneDialog(simpledialog.Dialog):
         ttys = [
             str(p) for p in Path("/dev/").iterdir() if p.name.startswith("tty")
         ]
-        # self._var_port.set(ttys[0])
-        self._var_port.set(_CloneDialog.last_port)
+
+        self._var_port.set(config.CONFIG.last_port)
         ttk.Combobox(
             master,
             values=ttys,
@@ -53,7 +50,7 @@ class _CloneDialog(simpledialog.Dialog):
             pady=6,
             columnspan=2,
         )
-        self._var_hispeed.set(_CloneDialog.last_hispeed)
+        self._var_hispeed.set(1 if config.CONFIG.hispeed else 0)
 
         tk.Label(master, text="", textvariable=self._var_progress).grid(
             row=2, column=0, columnspan=2, sticky=tk.N + tk.W, padx=6, pady=6
@@ -92,13 +89,14 @@ class CloneFromRadioDialog(_CloneDialog):
 
     def ok(self, _event: tk.Event | None = None) -> None:  # type: ignore
         self._var_progress.set("Starting...")
-        _CloneDialog.last_port = port = self._var_port.get()
-        _CloneDialog.last_hispeed = hispeed = self._var_hispeed.get()
-        radio = io.Radio(port, hispeed=bool(hispeed))
+        self.update_idletasks()
+
+        config.CONFIG.last_port = port = self._var_port.get()
+        config.CONFIG.hispeed = hispeed = bool(self._var_hispeed.get())
+
+        radio = io.Radio(port, hispeed=hispeed)
 
         try:
-            self._var_progress.set("Starting...")
-            self.update_idletasks()
             self.radio_memory = radio.clone_from(self.__progress_cb)
             self._var_progress.set("Done")
 
@@ -129,12 +127,13 @@ class CloneToRadioDialog(_CloneDialog):
 
     def ok(self, _event: tk.Event | None = None) -> None:  # type: ignore
         self._var_progress.set("Starting...")
-        _CloneDialog.last_port = port = self._var_port.get()
-        _CloneDialog.last_hispeed = hispeed = self._var_hispeed.get()
-        radio = io.Radio(port, hispeed=bool(hispeed))
+        self.update_idletasks()
+
+        config.CONFIG.last_port = port = self._var_port.get()
+        config.CONFIG.hispeed = hispeed = bool(self._var_hispeed.get())
+
+        radio = io.Radio(port, hispeed=hispeed)
         try:
-            self._var_progress.set("Starting...")
-            self.update_idletasks()
             radio.clone_to(self._radio_memory, self.__progress_cb)
             self._var_progress.set("Done")
 
