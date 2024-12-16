@@ -21,7 +21,6 @@ class AWCRow(gui_genericlist.BaseRow):
         ("channel", "Number", "int"),
         ("freq", "Frequency", "freq"),
         ("mode", "Mode", consts.MODES),
-        ("name", "Name", "str"),
         ("af", "AF", "bool"),
         ("att", "ATT", "bool"),  # 5
         ("ts", "Tuning Step", consts.STEPS),
