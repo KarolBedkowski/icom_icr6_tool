@@ -12,6 +12,7 @@ from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
 from . import (
+    config,
     expimp,
     gui_dlg_clone,
     gui_dlg_find,
@@ -94,6 +95,12 @@ class App(tk.Frame):
         )
         master.bind_all("<Shift-Control-s>", self.__on_file_save_as)
 
+        self._last_files_menu = tk.Menu(file_menu)
+        self.__fill_menu_last_files()
+        file_menu.add_cascade(
+            label="Last files...", menu=self._last_files_menu
+        )
+
         file_menu.add_separator()
 
         export_menu = self.__create_menu_export(file_menu)
@@ -151,6 +158,18 @@ class App(tk.Frame):
             command=lambda: self.__on_export("awchannels"),
         )
         return menu
+
+    def __fill_menu_last_files(self) -> None:
+        menu = self._last_files_menu
+        if num_elements := menu.index(tk.END):
+            menu.delete(0, num_elements)
+
+        for fname in config.CONFIG.last_files:
+
+            def command(name: str = fname) -> None:
+                self.__on_last_file(name)
+
+            menu.add_command(label=fname, command=command)
 
     def __create_nb_channels(self) -> tk.Widget:
         self._nb_channels = gui_nb_channels.ChannelsPage(
@@ -304,6 +323,10 @@ class App(tk.Frame):
         self.__update_widgets()
 
     def __set_loaded_filename(self, fname: Path | None) -> None:
+        if fname:
+            config.CONFIG.push_last_file(str(fname.resolve()))
+            self.__fill_menu_last_files()
+
         self._last_file = fname
         title = f" [{fname.name}]" if fname else ""
         self.master.title(f"ICOM IC-R6 Tool{title}")  # type: ignore
@@ -421,8 +444,14 @@ class App(tk.Frame):
                 else:
                     self._nb_aw_channels.select(index)
 
+    def __on_last_file(self, fname: str) -> None:
+        self.load_icf(Path(fname))
+
 
 def start_gui() -> None:
+    config_path = config.default_config_path()
+    config.load(config_path)
+
     file = Path(sys.argv[1]) if len(sys.argv) > 1 else None
 
     root = tk.Tk()
@@ -439,3 +468,4 @@ def start_gui() -> None:
     root.lift()
 
     myapp.mainloop()
+    config.save(config_path)
