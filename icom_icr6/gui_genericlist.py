@@ -120,8 +120,10 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
         self.on_record_update: RecordActionCallback[T] | None = None
         self.on_record_selected: RecordSelectedCallback[T] | None = None
 
-    def reset(self) -> None:
+    def reset(self, *, scroll_top: bool = False) -> None:
         self.sheet.deselect_any(rows=None, columns=None)
+        if scroll_top:
+            self.sheet.see(row=0, column=0)
 
     @property
     def data(self) -> ty.Iterable[T | None]:

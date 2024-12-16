@@ -134,7 +134,7 @@ class BanksPage(tk.Frame):
         bframe.pack(side=tk.BOTTOM, fill=tk.X, ipady=6)
 
     def _on_bank_select(self, _event: tk.Event) -> None:  # type: ignore
-        self._chan_list.reset()
+        self._chan_list.reset(scroll_top=True)
         self._update_chan_list()
 
     def _update_banks_list(self) -> None:

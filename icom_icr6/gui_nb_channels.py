@@ -102,7 +102,7 @@ class ChannelsPage(tk.Frame):
         bframe.pack(side=tk.BOTTOM, fill=tk.X, ipady=6)
 
     def __on_group_select(self, _event: tk.Event) -> None:  # type: ignore
-        self._chan_list.reset()
+        self._chan_list.reset(scroll_top=True)
         self.__update_chan_list()
 
     def __on_channel_update(
