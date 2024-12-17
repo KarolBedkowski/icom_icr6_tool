@@ -17,6 +17,8 @@ if ty.TYPE_CHECKING:
 
 _LOG = logging.getLogger(__name__)
 
+_MAX_UNDO_QUEUE_LEN: ty.Final = 50
+
 
 @dataclass
 class UndoItem:
@@ -25,23 +27,26 @@ class UndoItem:
     new_item: object
 
 
+_OnChangeCallback = ty.Callable[[int, int], None]
+
+
 class _UndoManager:
-    def __init__(self) -> None:
-        self.max_queue_len = 50
-        self.undo_queue: list[list[UndoItem]] = []
-        self.redo_queue: list[list[UndoItem]] = []
-        # temporary queue for actions; after "commit" push to undo_queue
-        self.tmp_queue: list[UndoItem] = []
-        self.on_change: ty.Callable[[], None] | None = None
+    def __init__(self, *, on_change: _OnChangeCallback | None = None) -> None:
+        self._undo_queue: list[list[UndoItem]] = []
+        self._redo_queue: list[list[UndoItem]] = []
+        # temporary queue for actions; after "commit" push to _undo_queue
+        self._tmp_queue: list[UndoItem] = []
+        self._on_change: _OnChangeCallback | None = on_change
 
     def clear(self) -> None:
-        self.undo_queue.clear()
-        self.redo_queue.clear()
-        self.tmp_queue.clear()
-        if self.on_change:
-            self.on_change()
+        self._undo_queue.clear()
+        self._redo_queue.clear()
+        self._tmp_queue.clear()
+        self._signal_changes()
 
     def push(self, kind: str, old_item: object, new_item: object) -> None:
+        """Add change to temp queue."""
+
         _LOG.debug(
             "RealUndoManager.push: kind=%r old=%r, new=%r",
             kind,
@@ -53,51 +58,58 @@ class _UndoManager:
             # no changes - but check
             _LOG.warning("old is new: old=%r, new=%r", old_item, new_item)
         else:
-            self.tmp_queue.append(UndoItem(kind, old_item, new_item))
+            self._tmp_queue.append(UndoItem(kind, old_item, new_item))
 
     def commit(self) -> None:
-        _LOG.debug("RealUndoManager.commit: %d", len(self.tmp_queue))
-        if not self.tmp_queue:
-            _LOG.error("RealUndoManager.commit: empty tmp_queue")
+        """Commit changes from temp queue into undo queue; clear redo queue."""
+
+        _LOG.debug("RealUndoManager.commit: %d", len(self._tmp_queue))
+
+        if not self._tmp_queue:
+            _LOG.error("RealUndoManager.commit: empty _tmp_queue")
             return
 
-        self.undo_queue.append(self.tmp_queue)
-        self.tmp_queue = []
-        if len(self.undo_queue) > self.max_queue_len:
-            self.undo_queue.pop(0)
+        self._undo_queue.append(self._tmp_queue)
+        self._tmp_queue = []
+        if len(self._undo_queue) > _MAX_UNDO_QUEUE_LEN:
+            self._undo_queue.pop(0)
 
         # push new action clear redo
-        self.redo_queue.clear()
-
-        if self.on_change:
-            self.on_change()
+        self._redo_queue.clear()
+        self._signal_changes()
 
     def abort(self) -> None:
-        self.tmp_queue.clear()
+        self._tmp_queue.clear()
 
     def pop_undo(self) -> list[UndoItem] | None:
+        """Get last action from undo queue."""
+
         try:
-            item = self.undo_queue.pop()
+            item = self._undo_queue.pop()
         except IndexError:
             return None
 
-        self.redo_queue.append(item)
-        if len(self.redo_queue) > self.max_queue_len:
-            self.redo_queue.pop(0)
-
+        self._redo_queue.append(item)
+        self._signal_changes()
         return item
 
     def pop_redo(self) -> list[UndoItem] | None:
+        """Get last action from redo queue."""
         try:
-            item = self.redo_queue.pop()
+            item = self._redo_queue.pop()
         except IndexError:
             return None
 
-        self.undo_queue.append(item)
-        if len(self.undo_queue) > self.max_queue_len:
-            self.undo_queue.pop(0)
+        self._undo_queue.append(item)
+        if len(self._undo_queue) > _MAX_UNDO_QUEUE_LEN:
+            self._undo_queue.pop(0)
 
+        self._signal_changes()
         return item
+
+    def _signal_changes(self) -> None:
+        if self._on_change:
+            self._on_change(len(self._undo_queue), len(self._redo_queue))
 
 
 class ChangeManeger:
@@ -107,11 +119,8 @@ class ChangeManeger:
         self.rm = rm
         # callback on undo queue changes
         self.on_undo_changes: ty.Callable[[bool, bool], None] | None = None
-
-        self._undo_manager = _UndoManager()
-        self._undo_manager.on_change = self._on_undo_change
-
-        self._on_undo_change()
+        self._undo_manager = _UndoManager(on_change=self._on_undo_change)
+        self._on_undo_change(0, 0)
 
     def reset(self) -> None:
         self._undo_manager.clear()
@@ -123,10 +132,13 @@ class ChangeManeger:
     def set_channel(self, *channels: model.Channel) -> bool:
         """Set channel(s). return True when other channels are also changed."""
         _LOG.debug("set_channel: %r", channels)
+
         for chan in channels:
             chan.validate()
 
+        # keep track of bank pos uset by changed channels
         bank_chan_pos: dict[tuple[int, int], int] = {}
+
         for chan in channels:
             if not chan.freq or chan.hide_channel:
                 chan.bank = consts.BANK_NOT_SET
@@ -135,6 +147,7 @@ class ChangeManeger:
 
             current_channel = self.rm.channels[chan.number]
             if current_channel == chan:
+                _LOG.debug("set_channel: skip unchanged: %r", chan)
                 continue
 
             self._undo_manager.push("channel", current_channel, chan)
@@ -147,29 +160,31 @@ class ChangeManeger:
             return False
 
         # remove other channels from this position bank
-        res = False
+        more_channels_changed = False
         for chan in self.rm.get_active_channels():
             if chan.bank == consts.BANK_NOT_SET:
                 continue
 
             channum = bank_chan_pos.get((chan.bank, chan.bank_pos))
             if channum is not None and chan.number != channum:
+                # found another channel with already used position
                 _LOG.debug("set_channel clear bank in chan %r", chan)
                 prev = chan.clone()
                 chan.clear_bank()
                 chan.updated = True
                 self._undo_manager.push("channel", prev, chan)
+                more_channels_changed = True
 
-                res = True
-
-        return res
+        return more_channels_changed
 
     def set_scan_edge(self, se: model.ScanEdge) -> None:
         _LOG.debug("set_scan_edge: %r", se)
+
         se.validate()
 
         current_se = self.rm.scan_edges[se.idx]
         if current_se == se:
+            _LOG.debug("set_scan_edge: skip unchanged %r", se)
             return
 
         self._undo_manager.push("scan_edge", current_se, se)
@@ -178,8 +193,11 @@ class ChangeManeger:
         self.rm.scan_edges[se.idx] = se
 
     def set_bank(self, bank: model.Bank) -> None:
+        _LOG.debug("set_bank: %r", bank)
+
         current_bank = self.rm.banks[bank.idx]
         if current_bank == bank:
+            _LOG.debug("set_bank: skip unchanged %r", bank)
             return
 
         self._undo_manager.push("bank", current_bank, bank)
@@ -190,8 +208,10 @@ class ChangeManeger:
     def clear_bank_pos(
         self, bank: int, bank_pos: int, *, channum: int | None = None
     ) -> bool:
+        """Clear bank position; if `channum` is given - use it instead of
+        search in active. Return True on success."""
         _LOG.debug(
-            "clear_bank_pos: %d, %d, channum=%r", bank, bank_pos, channum
+            "clear_bank_pos: %d/%d, channum=%r", bank, bank_pos, channum
         )
 
         if channum:
@@ -207,7 +227,6 @@ class ChangeManeger:
             ch.updated = True
 
             self._undo_manager.push("channel", prev, ch)
-
             return True
 
         deleted = False
@@ -228,8 +247,11 @@ class ChangeManeger:
         return True
 
     def set_scan_link(self, sl: model.ScanLink) -> None:
+        _LOG.debug("set_scan_link: %r", sl)
+
         current_sl = self.rm.scan_links[sl.idx]
         if current_sl == sl:
+            _LOG.debug("set_scan_link: skip unchanged: %r", sl)
             return
 
         self._undo_manager.push("scan_link", current_sl, sl)
@@ -238,8 +260,10 @@ class ChangeManeger:
         self.rm.scan_links[sl.idx] = sl
 
     def set_settings(self, sett: model.RadioSettings) -> None:
+        _LOG.debug("set_settings: %r", sett)
+
         if self.rm.settings == sett:
-            # no changes
+            _LOG.debug("set_settings: set unchanged %r", sett)
             return
 
         self._undo_manager.push("settings", self.rm.settings, sett)
@@ -249,6 +273,8 @@ class ChangeManeger:
         self.rm.settings.updated = True
 
     def set_bank_links(self, bl: model.BankLinks) -> None:
+        _LOG.debug("set_bank_links: %r", bl)
+
         current_bl = self.rm.bank_links
         if current_bl == bl:
             return
@@ -259,19 +285,47 @@ class ChangeManeger:
         self.rm.bank_links = bl
 
     def set_comment(self, comment: str) -> None:
+        _LOG.debug("set_comment: %r", comment)
+
         comment = comment.strip()
         if comment == self.rm.comment:
+            _LOG.debug("set_comment: skip unchanged %r", comment)
             return
 
         self._undo_manager.push("comment", self.rm.comment, comment)
         self.rm.comment = comment
 
     def remap_scan_links(self, mapping: dict[int, int]) -> None:
+        """Remap scan links. `mapping` is
+        dict[new position, original position]."""
+
+        _LOG.debug("remap_scan_links: %r", mapping)
+
         for sl in self.rm.scan_links:
             prev = sl.clone()
             sl.remap_edges(mapping)
             if prev != sl:
                 self._undo_manager.push("scan_links", prev, sl)
+
+    def undo(self) -> bool:
+        """Undo last action; return True on success."""
+
+        if actions := self._undo_manager.pop_undo():
+            self._apply_undo_redo((a.kind, a.old_item) for a in actions)
+            return True
+
+        return False
+
+    def redo(self) -> bool:
+        """Redo last action; return True on success."""
+
+        if actions := self._undo_manager.pop_redo():
+            self._apply_undo_redo(
+                (a.kind, a.new_item) for a in reversed(actions)
+            )
+            return True
+
+        return False
 
     def _apply_undo_redo(self, items: ty.Iterable[tuple[str, object]]) -> None:
         for kind, obj in items:
@@ -309,27 +363,10 @@ class ChangeManeger:
                     errmsg = "unknown action: kind={kind!r} obj={obj!r}"
                     raise ValueError(errmsg)
 
-    def undo(self) -> bool:
-        if actions := self._undo_manager.pop_undo():
-            self._apply_undo_redo((a.kind, a.old_item) for a in actions)
-            self._on_undo_change()
-            return True
+    def _on_undo_change(self, undo_len: int, redo_len: int) -> None:
+        _LOG.debug(
+            "_on_undo_change: undo_len=%d, redo_len=%d", undo_len, redo_len
+        )
 
-        return False
-
-    def redo(self) -> bool:
-        if actions := self._undo_manager.pop_redo():
-            self._apply_undo_redo(
-                (a.kind, a.new_item) for a in reversed(actions)
-            )
-            self._on_undo_change()
-            return True
-
-        return False
-
-    def _on_undo_change(self) -> None:
         if self.on_undo_changes:
-            self.on_undo_changes(
-                bool(self._undo_manager.undo_queue),
-                bool(self._undo_manager.redo_queue),
-            )
+            self.on_undo_changes(bool(undo_len), bool(redo_len))
