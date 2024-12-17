@@ -44,22 +44,22 @@ class App(tk.Frame):
         self._last_file: Path | None = None
         self._radio_memory = RadioMemory()
         self._change_manager = ChangeManeger(self._radio_memory)
-        self._change_manager.on_undo_changes = self.__on_undo_change
+        self._change_manager.on_undo_changes = self._on_undo_change
         self._status_value = tk.StringVar()
         # safe is clone to device when data are loaded or cloned from dev
         self._safe_for_clone = False
 
         self.pack(fill="both", expand=1)
 
-        self.__create_menu(master)
+        self._create_menu(master)
 
         self._ntb = ttk.Notebook(self)
-        self._ntb.add(self.__create_nb_channels(), text="Channels")
-        self._ntb.add(self.__create_nb_banks(), text="Banks")
-        self._ntb.add(self.__create_nb_scan_edge(), text="Scan Edge")
-        self._ntb.add(self.__create_nb_scan_links(), text="Scan Link")
-        self._ntb.add(self.__create_nb_awchannels(), text="Autowrite channels")
-        self._ntb.add(self.__create_nb_settings(), text="Settings")
+        self._ntb.add(self._create_nb_channels(), text="Channels")
+        self._ntb.add(self._create_nb_banks(), text="Banks")
+        self._ntb.add(self._create_nb_scan_edge(), text="Scan Edge")
+        self._ntb.add(self._create_nb_scan_links(), text="Scan Link")
+        self._ntb.add(self._create_nb_awchannels(), text="Autowrite channels")
+        self._ntb.add(self._create_nb_settings(), text="Settings")
         self._ntb.bind("<<NotebookTabChanged>>", self.__on_nb_page_changed)
 
         self._ntb.pack(fill="both", expand=True)
@@ -70,42 +70,58 @@ class App(tk.Frame):
         )
 
         if file:
-            self.load_icf(file)
+            self._load_icf(file)
 
         self.bind("<Destroy>", self.__on_destroy)
 
     def set_status(self, msg: str) -> None:
+        """Set status panel content."""
         self._status_value.set(msg)
 
-    def __create_menu(self, master: tk.Tk) -> None:
+    ## properties
+
+    @property
+    def _selected_tab(self) -> int:
+        try:
+            return self._ntb.tabs().index(self._ntb.select())  # type: ignore
+        except ValueError:
+            return 0
+
+    # create objects
+
+    def _create_menu(self, master: tk.Tk) -> None:
         menu_bar = tk.Menu(master)
         master.config(menu=menu_bar)
 
         file_menu = tk.Menu(menu_bar)
         file_menu.add_command(
-            label="Open...", command=self.__on_file_open, accelerator="Ctrl+O"
+            label="Open...",
+            command=self._on_menu_file_open,
+            accelerator="Ctrl+O",
         )
-        master.bind_all("<Control-o>", self.__on_file_open)
+        master.bind_all("<Control-o>", self._on_menu_file_open)
         file_menu.add_command(
-            label="Save...", command=self.__on_file_save, accelerator="Ctrl+S"
+            label="Save...",
+            command=self._on_menu_file_save,
+            accelerator="Ctrl+S",
         )
-        master.bind_all("<Control-s>", self.__on_file_save)
+        master.bind_all("<Control-s>", self._on_menu_file_save)
         file_menu.add_command(
             label="Save As...",
-            command=self.__on_file_save_as,
+            command=self._on_menu_file_save_as,
             accelerator="Shift+Ctrl+S",
         )
-        master.bind_all("<Shift-Control-s>", self.__on_file_save_as)
+        master.bind_all("<Shift-Control-s>", self._on_menu_file_save_as)
 
         self._last_files_menu = tk.Menu(file_menu)
-        self.__fill_menu_last_files()
+        self._fill_menu_last_files()
         file_menu.add_cascade(
             label="Last files...", menu=self._last_files_menu
         )
 
         file_menu.add_separator()
 
-        export_menu = self.__create_menu_export(file_menu)
+        export_menu = self._create_menu_export(file_menu)
         file_menu.add_cascade(label="Export...", menu=export_menu)
 
         file_menu.add_separator()
@@ -116,98 +132,90 @@ class App(tk.Frame):
         self.__menu_edit = edit_menu = tk.Menu(menu_bar)
         edit_menu.add_command(
             label="Undo",
-            command=self.__on_undo,
+            command=self._on_menu_undo,
             accelerator="Ctrl+Z",
         )
-        master.bind_all("<Control-z>", self.__on_undo)
+        master.bind_all("<Control-z>", self._on_menu_undo)
         edit_menu.add_command(
             label="Redo",
-            command=self.__on_redo,
+            command=self._on_menu_redo,
             accelerator="Ctrl+Y",
         )
-        master.bind_all("<Control-y>", self.__on_redo)
+        master.bind_all("<Control-y>", self._on_menu_redo)
         edit_menu.add_separator()
         edit_menu.add_command(
             label="Find...",
-            command=self.__on_find,
+            command=self._on_menu_find,
             accelerator="Ctrl+F",
         )
-        master.bind_all("<Control-f>", self.__on_find)
+        master.bind_all("<Control-f>", self._on_menu_find)
         menu_bar.add_cascade(label="Edit", menu=edit_menu)
 
         radio_menu = tk.Menu(menu_bar)
         radio_menu.add_command(
-            label="Clone from radio...", command=self.__on_clone_from_radio
+            label="Clone from radio...", command=self._on_menu_clone_to_radio
         )
         radio_menu.add_command(
-            label="Clone to radio...", command=self.__on_clone_to_radio
+            label="Clone to radio...", command=self._on_menu_clone_to_radio
         )
-        radio_menu.add_command(label="Info...", command=self.__on_radio_info)
+        radio_menu.add_command(
+            label="Info...", command=self._on_menu_radio_info
+        )
         menu_bar.add_cascade(label="Radio", menu=radio_menu)
 
         help_menu = tk.Menu(menu_bar)
-        help_menu.add_command(label="About", command=self.__on_about)
+        help_menu.add_command(label="About", command=self._on_menu_about)
         menu_bar.add_cascade(label="Help", menu=help_menu)
 
-    def __create_menu_export(self, parent: tk.Menu) -> tk.Menu:
+    def _create_menu_export(self, parent: tk.Menu) -> tk.Menu:
         menu = tk.Menu(parent)
         menu.add_command(
             label="Channels...",
-            command=lambda: self.__on_export("channels"),
+            command=lambda: self._on_menu_export("channels"),
         )
         menu.add_command(
             label="Autowrrite channels...",
-            command=lambda: self.__on_export("awchannels"),
+            command=lambda: self._on_menu_export("awchannels"),
         )
         return menu
 
-    def __fill_menu_last_files(self) -> None:
-        menu = self._last_files_menu
-        if num_elements := menu.index(tk.END):
-            menu.delete(0, num_elements)
-
-        for fname in config.CONFIG.last_files:
-
-            def command(name: str = fname) -> None:
-                self.__on_last_file(name)
-
-            menu.add_command(label=fname, command=command)
-
-    def __create_nb_channels(self) -> tk.Widget:
+    def _create_nb_channels(self) -> tk.Widget:
         self._nb_channels = gui_nb_channels.ChannelsPage(
             self, self._change_manager
         )
         return self._nb_channels
 
-    def __create_nb_banks(self) -> tk.Widget:
+    def _create_nb_banks(self) -> tk.Widget:
         self._nb_banks = gui_nb_banks.BanksPage(self, self._change_manager)
         return self._nb_banks
 
-    def __create_nb_scan_edge(self) -> tk.Frame:
+    def _create_nb_scan_edge(self) -> tk.Frame:
         self._nb_scan_edge = gui_nb_scan_edge.ScanEdgePage(
             self, self._change_manager
         )
         return self._nb_scan_edge
 
-    def __create_nb_scan_links(self) -> tk.Widget:
+    def _create_nb_scan_links(self) -> tk.Widget:
         self._nb_scan_links = gui_nb_scan_links.ScanLinksPage(
             self, self._change_manager
         )
         return self._nb_scan_links
 
-    def __create_nb_awchannels(self) -> tk.Widget:
+    def _create_nb_awchannels(self) -> tk.Widget:
         self._nb_aw_channels = gui_nb_awchannels.AutoWriteChannelsPage(
             self, self._change_manager
         )
         return self._nb_aw_channels
 
-    def __create_nb_settings(self) -> tk.Widget:
+    def _create_nb_settings(self) -> tk.Widget:
         self._nb_settings = gui_nb_settings.SettingsPage(
             self, self._change_manager
         )
         return self._nb_settings
 
-    def __on_about(self) -> None:
+    # menu callbacks
+
+    def _on_menu_about(self) -> None:
         from . import VERSION
 
         messagebox.showinfo(
@@ -216,7 +224,7 @@ class App(tk.Frame):
             "Future information in README.rst, COPYING files.",
         )
 
-    def __on_file_open(self, _event: tk.Event | None = None) -> None:  # type: ignore
+    def _on_menu_file_open(self, _event: tk.Event | None = None) -> None:  # type: ignore
         fname = filedialog.askopenfilename(
             parent=self,
             filetypes=[("Supported files", ".icf"), ("All files", "*.*")],
@@ -225,30 +233,11 @@ class App(tk.Frame):
         )
 
         if fname:
-            self.load_icf(Path(fname))
+            self._load_icf(Path(fname))
 
-    def load_icf(self, file: Path) -> None:
-        try:
-            mem = io.load_icf_file(file)
-            mem.validate()
-            self._radio_memory.update_from(mem)
-        except ValueError as err:
-            messagebox.showerror(
-                "Load file error", f"Loaded data are invalid: {err}"
-            )
-        except Exception as err:
-            messagebox.showerror("Load file error", f"Load error: {err}")
-            return
-
-        self.__set_loaded_filename(file)
-        self.__update_widgets()
-        self.set_status(f"File {file} loaded")
-        self._safe_for_clone = True
-        self._change_manager.reset()
-
-    def __on_file_save(self, _event: tk.Event | None = None) -> None:  # type: ignore
+    def _on_menu_file_save(self, _event: tk.Event | None = None) -> None:  # type: ignore
         if not self._last_file:
-            self.__on_file_save_as()
+            self._on_menu_file_save_as()
             return
 
         try:
@@ -260,7 +249,7 @@ class App(tk.Frame):
         io.save_icf_file(self._last_file, self._radio_memory)
         self.set_status(f"File {self._last_file} saved")
 
-    def __on_file_save_as(self, _event: tk.Event | None = None) -> None:  # type: ignore
+    def _on_menu_file_save_as(self, _event: tk.Event | None = None) -> None:  # type: ignore
         try:
             self._radio_memory.validate_loaded_data()
         except ValueError as err:
@@ -279,61 +268,34 @@ class App(tk.Frame):
             try:
                 io.save_icf_file(Path(fname), self._radio_memory)
             except Exception as err:
-                _LOG.exception("__on_file_save_as error")
+                _LOG.exception("_on_menu_file_save_as error")
                 messagebox.showerror("Save file error", str(err))
                 return
 
-            self.__set_loaded_filename(Path(fname))
+            self._set_loaded_filename(Path(fname))
             self.set_status(f"File {fname} saved")
 
-    def __on_undo(self, _event: tk.Event | None = None) -> None:  # type: ignore
-        _LOG.info("__on_undo")
+    def _on_menu_undo(self, _event: tk.Event | None = None) -> None:  # type: ignore
+        _LOG.info("_on_menu_undo")
         if self._change_manager.undo():
-            self.__update_widgets()
+            self._update_tab_content()
 
-        _LOG.info("__on_undo finished")
+        _LOG.info("_on_menu_undo finished")
 
-    def __on_redo(self, _event: tk.Event | None = None) -> None:  # type: ignore
+    def _on_menu_redo(self, _event: tk.Event | None = None) -> None:  # type: ignore
         if self._change_manager.redo():
-            self.__update_widgets()
+            self._update_tab_content()
 
-    def __on_find(self, _event: tk.Event | None = None) -> None:  # type: ignore
+    def _on_menu_find(self, _event: tk.Event | None = None) -> None:  # type: ignore
         gui_dlg_find.FindDialog(
-            self, self._radio_memory, self.__on_find_object_select
+            self, self._radio_memory, self._on_find_object_select
         )
-
-    def __update_widgets(self) -> None:
-        try:
-            selected_tab = self._ntb.tabs().index(self._ntb.select())  # type: ignore
-        except ValueError:
-            selected_tab = 0
-
-        _LOG.debug("update page: %r", selected_tab)
-
-        pages: tuple[TabWidget, ...] = (
-            self._nb_channels,
-            self._nb_banks,
-            self._nb_scan_edge,
-            self._nb_scan_links,
-            self._nb_aw_channels,
-            self._nb_settings,
-        )
-        pages[selected_tab].update_tab()
 
     def __on_nb_page_changed(self, _event: tk.Event) -> None:  # type: ignore
         self.set_status("")
-        self.__update_widgets()
+        self._update_tab_content()
 
-    def __set_loaded_filename(self, fname: Path | None) -> None:
-        if fname:
-            config.CONFIG.push_last_file(str(fname.resolve()))
-            self.__fill_menu_last_files()
-
-        self._last_file = fname
-        title = f" [{fname.name}]" if fname else ""
-        self.master.title(f"ICOM IC-R6 Tool{title}")  # type: ignore
-
-    def __on_clone_from_radio(self, _event: tk.Event | None = None) -> None:  # type: ignore
+    def _on_menu_clone_to_radio(self, _event: tk.Event | None = None) -> None:  # type: ignore
         dlg = gui_dlg_clone.CloneFromRadioDialog(self)
         if dlg.radio_memory:
             mem = dlg.radio_memory
@@ -348,11 +310,11 @@ class App(tk.Frame):
 
             self._radio_memory.update_from(mem)
             self._safe_for_clone = True
-            self.__set_loaded_filename(None)
-            self.__update_widgets()
+            self._set_loaded_filename(None)
+            self._update_tab_content()
             self._change_manager.reset()
 
-    def __on_clone_to_radio(self, _event: tk.Event | None = None) -> None:  # type: ignore
+    def _on_menu_clone_to_radio(self, _event: tk.Event | None = None) -> None:  # type: ignore
         if not self._safe_for_clone:
             messagebox.showerror(
                 "Clone to device",
@@ -369,7 +331,7 @@ class App(tk.Frame):
 
         gui_dlg_clone.CloneToRadioDialog(self, self._radio_memory)
 
-    def __on_radio_info(self, _event: tk.Event | None = None) -> None:  # type: ignore
+    def _on_menu_radio_info(self, _event: tk.Event | None = None) -> None:  # type: ignore
         dlg = gui_dlg_clone.RadioInfoDialog(self)
         if model := dlg.result:
             info = (
@@ -381,7 +343,7 @@ class App(tk.Frame):
             )
             messagebox.showinfo("Radio info", info)
 
-    def __on_export(self, what: str) -> None:
+    def _on_menu_export(self, what: str) -> None:
         fname = filedialog.asksaveasfilename(
             parent=self,
             filetypes=[("CSV file", ".csv"), ("All files", "*.*")],
@@ -389,7 +351,6 @@ class App(tk.Frame):
             initialfile=f"{what}.csv",
             defaultextension=".csv",
         )
-
         if not fname:
             return
 
@@ -409,7 +370,8 @@ class App(tk.Frame):
             messagebox.showerror("Export error", str(err))
             return
 
-    def __on_undo_change(self, has_undo: bool, has_redo: bool) -> None:  # noqa:FBT001
+    def _on_undo_change(self, has_undo: bool, has_redo: bool) -> None:  # noqa:FBT001
+        """Callback for changes in undo queue."""
         self.__menu_edit.entryconfigure(
             "Undo", state="normal" if has_undo else tk.DISABLED
         )
@@ -417,13 +379,12 @@ class App(tk.Frame):
             "Redo", state="normal" if has_redo else tk.DISABLED
         )
 
-    def __on_find_object_select(self, kind: str, index: object) -> None:
-        selected_tab = self._ntb.tabs().index(self._ntb.select())  # type: ignore
+    def _on_find_object_select(self, kind: str, index: object) -> None:
+        """Object clicked in find dialog."""
         match kind:
             case "channel":
                 assert isinstance(index, int)
-                if selected_tab != 0:
-                    self._ntb.select(self._ntb.tabs()[0])  # type: ignore
+                if self._switch_to_tab(0):
                     self._nb_channels.update_tab(index)
                 else:
                     self._nb_channels.select(index)
@@ -432,25 +393,96 @@ class App(tk.Frame):
                 assert isinstance(index, tuple)
                 bank, bank_pos = index
 
-                if selected_tab != 1:
-                    self._ntb.select(self._ntb.tabs()[1])  # type: ignore
+                if self._switch_to_tab(1):
                     self._nb_banks.update_tab(bank, bank_pos)
                 else:
                     self._nb_banks.select(bank, bank_pos)
 
             case "awchannel":
                 assert isinstance(index, int)
-                if selected_tab != 4:  #  noqa: PLR2004
-                    self._ntb.select(self._ntb.tabs()[4])  # type: ignore
+                if self._switch_to_tab(4):
                     self._nb_aw_channels.update_tab(index)
                 else:
                     self._nb_aw_channels.select(index)
 
-    def __on_last_file(self, fname: str) -> None:
-        self.load_icf(Path(fname))
+    def _on_menu_last_file(self, fname: str) -> None:
+        """Callback for last file menu item."""
+        self._load_icf(Path(fname))
+
+    ##  window callbacks
 
     def __on_destroy(self, _event: tk.Event) -> None:  # type: ignore
-        config.CONFIG.main_window_geometry = self.master.geometry() # type: ignore
+        """Save window geometry."""
+        config.CONFIG.main_window_geometry = self.master.geometry()  # type: ignore
+
+    ## actions
+
+    def _switch_to_tab(self, index: int) -> bool:
+        """Switch main notebook to `index` tab. Return True when switched,
+        False when already `index` tab is visible."""
+        ntb = self._ntb
+        tabs = ntb.tabs()  # type: ignore
+        selected_tab = tabs.index(ntb.select())
+        if selected_tab == index:
+            return False
+
+        ntb.select(tabs[index])
+        return True
+
+    def _set_loaded_filename(self, fname: Path | None) -> None:
+        if fname:
+            config.CONFIG.push_last_file(str(fname.resolve()))
+            self._fill_menu_last_files()
+
+        self._last_file = fname
+        title = f" [{fname.name}]" if fname else ""
+        self.master.title(f"ICOM IC-R6 Tool{title}")  # type: ignore
+
+    def _update_tab_content(self) -> None:
+        selected_tab = self._selected_tab
+        _LOG.debug("update page: %r", selected_tab)
+
+        pages: tuple[TabWidget, ...] = (
+            self._nb_channels,
+            self._nb_banks,
+            self._nb_scan_edge,
+            self._nb_scan_links,
+            self._nb_aw_channels,
+            self._nb_settings,
+        )
+        pages[selected_tab].update_tab()
+
+    def _load_icf(self, file: Path) -> None:
+        try:
+            mem = io.load_icf_file(file)
+            mem.validate()
+            self._radio_memory.update_from(mem)
+        except ValueError as err:
+            messagebox.showerror(
+                "Load file error", f"Loaded data are invalid: {err}"
+            )
+        except Exception as err:
+            messagebox.showerror("Load file error", f"Load error: {err}")
+            return
+
+        self._set_loaded_filename(file)
+        self._update_tab_content()
+        self.set_status(f"File {file} loaded")
+        self._safe_for_clone = True
+        self._change_manager.reset()
+
+    def _fill_menu_last_files(self) -> None:
+        """Fill menu file -> last files."""
+        menu = self._last_files_menu
+        if num_elements := menu.index(tk.END):
+            menu.delete(0, num_elements)
+
+        for fname in config.CONFIG.last_files:
+
+            def command(name: str = fname) -> None:
+                self._on_menu_last_file(name)
+
+            menu.add_command(label=fname, command=command)
 
 
 def start_gui() -> None:

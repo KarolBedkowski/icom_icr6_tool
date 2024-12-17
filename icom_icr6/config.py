@@ -27,6 +27,9 @@ class Config:
     find_window_geometry: str = "600x300"
 
     def push_last_file(self, file: str) -> None:
+        if not file:
+            return
+
         if file in self.last_files:
             self.last_files.remove(file)
 
@@ -47,7 +50,9 @@ def load(file: Path) -> Config:
     with file.open() as fin:
         cfg.read_file(fin)
 
-    CONFIG.last_files = cfg.get("main", "last_files", fallback="").split(";")
+    CONFIG.last_files = list(
+        filter(None, cfg.get("main", "last_files", fallback="").split(";"))
+    )
     CONFIG.last_port = (
         cfg.get("main", "last_port", fallback="") or CONFIG.last_port
     )

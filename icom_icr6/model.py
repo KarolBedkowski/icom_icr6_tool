@@ -241,10 +241,6 @@ class Channel:
         self.bank = consts.BANK_NOT_SET
         self.bank_pos = 0
 
-    @property
-    def hidden(self) -> bool:
-        return self.hide_channel or self.freq == 0
-
     def __str__(self) -> str:
         try:
             bank = f"{consts.BANK_NAMES[self.bank]}/{self.bank_pos}"

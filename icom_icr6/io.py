@@ -373,7 +373,17 @@ class Radio:
                     raise ChecksumError
 
                 _LOG.debug("update mem: addr=%d, len=%d", daddr, length)
-                mem.update_mem_region(daddr, length, data)
+                if len(data) != length:
+                    _LOG.error(
+                        "received data is to short exp_len=%d, "
+                        "real_len=%d, frame=%r",
+                        length,
+                        len(data),
+                        frame,
+                    )
+                    raise ValueError
+
+                mem.update_mem_region(daddr, data)
 
             case _:
                 _LOG.error("unknown frame idx=%d frame=%r", idx, frame)
