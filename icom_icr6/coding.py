@@ -77,7 +77,7 @@ def decode_freq(freq: int, flags: int) -> int:
         case 0b01:
             return 6250 * freq
         case 0b10:
-            return (25000 * freq) // 3  # unused?
+            return (25000 * freq) // 3
         case 0b11:
             return 9000 * freq
 

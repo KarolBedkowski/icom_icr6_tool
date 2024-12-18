@@ -158,7 +158,7 @@ class ChannelsList(gui_genericlist.GenericList[Row, model.Channel]):
     def _configure_col(
         self, column: gui_genericlist.Column, span: Span
     ) -> None:
-        colname, _c, values = column
+        _colname, _c, values = column
         if values == "bool" or isinstance(values, (list, tuple)):
             # do not create checkbox and dropdown for columns; create
             # it for cell - bellow
@@ -253,6 +253,7 @@ class ChannelsList(gui_genericlist.GenericList[Row, model.Channel]):
 
             return
 
+        # create dropdown, checkboxes
         for idx, (colname, _, values) in enumerate(self.columns):
             span = self.sheet.span(row, idx)
             if values == "bool":

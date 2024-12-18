@@ -87,12 +87,14 @@ class ChannelsList(gui_chanlist.ChannelsList):
     def _configure_col(
         self, column: gui_genericlist.Column, span: Span
     ) -> None:
-        colname, _c, values = column
+        _colname, _c, values = column
         if isinstance(values, (list, tuple)):
             # show dict-ed value as string
             span.align("center")
+
         elif values == "bool":
             span.checkbox().align("center")
+
         else:
             super()._configure_col(column, span)
 

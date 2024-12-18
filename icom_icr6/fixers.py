@@ -76,8 +76,8 @@ def fix_offset(freq: int, offset: int) -> int:
     if offset == 0:
         return 0
 
-    offset = max(offset, 5000)
-    offset = min(offset, 159995000)
+    offset = max(offset, consts.MIN_OFFSET)
+    offset = min(offset, consts.MAX_OFFSET)
 
     if offset % 9000 == freq % 9000 == 0:
         # 9k is used only if match exactly

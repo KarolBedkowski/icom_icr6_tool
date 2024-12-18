@@ -158,10 +158,13 @@ class RadioInfoDialog(_CloneDialog):
         radio = io.Radio(self._var_port.get())
         try:
             self.result = radio.get_model()
+
         except io.AbortError:
             self.cancel()
+
         except Exception as err:
             _LOG.exception("get info radio error")
             self._var_progress.set(f"ERROR: {err}")
+
         else:
             super().ok()

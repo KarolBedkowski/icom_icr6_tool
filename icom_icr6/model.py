@@ -220,6 +220,8 @@ class Channel:
 
     # control flags
     hide_channel: bool
+    # hack; skips on two bits (skip type (S/P) and skip enable (0/1))
+    # should be 2 fields
     skip: int
     # 31 = no bank
     bank: int

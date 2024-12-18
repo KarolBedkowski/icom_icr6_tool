@@ -47,6 +47,7 @@ STEPS: ty.Final = [
     "Auto",  # not used
     "-",  # used only in scan-edges
 ]
+# used for fill channels
 STEPS_KHZ: ty.Final = [
     5000,
     6250,
@@ -111,6 +112,7 @@ AVAIL_STEPS_BROADCAST = [
 ]
 
 
+# hack; skips on two bits (skip type (S/P) and skip enable (0/1))
 SKIPS: ty.Final = ["", "S", "", "P"]
 # 31 = not set
 BANK_NAMES: ty.Final = "ABCDEFGHIJKLMNOPQRTUWY"
@@ -191,7 +193,8 @@ MAX_COMMENT_LEN: ty.Final = 16
 ATTENUATOR: ty.Final = ["On", "Off", "-"]
 
 
-# exclusive
+# exclusive; used only when unprotected_frequency_flag is False; so for now
+# can be ignored
 USA_FREQ_UNAVAIL_RANGES: ty.Final = [
     (823_995_000, 851_000_000),
     (866_995_000, 896_000_000),

@@ -161,7 +161,7 @@ class RealSerial:
 
     def read(self, length: int) -> bytes:
         assert self._serial
-        return self._serial.read(length)  # type: ignore
+        return self._serial.read(length)
 
     def read_frame(self) -> bytes:
         assert self._serial
