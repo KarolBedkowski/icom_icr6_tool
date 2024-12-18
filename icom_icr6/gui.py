@@ -153,7 +153,7 @@ class App(tk.Frame):
 
         radio_menu = tk.Menu(menu_bar)
         radio_menu.add_command(
-            label="Clone from radio...", command=self._on_menu_clone_to_radio
+            label="Clone from radio...", command=self._on_menu_clone_from_radio
         )
         radio_menu.add_command(
             label="Clone to radio...", command=self._on_menu_clone_to_radio
@@ -295,7 +295,9 @@ class App(tk.Frame):
         self.set_status("")
         self._update_tab_content()
 
-    def _on_menu_clone_to_radio(self, _event: tk.Event | None = None) -> None:  # type: ignore
+    def _on_menu_clone_from_radio(
+        self, _event: tk.Event | None = None
+    ) -> None:  # type: ignore
         dlg = gui_dlg_clone.CloneFromRadioDialog(self)
         if dlg.radio_memory:
             mem = dlg.radio_memory
