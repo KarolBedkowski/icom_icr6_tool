@@ -5,7 +5,11 @@
 """ """
 
 import logging
+import queue
+import threading
 import tkinter as tk
+from contextlib import suppress
+from dataclasses import dataclass
 from pathlib import Path
 from tkinter import simpledialog, ttk
 
@@ -13,6 +17,14 @@ from . import config, consts, io, model
 from .radio_memory import RadioMemory
 
 _LOG = logging.getLogger(__name__)
+
+
+@dataclass
+class _Result:
+    progress: int = 0
+    status: str = ""
+    result: object = None
+    error: str = ""
 
 
 class _CloneDialog(simpledialog.Dialog):
@@ -59,7 +71,7 @@ class _CloneDialog(simpledialog.Dialog):
     def buttonbox(self) -> None:
         box = tk.Frame(self)
 
-        w = tk.Button(
+        self._btn_ok = w = ttk.Button(
             box,
             text="Start clone",
             width=10,
@@ -67,7 +79,9 @@ class _CloneDialog(simpledialog.Dialog):
             default=tk.ACTIVE,
         )
         w.pack(side=tk.LEFT, padx=5, pady=5)
-        w = tk.Button(box, text="Cancel", width=10, command=self.cancel)
+        self._btn_cancel = w = ttk.Button(
+            box, text="Cancel", width=10, command=self.cancel
+        )
         w.pack(side=tk.LEFT, padx=5, pady=5)
 
         self.bind("<Return>", self.ok)
@@ -79,6 +93,9 @@ class _CloneDialog(simpledialog.Dialog):
 class CloneFromRadioDialog(_CloneDialog):
     def __init__(self, parent: tk.Widget) -> None:
         self.radio_memory: RadioMemory | None = None
+        self._working = False
+        self._bg_task_queue: queue.Queue[_Result] = queue.Queue()
+        self._bg_task: CloneFromTask | None = None
         super().__init__(parent, "Clone from radio")
 
     def __progress_cb(self, progress: int) -> bool:
@@ -88,29 +105,96 @@ class CloneFromRadioDialog(_CloneDialog):
         return True
 
     def ok(self, _event: tk.Event | None = None) -> None:  # type: ignore
+        if self._working:
+            return
+
+        self._working = True
         self._var_progress.set("Starting...")
         self.update_idletasks()
 
         config.CONFIG.last_port = port = self._var_port.get()
         config.CONFIG.hispeed = hispeed = bool(self._var_hispeed.get())
 
-        radio = io.Radio(port, hispeed=hispeed)
+        # disable buttons
+        self._btn_ok["state"] = "disabled"
 
+        # start bg task
+        self._bg_task = CloneFromTask(self._bg_task_queue, port, hispeed)
+        self._bg_task.start()
+        self.master.after(250, self._monitor_bg_task)
+
+    def cancel(self, _event: tk.Event | None = None) -> None:  # type: ignore
+        if self._working:
+            assert self._bg_task
+            self._bg_task.abort = True
+
+        else:
+            super().cancel()
+
+    def _monitor_bg_task(self) -> None:
+        with suppress(queue.Empty):
+            while True:
+                res = self._bg_task_queue.get_nowait()
+                if res.status == "finished":
+                    assert res.result
+                    assert isinstance(res.result, RadioMemory)
+                    self.radio_memory = res.result
+                    self._var_progress.set("Done")
+                    self.update_idletasks()
+                    super().ok()
+                    return
+
+                if res.status == "abort":
+                    self._on_stop_working("Aborted")
+                    return
+
+                if res.status == "error":
+                    self._on_stop_working(f"ERROR: {res.error}")
+                    return
+
+                if res.status == "status":
+                    self.__progress_cb(res.progress)
+
+        self.after(250, self._monitor_bg_task)
+
+    def _on_stop_working(self, msg: str) -> None:
+        self.radio_memory = None
+        self._btn_ok["state"] = ""
+        self._working = False
+        self._var_progress.set(msg)
+
+
+class CloneFromTask(threading.Thread):
+    def __init__(
+        self,
+        queue: queue.Queue[_Result],
+        port: str,
+        hispeed: bool,  # noqa: FBT001
+    ) -> None:
+        super().__init__()
+        self.queue = queue
+        self.port = port
+        self.hispeed = hispeed
+        self.abort = False
+
+    def __progress_cb(self, progress: int) -> bool:
+        self.queue.put(_Result(progress=progress, status="status"))
+        return not self.abort
+
+    def run(self) -> None:
+        radio = io.Radio(self.port, hispeed=self.hispeed)
         try:
-            self.radio_memory = radio.clone_from(self.__progress_cb)
-            self._var_progress.set("Done")
+            radio_memory = radio.clone_from(self.__progress_cb)
 
         except io.AbortError:
-            self.radio_memory = None
-            self.cancel()
+            self.queue.put(_Result(status="abort"))
 
         except Exception as err:
             _LOG.exception("clone from radio error")
-            self._var_progress.set(f"ERROR: {err}")
-            self.radio_memory = None
+            self.queue.put(_Result(status="error", error=str(err)))
 
         else:
-            super().ok()
+            self.queue.put(_Result(status="finished", result=radio_memory))
 
 
 class CloneToRadioDialog(_CloneDialog):
