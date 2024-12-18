@@ -381,24 +381,25 @@ types:
 
   settings:
     seq:
-      - id: unknown0
+      - id: padding_0x6bd0
         size: 12
         doc: pos 0x6bd0; 12x 0x20
 
       - id: unknown0_1
         size: 1
-        doc: pos 0x6bdc - 0 - padding?
+        doc: pos 0x6bdc - 0
 
       # @13
       - id: unknown1
         type: b6
+        doc: unused?
       - id: func_dial_step
         type: b2
 
       # @14
       - id: unknown2
         type: b5
-        doc: 0?
+        doc: 0? unused?
       - id: priority_scan_type
         type: b3
         enum: priority_scan_type
@@ -495,8 +496,8 @@ types:
 
       # @30
       - id: unknown8e
-        size: 1
-        doc: something related to market
+        type: u1
+        doc: something related to market, wx?
 
       # @31
       - id: unknown8f
@@ -539,7 +540,7 @@ types:
         type: b1
 
       # @38
-      - id: unknown11
+      - id: padding_0x6bf6
         size: 9
         doc: padding? 9x 0xff
 
@@ -560,7 +561,7 @@ types:
 
       # @51
       - id: unknown11c
-        size: 1
+        type: u1
 
       # @52
       - id: unknown12
@@ -616,8 +617,24 @@ types:
         doc: current memory selected; 0-1300 -> channel; 1300+ ????
 
       # @58
+      - id: padding_0x6c0a
+        type: u1
+        doc: padding? 0xff
+
+      # @59
       - id: unknown14
-        size: 6
+        type: u1
+        doc: related to market? wx?, 0x00/1
+
+      # @60
+      - id: unknown15
+        size: 2
+        doc: wx?
+
+      # @62
+      - id: padding_0x6c0e
+        size: 2
+        doc: 0xffff
 
   bank_links:
     seq:
