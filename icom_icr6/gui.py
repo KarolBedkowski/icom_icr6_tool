@@ -90,10 +90,10 @@ class App(tk.Frame):
     # create objects
 
     def _create_menu(self, master: tk.Tk) -> None:
-        menu_bar = tk.Menu(master)
+        menu_bar = tk.Menu(master, tearoff=False)
         master.config(menu=menu_bar)
 
-        file_menu = tk.Menu(menu_bar)
+        file_menu = tk.Menu(menu_bar, tearoff=False)
         file_menu.add_command(
             label="Open...",
             command=self._on_menu_file_open,
@@ -113,7 +113,7 @@ class App(tk.Frame):
         )
         master.bind_all("<Shift-Control-s>", self._on_menu_file_save_as)
 
-        self._last_files_menu = tk.Menu(file_menu)
+        self._last_files_menu = tk.Menu(file_menu, tearoff=False)
         self._fill_menu_last_files()
         file_menu.add_cascade(
             label="Last files...", menu=self._last_files_menu
@@ -129,7 +129,7 @@ class App(tk.Frame):
         file_menu.add_command(label="Exit", command=self.quit)
         menu_bar.add_cascade(label="File", menu=file_menu)
 
-        self.__menu_edit = edit_menu = tk.Menu(menu_bar)
+        self.__menu_edit = edit_menu = tk.Menu(menu_bar, tearoff=False)
         edit_menu.add_command(
             label="Undo",
             command=self._on_menu_undo,
@@ -151,7 +151,7 @@ class App(tk.Frame):
         master.bind_all("<Control-f>", self._on_menu_find)
         menu_bar.add_cascade(label="Edit", menu=edit_menu)
 
-        radio_menu = tk.Menu(menu_bar)
+        radio_menu = tk.Menu(menu_bar, tearoff=False)
         radio_menu.add_command(
             label="Clone from radio...", command=self._on_menu_clone_from_radio
         )
@@ -163,12 +163,12 @@ class App(tk.Frame):
         )
         menu_bar.add_cascade(label="Radio", menu=radio_menu)
 
-        help_menu = tk.Menu(menu_bar)
+        help_menu = tk.Menu(menu_bar, tearoff=False)
         help_menu.add_command(label="About", command=self._on_menu_about)
         menu_bar.add_cascade(label="Help", menu=help_menu)
 
     def _create_menu_export(self, parent: tk.Menu) -> tk.Menu:
-        menu = tk.Menu(parent)
+        menu = tk.Menu(parent, tearoff=False)
         menu.add_command(
             label="Channels...",
             command=lambda: self._on_menu_export("channels"),
