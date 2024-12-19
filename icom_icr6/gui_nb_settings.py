@@ -67,12 +67,55 @@ class SettingsPage(tk.Frame):
 
     def _create_fields(self) -> None:
         frame = tk.Frame(self)
+        frame.columnconfigure(0, weight=1)
+        frame.columnconfigure(1, weight=1)
+        frame.columnconfigure(2, weight=1)
+
+        sframe = tk.Frame(frame)
+        self._create_set_mode(sframe).pack(
+            side=tk.TOP, expand=True, fill=tk.BOTH, padx=12, pady=12
+        )
+        self._create_sound(sframe).pack(
+            side=tk.TOP, expand=True, fill=tk.BOTH, padx=12, pady=12
+        )
+        self._create_civ(sframe).pack(
+            side=tk.TOP, expand=True, fill=tk.BOTH, padx=12, pady=12
+        )
+        sframe.grid(row=0, column=0, sticky=tk.W + tk.N + tk.W + tk.S)
+
+        sframe = tk.Frame(frame)
+        self._create_display(sframe).pack(
+            side=tk.TOP, expand=True, fill=tk.BOTH, padx=12, pady=12
+        )
+        self._create_antenna(sframe).pack(
+            side=tk.TOP, expand=True, fill=tk.BOTH, padx=12, pady=12
+        )
+        self._create_affilter(sframe).pack(
+            side=tk.TOP, expand=True, fill=tk.BOTH, padx=12, pady=12
+        )
+        self._create_power(sframe).pack(
+            side=tk.TOP, expand=True, fill=tk.BOTH, padx=12, pady=12
+        )
+        sframe.grid(row=0, column=1, sticky=tk.W + tk.N + tk.W + tk.S)
+
+        sframe = tk.Frame(frame)
+        self._create_scan(sframe).pack(
+            side=tk.TOP, expand=True, fill=tk.BOTH, padx=12, pady=12
+        )
+        self._create_radio(sframe).pack(
+            side=tk.TOP, expand=True, fill=tk.BOTH, padx=12, pady=12
+        )
+        ttk.Button(sframe, text="Update", command=self.__on_update).pack(
+            side=tk.RIGHT, padx=12, pady=12
+        )
+        sframe.grid(row=0, column=2, sticky=tk.W + tk.N + tk.W + tk.S)
+
+        frame.pack(fill=tk.X, side=tk.TOP, padx=12, pady=12)
+
+    def _create_set_mode(self, parent: tk.Frame) -> tk.Widget:
+        frame = ttk.LabelFrame(parent, text="Set/Mode")
         frame.columnconfigure(0, weight=0)
         frame.columnconfigure(1, weight=1)
-        frame.columnconfigure(2, weight=0)
-        frame.columnconfigure(3, weight=1)
-        frame.columnconfigure(4, weight=0)
-        frame.columnconfigure(5, weight=1)
 
         new_combo(
             frame,
@@ -84,37 +127,40 @@ class SettingsPage(tk.Frame):
         )
         new_combo(
             frame,
+            1,
             0,
-            2,
             "Dial function",
             self._var_dial_function,
             consts.SETT_DIAL_FUNCTION,
         )
-        new_checkbox(frame, 0, 4, "Dial speed up", self._var_dial_speed_up)
 
-        new_checkbox(frame, 1, 0, "Auto power save", self._var_power_save)
-        new_checkbox(frame, 1, 2, "Auto power off", self._var_auto_power_off)
+        new_checkbox(
+            frame, 2, 0, "Dial speed up", self._var_dial_speed_up, colspan=2
+        )
 
-        new_checkbox(frame, 2, 0, "Key beep", self._var_key_beep)
+        new_combo(
+            frame, 3, 0, "Monitor", self._var_monitor, consts.SETT_MONITOR
+        )
+
+        return frame
+
+    def _create_power(self, parent: tk.Frame) -> tk.Widget:
+        frame = ttk.LabelFrame(parent, text="Power")
+        frame.columnconfigure(0, weight=1)
+
+        new_checkbox(frame, 0, 0, "Auto power save", self._var_power_save)
+        new_checkbox(frame, 0, 1, "Auto power off", self._var_auto_power_off)
+
+        return frame
+
+    def _create_display(self, parent: tk.Frame) -> tk.Widget:
+        frame = ttk.LabelFrame(parent, text="Display")
+        frame.columnconfigure(0, weight=0)
+        frame.columnconfigure(1, weight=1)
+
         new_combo(
             frame,
-            2,
-            2,
-            "Beep level",
-            self._var_beep_level,
-            consts.SETT_BEEP_LEVEL,
-        )
-
-        new_combo(
-            frame, 3, 0, "Key lock", self._var_key_lock, consts.SETT_KEY_LOCK
-        )
-        new_combo(
-            frame, 3, 2, "Monitor", self._var_monitor, consts.SETT_MONITOR
-        )
-
-        new_combo(
-            frame,
-            4,
+            0,
             0,
             "Backlight",
             self._var_backlight,
@@ -122,35 +168,132 @@ class SettingsPage(tk.Frame):
         )
         new_combo(
             frame,
-            4,
-            2,
+            1,
+            0,
             "Memory display type",
             self._var_mem_display_type,
             consts.SETT_MEM_DISPLAY_TYPE,
         )
         new_combo(
             frame,
-            4,
-            4,
+            2,
+            0,
             "LCD contrast",
             self._var_lcd_contrast,
             consts.SETT_LCD_CONTRAST,
         )
 
+        return frame
+
+    def _create_antenna(self, parent: tk.Frame) -> tk.Widget:
+        frame = ttk.LabelFrame(parent, text="Antenna")
+        frame.columnconfigure(0, weight=0)
+        frame.columnconfigure(1, weight=1)
+
         new_combo(
-            frame, 5, 0, "AM Antenna", self._var_am_ant, consts.SETT_AM_ANT
+            frame, 0, 0, "AM Antenna", self._var_am_ant, consts.SETT_AM_ANT
         )
         new_combo(
-            frame, 5, 2, "FM Antenna", self._var_fm_ant, consts.SETT_FM_ANT
+            frame, 1, 0, "FM Antenna", self._var_fm_ant, consts.SETT_FM_ANT
         )
 
-        new_checkbox(frame, 6, 0, "AM AF filter", self._var_af_filer_am)
-        new_checkbox(frame, 6, 2, "FM AF filter", self._var_af_filer_fm)
-        new_checkbox(frame, 6, 4, "WFM AF filter", self._var_af_filer_wfm)
+        return frame
+
+    def _create_affilter(self, parent: tk.Frame) -> tk.Widget:
+        frame = ttk.LabelFrame(parent, text="AF Filter")
+        frame.columnconfigure(0, weight=1)
+        frame.columnconfigure(1, weight=1)
+        frame.columnconfigure(2, weight=1)
+
+        new_checkbox(frame, 0, 0, "AM", self._var_af_filer_am)
+        new_checkbox(frame, 0, 1, "FM", self._var_af_filer_fm)
+        new_checkbox(frame, 0, 2, "WFM", self._var_af_filer_wfm)
+
+        return frame
+
+    def _create_scan(self, parent: tk.Frame) -> tk.Widget:
+        frame = ttk.LabelFrame(parent, text="Scan")
+        frame.columnconfigure(0, weight=0)
+        frame.columnconfigure(1, weight=1)
+
+        new_checkbox(
+            frame,
+            0,
+            0,
+            "Program skip scan",
+            self._var_program_skip_scan,
+            colspan=2,
+        )
+        new_combo(
+            frame,
+            1,
+            0,
+            "Scan pause timer",
+            self._var_pause_timer,
+            consts.SETT_PAUSE_TIMER,
+        )
+        new_combo(
+            frame,
+            2,
+            0,
+            "Scan resume timer",
+            self._var_resume_timer,
+            consts.SETT_RESUME_TIMER,
+        )
+        new_checkbox(
+            frame, 3, 0, "Scan stop beep", self._var_stop_beep, colspan=2
+        )
+        return frame
+
+    def _create_civ(self, parent: tk.Frame) -> tk.Widget:
+        frame = ttk.LabelFrame(parent, text="CI-V")
+        frame.columnconfigure(0, weight=0)
+        frame.columnconfigure(1, weight=1)
 
         new_combo(
             frame,
-            7,
+            0,
+            0,
+            "CIV baud rate",
+            self._var_civ_baud_rate,
+            consts.SETT_CIV_BAUD_RATE,
+        )
+        new_entry(frame, 1, 0, "CIV address", self._var_civ_address)
+        new_checkbox(
+            frame, 2, 0, "CIV transceive", self._var_civ_transceive, colspan=2
+        )
+
+        return frame
+
+    def _create_sound(self, parent: tk.Frame) -> tk.Widget:
+        frame = ttk.LabelFrame(parent, text="Sounds")
+        frame.columnconfigure(0, weight=0)
+        frame.columnconfigure(1, weight=1)
+
+        new_checkbox(frame, 0, 0, "Key beep", self._var_key_beep, colspan=2)
+        new_combo(
+            frame,
+            1,
+            0,
+            "Beep level",
+            self._var_beep_level,
+            consts.SETT_BEEP_LEVEL,
+        )
+
+        return frame
+
+    def _create_radio(self, parent: tk.Frame) -> tk.Widget:
+        frame = ttk.LabelFrame(parent, text="Radio")
+        frame.columnconfigure(0, weight=0)
+        frame.columnconfigure(1, weight=1)
+
+        new_combo(
+            frame, 0, 0, "Key lock", self._var_key_lock, consts.SETT_KEY_LOCK
+        )
+
+        new_combo(
+            frame,
+            1,
             0,
             "Charge type",
             self._var_charging_type,
@@ -158,50 +301,14 @@ class SettingsPage(tk.Frame):
             colspan=3,
         )
 
-        new_checkbox(frame, 8, 0, "Set expand", self._var_set_expand)
-
-        new_checkbox(
-            frame, 9, 0, "Program skip scan", self._var_program_skip_scan
-        )
-        new_combo(
-            frame,
-            9,
-            2,
-            "Scan pause timer",
-            self._var_pause_timer,
-            consts.SETT_PAUSE_TIMER,
-        )
-        new_combo(
-            frame,
-            9,
-            4,
-            "Scan resume timer",
-            self._var_resume_timer,
-            consts.SETT_RESUME_TIMER,
-        )
-        new_checkbox(frame, 10, 0, "Scan stop beep", self._var_stop_beep)
-
-        new_combo(
-            frame,
-            11,
-            0,
-            "CIV baud rate",
-            self._var_civ_baud_rate,
-            consts.SETT_CIV_BAUD_RATE,
-        )
-        new_entry(frame, 11, 2, "CIV address", self._var_civ_address)
-        new_checkbox(frame, 11, 4, "CIV transceive", self._var_civ_transceive)
+        new_checkbox(frame, 2, 0, "Set expand", self._var_set_expand)
 
         validator = self.register(validate_comment)
         new_entry(
-            frame, 12, 0, "Comment", self._var_comment, validator=validator
+            frame, 3, 0, "Comment", self._var_comment, validator=validator
         )
 
-        ttk.Button(frame, text="Update", command=self.__on_update).grid(
-            row=13, column=5, sticky=tk.E
-        )
-
-        frame.pack(fill=tk.X, side=tk.TOP, padx=12, pady=12)
+        return frame
 
     def __update(self) -> None:
         sett = self._radio_memory.settings

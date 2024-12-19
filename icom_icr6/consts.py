@@ -163,8 +163,8 @@ SETT_LCD_CONTRAST: ty.Final = list("12345")
 SETT_KEY_LOCK: ty.Final = ["Normal", "No SQL", "No Vol", "ALL"]
 SETT_MONITOR: ty.Final = ["Push", "Hold"]
 SETT_CHARGER_TYPE: ty.Final = [
-    "CHG1 (stop charging after 15h)",
-    "CHG2 (continue charging after 15h",
+    "CHG1 (stop after 15h)",
+    "CHG2 (continue after 15h)",
 ]
 SETT_PAUSE_TIMER: ty.Final = [f"{x}sec" for x in range(2, 22, 2)] + ["Hold"]
 SETT_RESUME_TIMER: ty.Final = [f"{x}sec" for x in range(6)] + ["Hold"]

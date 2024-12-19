@@ -73,7 +73,13 @@ def new_combo(  # noqa: PLR0913
 
 
 def new_checkbox(
-    parent: tk.Widget, row: int, col: int, label: str, var: tk.Variable
+    parent: tk.Widget,
+    row: int,
+    col: int,
+    label: str,
+    var: tk.Variable,
+    *,
+    colspan: int = 1,
 ) -> tk.Checkbutton:
     cbox = tk.Checkbutton(
         parent,
@@ -82,5 +88,12 @@ def new_checkbox(
         onvalue=1,
         offvalue=0,
     )
-    cbox.grid(row=row, column=col, sticky=tk.N + tk.W + tk.S, padx=6, pady=6)
+    cbox.grid(
+        row=row,
+        column=col,
+        sticky=tk.N + tk.W + tk.S,
+        padx=6,
+        pady=6,
+        columnspan=colspan,
+    )
     return cbox
