@@ -404,6 +404,10 @@ class Radio:
             # clone out
             self._start_clone(s, CMD_CLONE_OUT)
 
+            if cb and not cb(0):
+                self._send_abort(s)
+                raise AbortError
+
             mem = RadioMemory()
             for idx in itertools.count():
                 if frame := self.read_frame(s):
@@ -417,6 +421,7 @@ class Radio:
 
                     total_length += length
                     if cb and not cb(total_length):
+                        self._send_abort(s)
                         raise AbortError
 
             return mem
@@ -435,6 +440,9 @@ class Radio:
         with self._open_serial("clone_to") as s:
             # clone in
             self._start_clone(s, CMD_CLONE_IN)
+
+            if cb and not cb(0):
+                raise AbortError
 
             # send in 32bytes chunks
             for addr in range(0, consts.MEM_SIZE, 32):
@@ -471,11 +479,16 @@ class Radio:
                     # raise OutOfSyncError
 
                 if cb and not cb(addr):
+                    self._send_abort(s)
                     raise AbortError
 
                 prev_send_frame = frame
 
             return self._clone_to_send_end(s)
+
+    def _send_abort(self, s: Serial) -> None:
+        _LOG.warning("sending jammer message")
+        self._write(s, b"\xfc" * 5)
 
     def _clone_to_send_end(self, s: Serial) -> bool:
         _LOG.debug("send clone end")
