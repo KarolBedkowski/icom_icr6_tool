@@ -42,10 +42,9 @@ class ScanLinksPage(tk.Frame):
         pw.pack(expand=True, fill=tk.BOTH, side=tk.TOP, padx=12, pady=12)
 
     def update_tab(self) -> None:
-        self._scan_links_list.selection_set(self._last_selected_sl)
-
         self.__update_scan_links_list()
         self.__update_scan_edges()
+        self._scan_links_list.selection_set(self._last_selected_sl)
         self.__on_select_scan_link()
 
     @property
@@ -73,12 +72,10 @@ class ScanLinksPage(tk.Frame):
         )
         self._btn_update.grid(row=0, column=3, sticky=tk.E)
 
-        fields.pack(side=tk.TOP, fill=tk.X, ipady=6)
+        fields.pack(side=tk.TOP, fill=tk.X)
 
     def _create_buttons(self, parent: tk.Frame) -> None:
-        frame = tk.Frame(parent, borderwidth=6)
-        frame.columnconfigure(0, weight=0)
-        frame.columnconfigure(1, weight=1)
+        frame = tk.Frame(parent)
 
         self._btn_deselect = ttk.Button(
             frame,
@@ -86,14 +83,14 @@ class ScanLinksPage(tk.Frame):
             command=self.__on_de_select,
             state="disabled",
         )
-        self._btn_deselect.grid(row=3, column=0, sticky=tk.E)
+        self._btn_deselect.pack(side=tk.LEFT)
 
-        frame.pack(side=tk.BOTTOM, fill=tk.X, ipady=6)
+        frame.pack(side=tk.BOTTOM, fill=tk.X)
 
     def _create_scan_edges_list(self, parent: tk.Frame) -> None:
         self._scan_links_edges = gui_scanlinkslist.ScanLnksList(parent)
         self._scan_links_edges.pack(
-            side=tk.TOP, expand=True, fill=tk.BOTH, ipady=6
+            side=tk.TOP, expand=True, fill=tk.BOTH, pady=6
         )
 
         self._scan_links_edges.on_record_update = self.__on_scan_edge_updated

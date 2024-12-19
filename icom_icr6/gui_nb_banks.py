@@ -113,11 +113,11 @@ class BanksPage(tk.Frame):
         )
         self._btn_update.grid(row=0, column=3, sticky=tk.E, padx=6)
 
-        fields.pack(side=tk.TOP, fill=tk.X, ipady=6)
+        fields.pack(side=tk.TOP, fill=tk.X)
 
     def _create_chan_list(self, frame: tk.Frame) -> None:
         self._chan_list = gui_bankchanlist.ChannelsList(frame)
-        self._chan_list.pack(side=tk.TOP, expand=True, fill=tk.BOTH, ipady=6)
+        self._chan_list.pack(side=tk.TOP, expand=True, fill=tk.BOTH, pady=6)
 
         self._chan_list.on_record_selected = self._on_channel_select  # type: ignore
         self._chan_list.on_record_update = self._on_channel_update  # type: ignore
@@ -133,7 +133,7 @@ class BanksPage(tk.Frame):
         )
         self._btn_sort.pack(side=tk.LEFT)
 
-        bframe.pack(side=tk.BOTTOM, fill=tk.X, ipady=6)
+        bframe.pack(side=tk.BOTTOM, fill=tk.X)
 
     def _on_bank_select(self, _event: tk.Event) -> None:  # type: ignore
         self._chan_list.reset(scroll_top=True)
@@ -218,8 +218,11 @@ class BanksPage(tk.Frame):
         self._update_banks_list()
 
     def _on_channel_select(self, rows: list[gui_bankchanlist.BLRow]) -> None:
-        if len(rows) > 1:
-            self._btn_sort["state"] = "normal"
+        self._btn_sort["state"] = "normal" if len(rows) > 1 else "disabled"
+
+        if _LOG.isEnabledFor(logging.DEBUG):
+            for rec in rows:
+                _LOG.debug("chan selected: %r", rec.channel)
 
     def _on_channel_update(
         self, action: str, rows: ty.Collection[gui_bankchanlist.BLRow]

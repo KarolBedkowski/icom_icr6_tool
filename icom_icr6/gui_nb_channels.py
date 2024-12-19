@@ -78,7 +78,7 @@ class ChannelsPage(tk.Frame):
         self._chan_list.on_record_update = self.__on_channel_update
         self._chan_list.on_record_selected = self.__on_channel_select
         self._chan_list.on_channel_bank_validate = self.__on_channel_bank_set
-        self._chan_list.pack(side=tk.TOP, expand=True, fill=tk.BOTH, ipady=6)
+        self._chan_list.pack(side=tk.TOP, expand=True, fill=tk.BOTH, pady=6)
         self._chan_list.sheet.bind("<Control-c>", self.__on_channel_copy)
         self._chan_list.sheet.bind("<Control-v>", self.__on_channel_paste)
 
@@ -99,7 +99,7 @@ class ChannelsPage(tk.Frame):
         )
         self._btn_fill.pack(side=tk.LEFT)
 
-        bframe.pack(side=tk.BOTTOM, fill=tk.X, ipady=6)
+        bframe.pack(side=tk.BOTTOM, fill=tk.X)
 
     def __on_group_select(self, _event: tk.Event) -> None:  # type: ignore
         self._chan_list.reset(scroll_top=True)
@@ -167,7 +167,7 @@ class ChannelsPage(tk.Frame):
             self._show_stats()
 
     @property
-    def _selected_range(self) -> int | None:
+    def _selected_group(self) -> int | None:
         if sel := self._groups_list.curselection():  # type: ignore
             return sel[0]  # type: ignore
 
@@ -176,11 +176,11 @@ class ChannelsPage(tk.Frame):
     def __do_move_channels(
         self, rows: ty.Collection[gui_chanlist.Row]
     ) -> None:
-        selected_range = self._selected_range
-        if selected_range is None:
+        sel_group = self._selected_group
+        if sel_group is None:
             return
 
-        range_start = selected_range * 100
+        range_start = sel_group * 100
         channels = []
 
         for rec in rows:
@@ -194,21 +194,22 @@ class ChannelsPage(tk.Frame):
         self.__update_chan_list()
 
     def __on_channel_select(self, rows: list[gui_chanlist.Row]) -> None:
-        if len(rows) > 1:
-            self._btn_sort["state"] = "normal"
-            self._btn_fill["state"] = "normal"
+        btn_state = "normal" if len(rows) > 1 else "disabled"
+        self._btn_sort["state"] = btn_state
+        self._btn_fill["state"] = btn_state
 
-        for rec in rows:
-            _LOG.debug("chan selected: %r", rec.channel)
+        if _LOG.isEnabledFor(logging.DEBUG):
+            for rec in rows:
+                _LOG.debug("chan selected: %r", rec.channel)
 
     def __update_chan_list(self, _event: tk.Event | None = None) -> None:  # type: ignore
-        selected_range = self._selected_range
-        if selected_range is None:
+        sel_group = self._selected_group
+        if sel_group is None:
             return
 
-        self._last_selected_group = selected_range
+        self._last_selected_group = sel_group
 
-        range_start = selected_range * 100
+        range_start = sel_group * 100
         self._chan_list.set_data(
             self._radio_memory.channels[range_start : range_start + 100]
         )
