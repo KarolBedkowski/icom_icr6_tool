@@ -1,11 +1,20 @@
-- export / import data
-- handle errors
-- how to read region from radio? from serial number? - add support for clone from US radio
+v1.0
+
 - validation / show errors
+- handle errors
+
+
+v2.0
+
+- export / import data in bank/group
 - reorder banks
 - reorder scan links
 - reorder scan edges on delete (?)
-- repeat on clone errors, collision detect; abort with xfc;
-- toolbar
-- statistics
+
+asap
+
+- how to read region from radio? from serial number? - add support for clone from US radio
+
+other:
 - monitor
+- statistics
