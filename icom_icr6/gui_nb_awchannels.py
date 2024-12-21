@@ -30,7 +30,7 @@ class AutoWriteChannelsPage(tk.Frame):
     def update_tab(self, channel_number: int | None = None) -> None:
         # hide canceller in global models
         self._chan_list.set_hide_canceller(
-            hide=not self._radio_memory.is_usa_model()
+            hide=not self._radio_memory.is_japan_model()
         )
 
         self._update_channels_list(select=channel_number)

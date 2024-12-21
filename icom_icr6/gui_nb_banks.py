@@ -66,7 +66,7 @@ class BanksPage(tk.Frame):
     ) -> None:
         # hide canceller in global models
         self._chan_list.set_hide_canceller(
-            hide=not self._radio_memory.is_usa_model()
+            hide=not self._radio_memory.is_japan_model()
         )
 
         if bank is not None:
