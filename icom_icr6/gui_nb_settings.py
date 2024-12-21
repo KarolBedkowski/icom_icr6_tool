@@ -75,47 +75,52 @@ class SettingsPage(tk.Frame):
         frame.columnconfigure(1, weight=1)
         frame.columnconfigure(2, weight=1)
 
-        self._left_frame = sframe = tk.Frame(frame)
+        sframe = tk.Frame(frame)
         self._create_set_mode(sframe).pack(
-            side=tk.TOP, expand=True, fill=tk.BOTH, padx=12, pady=12
+            side=tk.TOP, expand=False, fill=tk.BOTH, padx=12, pady=12
         )
         self._create_sound(sframe).pack(
-            side=tk.TOP, expand=True, fill=tk.BOTH, padx=12, pady=12
+            side=tk.TOP, expand=False, fill=tk.BOTH, padx=12, pady=12
         )
-        self._create_civ(sframe).pack(
-            side=tk.TOP, expand=True, fill=tk.BOTH, padx=12, pady=12
+        self._create_scan(sframe).pack(
+            side=tk.TOP, expand=False, fill=tk.BOTH, padx=12, pady=12
         )
-
         sframe.grid(row=0, column=0, sticky=tk.W + tk.N + tk.W + tk.S)
 
         sframe = tk.Frame(frame)
         self._create_display(sframe).pack(
-            side=tk.TOP, expand=True, fill=tk.BOTH, padx=12, pady=12
-        )
-        self._create_antenna(sframe).pack(
-            side=tk.TOP, expand=True, fill=tk.BOTH, padx=12, pady=12
-        )
-        self._create_affilter(sframe).pack(
-            side=tk.TOP, expand=True, fill=tk.BOTH, padx=12, pady=12
+            side=tk.TOP, expand=False, fill=tk.BOTH, padx=12, pady=12
         )
         self._create_power(sframe).pack(
-            side=tk.TOP, expand=True, fill=tk.BOTH, padx=12, pady=12
+            side=tk.TOP, expand=False, fill=tk.BOTH, padx=12, pady=12
         )
+        self._create_antenna(sframe).pack(
+            side=tk.TOP, expand=False, fill=tk.BOTH, padx=12, pady=12
+        )
+        self._create_affilter(sframe).pack(
+            side=tk.TOP, expand=False, fill=tk.BOTH, padx=12, pady=12
+        )
+
         sframe.grid(row=0, column=1, sticky=tk.W + tk.N + tk.W + tk.S)
 
-        sframe = tk.Frame(frame)
-        self._create_scan(sframe).pack(
-            side=tk.TOP, expand=True, fill=tk.BOTH, padx=12, pady=12
+        self._right_frame = sframe = tk.Frame(frame)
+        self._create_civ(sframe).pack(
+            side=tk.TOP, expand=False, fill=tk.BOTH, padx=12, pady=12
         )
         self._create_radio(sframe).pack(
-            side=tk.TOP, expand=True, fill=tk.BOTH, padx=12, pady=12
-        )
-        ttk.Button(sframe, text="Update", command=self.__on_update).pack(
-            side=tk.RIGHT, padx=12, pady=12
+            side=tk.TOP, expand=False, fill=tk.BOTH, padx=12, pady=12
         )
         sframe.grid(row=0, column=2, sticky=tk.W + tk.N + tk.W + tk.S)
 
         frame.pack(fill=tk.X, side=tk.TOP, padx=12, pady=12)
+
+        frame_btns = tk.Frame(self)
+        frame_btns.columnconfigure(0, weight=1)
+        ttk.Button(frame_btns, text="Update", command=self.__on_update).grid(
+            row=0, column=0, sticky=tk.E + tk.N
+        )
+
+        frame_btns.pack(side=tk.TOP, fill=tk.X, padx=12, pady=12)
 
     def _create_set_mode(self, parent: tk.Frame) -> tk.Widget:
         frame = ttk.LabelFrame(parent, text="Set/Mode")
@@ -152,6 +157,7 @@ class SettingsPage(tk.Frame):
     def _create_power(self, parent: tk.Frame) -> tk.Widget:
         frame = ttk.LabelFrame(parent, text="Power")
         frame.columnconfigure(0, weight=1)
+        frame.columnconfigure(1, weight=1)
 
         new_checkbox(frame, 0, 0, "Auto power save", self._var_power_save)
         new_checkbox(frame, 0, 1, "Auto power off", self._var_auto_power_off)
@@ -227,8 +233,8 @@ class SettingsPage(tk.Frame):
             0,
             "Program skip scan",
             self._var_program_skip_scan,
-            colspan=2,
         )
+        new_checkbox(frame, 0, 1, "Scan stop beep", self._var_stop_beep)
         new_combo(
             frame,
             1,
@@ -244,9 +250,6 @@ class SettingsPage(tk.Frame):
             "Scan resume timer",
             self._var_resume_timer,
             consts.SETT_RESUME_TIMER,
-        )
-        new_checkbox(
-            frame, 3, 0, "Scan stop beep", self._var_stop_beep, colspan=2
         )
         return frame
 
@@ -319,7 +322,7 @@ class SettingsPage(tk.Frame):
         if self._wx_frame is not None:
             return
 
-        parent = self._left_frame
+        parent = self._right_frame
 
         self._wx_frame = frame = ttk.LabelFrame(parent, text="WX")
         frame.columnconfigure(0, weight=0)
@@ -342,7 +345,7 @@ class SettingsPage(tk.Frame):
             consts.WX_CHANNELS,
             colspan=3,
         )
-        frame.pack(side=tk.TOP, expand=True, fill=tk.BOTH, padx=12, pady=12)
+        frame.pack(side=tk.TOP, expand=False, fill=tk.BOTH, padx=12, pady=12)
 
     def __update(self) -> None:
         sett = self._radio_memory.settings
