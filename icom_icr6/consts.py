@@ -192,6 +192,7 @@ MAX_COMMENT_LEN: ty.Final = 16
 # used in scanedge
 ATTENUATOR: ty.Final = ["On", "Off", "-"]
 
+WX_CHANNELS = list(map(str, range(1, 11)))
 
 # exclusive; used only when unprotected_frequency_flag is False; so for now
 # can be ignored

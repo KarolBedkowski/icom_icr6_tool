@@ -495,9 +495,9 @@ types:
         type: b3
 
       # @30
-      - id: unknown8e
+      - id: wx_alert
         type: u1
-        doc: something related to market, wx?
+        doc: 0=off, 1=on
 
       # @31
       - id: unknown8f
@@ -622,14 +622,14 @@ types:
         doc: padding? 0xff
 
       # @59
-      - id: unknown14
+      - id: wx_channel
         type: u1
-        doc: related to market? wx?, 0x00/1
+        doc: wx channel - 0-9 -> 1-10
 
       # @60
       - id: unknown15
         size: 2
-        doc: wx?
+        doc:
 
       # @62
       - id: padding_0x6c0e

@@ -924,6 +924,8 @@ class RadioSettings:
     resume_timer: int  # 0 -6
     set_expand: bool
     stop_beep: bool
+    wx_alert: bool
+    wx_channel: int  # 0-9 -> 1-10
 
     debug_info: dict[str, object] | None = None
     updated: bool = False
@@ -985,6 +987,8 @@ class RadioSettings:
             dial_function=(data[52] & 0b00010000) >> 4,
             mem_display_type=data[52] & 0b00000011,
             program_skip_scan=bool(data[53] & 0b00001000),
+            wx_alert=bool(data[30]),
+            wx_channel=data[59],
             debug_info=debug_info,
         )
 
@@ -1005,6 +1009,7 @@ class RadioSettings:
         data_set(data, 27, 0b111, self.resume_timer)
         data_set_bit(data, 28, 0, self.stop_beep)
         data_set(data, 29, 0b111, self.lcd_contrast)
+        data[30] = 1 if self.wx_alert else 0
         data_set_bit(data, 31, 0, self.af_filer_fm)
         data_set_bit(data, 32, 0, self.af_filer_wfm)
         data_set_bit(data, 33, 0, self.af_filer_am)
@@ -1015,6 +1020,7 @@ class RadioSettings:
         data_set_bit(data, 52, 4, self.dial_function)
         data_set(data, 52, 0b11, self.mem_display_type)
         data_set_bit(data, 53, 3, self.program_skip_scan)
+        data[59] = max(min(self.wx_channel, 9), 0)
 
 
 @dataclass

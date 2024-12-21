@@ -18,6 +18,8 @@ _LOG = logging.getLogger(__name__)
 
 class SettingsPage(tk.Frame):
     def __init__(self, parent: tk.Widget, cm: ChangeManeger) -> None:
+        self._wx_frame: tk.Widget | None = None
+
         super().__init__(parent)
 
         self._change_manager = cm
@@ -62,6 +64,8 @@ class SettingsPage(tk.Frame):
         self._var_af_filer_wfm = gui_model.BoolVar()
         self._var_af_filer_am = gui_model.BoolVar()
         self._var_charging_type = gui_model.ListVar(consts.SETT_CHARGER_TYPE)
+        self._var_wx_alert = gui_model.BoolVar()
+        self._var_wx_channel = gui_model.ListVar(consts.WX_CHANNELS)
 
         self._var_comment = tk.StringVar()
 
@@ -71,7 +75,7 @@ class SettingsPage(tk.Frame):
         frame.columnconfigure(1, weight=1)
         frame.columnconfigure(2, weight=1)
 
-        sframe = tk.Frame(frame)
+        self._left_frame = sframe = tk.Frame(frame)
         self._create_set_mode(sframe).pack(
             side=tk.TOP, expand=True, fill=tk.BOTH, padx=12, pady=12
         )
@@ -81,6 +85,7 @@ class SettingsPage(tk.Frame):
         self._create_civ(sframe).pack(
             side=tk.TOP, expand=True, fill=tk.BOTH, padx=12, pady=12
         )
+
         sframe.grid(row=0, column=0, sticky=tk.W + tk.N + tk.W + tk.S)
 
         sframe = tk.Frame(frame)
@@ -310,6 +315,35 @@ class SettingsPage(tk.Frame):
 
         return frame
 
+    def _create_wx(self) -> None:
+        if self._wx_frame is not None:
+            return
+
+        parent = self._left_frame
+
+        self._wx_frame = frame = ttk.LabelFrame(parent, text="WX")
+        frame.columnconfigure(0, weight=0)
+        frame.columnconfigure(1, weight=1)
+
+        new_checkbox(
+            frame,
+            0,
+            0,
+            "WX alert",
+            self._var_wx_alert,
+            colspan=2,
+        )
+        new_combo(
+            frame,
+            1,
+            0,
+            "WX channel",
+            self._var_wx_channel,
+            consts.WX_CHANNELS,
+            colspan=3,
+        )
+        frame.pack(side=tk.TOP, expand=True, fill=tk.BOTH, padx=12, pady=12)
+
     def __update(self) -> None:
         sett = self._radio_memory.settings
 
@@ -339,6 +373,14 @@ class SettingsPage(tk.Frame):
         self._var_af_filer_wfm.set_raw(sett.af_filer_wfm)
         self._var_af_filer_am.set_raw(sett.af_filer_am)
         self._var_charging_type.set_raw(sett.charging_type)
+
+        if self._radio_memory.is_usa_model():
+            self._create_wx()
+            self._var_wx_alert.set(sett.wx_alert)
+            self._var_wx_channel.set_raw(sett.wx_channel)
+        elif self._wx_frame:
+            self._wx_frame.destroy()
+            self._wx_frame = None
 
         self._var_comment.set(self._radio_memory.comment)
 
@@ -373,6 +415,10 @@ class SettingsPage(tk.Frame):
         sett.af_filer_wfm = self._var_af_filer_wfm.get_raw()
         sett.af_filer_am = self._var_af_filer_am.get_raw()
         sett.charging_type = self._var_charging_type.get_raw()
+
+        if self._radio_memory.is_usa_model():
+            sett.wx_alert = self._var_wx_alert.get_raw()
+            sett.wx_channel = self._var_wx_channel.get_raw()
 
         self._change_manager.set_settings(sett)
         self._change_manager.set_comment(self._var_comment.get())
