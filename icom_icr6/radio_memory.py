@@ -35,7 +35,7 @@ class Region(StrEnum):
         there are also some unknown flags at last two bit. Rest is some
         checksum?."""
         etc = int(etcdata, 16)
-        area = ((etc & 0b1110000000) >> 5) | ((etc & 0b11000) >> 3)
+        area = ((etc & 0b1110000000) >> 5) | ((etc & 0b110000) >> 4)
         match area:
             case 0 | 14 | 15:
                 return Region.JAPAN
@@ -53,13 +53,6 @@ class RadioMemory:
 
         self.file_comment = ""
         self.file_maprev = "1"
-        # 001A = EU, 0003 = USA, 002A - ?
-        # for USA - canceller is available
-        # probably last 4bits are region:
-        # - 0,6,8,9,b,e,f -> Japan ?
-        # - 3 -> USA ?
-        # - d -> France
-        # - other -> global
         self.file_etcdata = "001A"
         self.region = Region.GLOBAL
 
@@ -116,6 +109,7 @@ class RadioMemory:
         self._load_bands()
 
         self.region = Region.from_etcdata(self.file_etcdata)
+        _LOG.debug("region: %r", self.region)
 
     def commit(self) -> None:
         """Write data to mem."""
@@ -189,6 +183,9 @@ class RadioMemory:
 
     def is_japan_model(self) -> bool:
         return self.region == Region.JAPAN
+
+    def is_usa_model(self) -> bool:
+        return self.region == Region.USA
 
     def validate_loaded_data(self) -> None:
         # check for doubled banks entries
