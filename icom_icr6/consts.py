@@ -278,7 +278,7 @@ def default_tuning_step_for_freq(freq: int) -> int:
 
 # predefined bands
 # Japan, Brazil
-BANDS_REG_JAP: ty.Final = [
+BANDS_JAP: ty.Final = [
     495_000,
     1_625_000,
     30_000_000,
@@ -309,7 +309,7 @@ BANDS_FRANCE: ty.Final = [
 ]
 
 # Americas
-BANDS_DEF: ty.Final = [
+BANDS_DEFAULT: ty.Final = [
     495_000,
     1_625_000,
     30_000_000,

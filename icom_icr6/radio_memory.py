@@ -24,9 +24,27 @@ class Region(StrEnum):
     # gaps 30-50.2 51.2-87.5 108-144 146-430 440-1240 1300-1310
     FRANCE = "france"
     # gaps: 824-851, 867-896
-    US = "us"
+    USA = "usa"
     # other? Japan - 253-255, 262-266, 271-275, 380-382, 412-415, 810-834,
     # 860-889, 915-950
+    JAPAN = "japan"
+
+    @staticmethod
+    def from_etcdata(etcdata: str) -> Region:
+        """Looks like etcdata contain 5 bits of "region",
+        there are also some unknown flags at last two bit. Rest is some
+        checksum?."""
+        etc = int(etcdata, 16)
+        area = ((etc & 0b1110000000) >> 5) | ((etc & 0b11000) >> 3)
+        match area:
+            case 0 | 14 | 15:
+                return Region.JAPAN
+            case 6:
+                return Region.USA
+            case 13:
+                return Region.FRANCE  # ??
+            case _:
+                return Region.GLOBAL
 
 
 class RadioMemory:
@@ -97,11 +115,7 @@ class RadioMemory:
         self._load_comment()
         self._load_bands()
 
-        match self.file_etcdata:
-            case "0003":  # us
-                self.region = Region.US
-            case _:
-                self.region = Region.GLOBAL
+        self.region = Region.from_etcdata(self.file_etcdata)
 
     def commit(self) -> None:
         """Write data to mem."""
@@ -173,8 +187,8 @@ class RadioMemory:
 
         return False
 
-    def is_usa_model(self) -> bool:
-        return self.region == Region.US
+    def is_japan_model(self) -> bool:
+        return self.region == Region.JAPAN
 
     def validate_loaded_data(self) -> None:
         # check for doubled banks entries
@@ -188,7 +202,13 @@ class RadioMemory:
         # TODO: don't know how to detect other regions
         # for US and EUR/Global is the same
         # there is only difference in WFM minimal frequency for Japan (guess)
-        bands = consts.BANDS_DEF
+        match self.region:
+            case Region.FRANCE:
+                bands = consts.BANDS_FRANCE
+            case Region.JAPAN:
+                bands = consts.BANDS_JAP
+            case _:
+                bands = consts.BANDS_DEFAULT
 
         for idx, max_freq in enumerate(bands):
             if freq < max_freq:
