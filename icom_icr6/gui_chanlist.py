@@ -278,4 +278,4 @@ class ChannelsList(gui_genericlist.GenericList[Row, model.Channel]):
 
         self._set_cell_ro(row, "bank_pos", chan.bank == consts.BANK_NOT_SET)
         self._set_cell_ro(row, "canceller", not chan.canceller)
-        self._set_cell_ro(row, "canceller freq", not chan.duplex)
+        self._set_cell_ro(row, "canceller freq", chan.canceller != 1)
