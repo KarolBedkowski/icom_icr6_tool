@@ -7,6 +7,24 @@ Constants used in app.
 """
 
 import typing as ty
+from enum import StrEnum
+
+
+class Region(StrEnum):
+    # global model, no restrictions
+    GLOBAL = "global"
+    # gaps 30-50.2 51.2-87.5 108-144 146-430 440-1240 1300-1310
+    FRANCE = "france"
+    # gaps: 824-851, 867-896
+    USA = "usa"
+    # other? Japan - 253-255, 262-266, 271-275, 380-382, 412-415, 810-834,
+    # 860-889, 915-950
+    JAPAN = "japan"
+
+    @property
+    def is_japan(self) -> bool:
+        return self == Region.JAPAN
+
 
 MEM_SIZE = 0x6E60
 MEM_FOOTER = "IcomCloneFormat3"
@@ -25,7 +43,9 @@ MAX_OFFSET: ty.Final[int] = 159_995_000
 
 TONE_MODES: ty.Final = ["", "TSQL", "TSQL-R", "DTCS", "DTCS-R"]
 DUPLEX_DIRS: ty.Final = ["", "-", "+"]
-MODES: ty.Final = ["FM", "WFM", "AM"]
+MODES: ty.Final = ["FM", "WFM", "AM", "Auto"]
+MODES_NON_JAP: ty.Final = ["FM", "WFM", "AM"]
+MODES_JAP: ty.Final = ["FM", "WFM", "AM", "Auto"]
 # auto is probably not used
 # "-" is used only in scanedge
 MODES_SCAN_EDGES: ty.Final = ["FM", "WFM", "AM", "Auto", "-"]
@@ -80,6 +100,7 @@ AVAIL_STEPS_NORMAL = [
     "125",
     "200",
 ]
+AVAIL_STEPS_NORMAL_JAP = [*AVAIL_STEPS_NORMAL, "Auto"]
 AVAIL_STEPS_AIR = [
     "5",
     "6.25",
@@ -95,6 +116,7 @@ AVAIL_STEPS_AIR = [
     "125",
     "200",
 ]
+AVAIL_STEPS_AIR_JAP = [*AVAIL_STEPS_AIR, "Auto"]
 AVAIL_STEPS_BROADCAST = [
     "5",
     "6.25",
@@ -110,6 +132,7 @@ AVAIL_STEPS_BROADCAST = [
     "125",
     "200",
 ]
+AVAIL_STEPS_BROADCAST_JAP = [*AVAIL_STEPS_BROADCAST, "Auto"]
 
 
 # hack; skips on two bits (skip type (S/P) and skip enable (0/1))
@@ -222,18 +245,22 @@ JAP_FREQ_UNAVAIL_RANGE: ty.Final = [
 ]
 
 
-def tuning_steps_for_freq(freq: int) -> list[str]:
+def tuning_steps_for_freq(
+    freq: int, region: Region = Region.GLOBAL
+) -> list[str]:
     """From manual: additional steps become selectable in only the
     VHF Air band (8.33 kHz) and in the AM broadcast band (9 kHz).
+    For Japan is available "Auto" tuning step.
     """
+    is_japan = region == Region.JAPAN
 
     if 500_000 <= freq <= 1_620_000:
-        return AVAIL_STEPS_BROADCAST
+        return AVAIL_STEPS_BROADCAST_JAP if is_japan else AVAIL_STEPS_BROADCAST
 
     if 118_000_000 <= freq <= 135_995_000:
-        return AVAIL_STEPS_AIR
+        return AVAIL_STEPS_AIR_JAP if is_japan else AVAIL_STEPS_AIR
 
-    return AVAIL_STEPS_NORMAL
+    return AVAIL_STEPS_NORMAL_JAP if is_japan else AVAIL_STEPS_NORMAL
 
 
 def default_mode_for_freq(freq: int) -> int:

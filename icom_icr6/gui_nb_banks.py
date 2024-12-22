@@ -65,10 +65,7 @@ class BanksPage(tk.Frame):
         self, bank: int | None = None, bank_pos: int | None = None
     ) -> None:
         # hide canceller in global models
-        self._chan_list.set_hide_canceller(
-            hide=not self._radio_memory.is_japan_model()
-        )
-
+        self._chan_list.set_region(self._change_manager.rm.region)
         if bank is not None:
             self._last_selected_bank = bank
             self._select_after_refresh = bank_pos

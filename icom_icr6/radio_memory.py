@@ -10,7 +10,6 @@ import itertools
 import logging
 import typing as ty
 from collections import defaultdict
-from enum import StrEnum
 
 from . import consts, fixers, model
 
@@ -18,33 +17,21 @@ _LOG = logging.getLogger(__name__)
 DEBUG = True
 
 
-class Region(StrEnum):
-    # global model, no restrictions
-    GLOBAL = "global"
-    # gaps 30-50.2 51.2-87.5 108-144 146-430 440-1240 1300-1310
-    FRANCE = "france"
-    # gaps: 824-851, 867-896
-    USA = "usa"
-    # other? Japan - 253-255, 262-266, 271-275, 380-382, 412-415, 810-834,
-    # 860-889, 915-950
-    JAPAN = "japan"
-
-    @staticmethod
-    def from_etcdata(etcdata: str) -> Region:
-        """Looks like etcdata contain 5 bits of "region",
-        there are also some unknown flags at last two bit. Rest is some
-        checksum?."""
-        etc = int(etcdata, 16)
-        area = ((etc & 0b1110000000) >> 5) | ((etc & 0b110000) >> 4)
-        match area:
-            case 0 | 14 | 15:
-                return Region.JAPAN
-            case 6:
-                return Region.USA
-            case 13:
-                return Region.FRANCE  # ??
-            case _:
-                return Region.GLOBAL
+def region_from_etcdata(etcdata: str) -> consts.Region:
+    """Looks like etcdata contain 5 bits of "region",
+    there are also some unknown flags at last two bit. Rest is some
+    checksum?."""
+    etc = int(etcdata, 16)
+    area = ((etc & 0b1110000000) >> 5) | ((etc & 0b110000) >> 4)
+    match area:
+        case 0 | 14 | 15:
+            return consts.Region.JAPAN
+        case 6:
+            return consts.Region.USA
+        case 13:
+            return consts.Region.FRANCE  # ??
+        case _:
+            return consts.Region.GLOBAL
 
 
 class RadioMemory:
@@ -54,7 +41,7 @@ class RadioMemory:
         self.file_comment = ""
         self.file_maprev = "1"
         self.file_etcdata = "001A"
-        self.region = Region.GLOBAL
+        self.region = consts.Region.GLOBAL
 
         self.channels: list[model.Channel] = []
         self.banks: list[model.Bank] = []
@@ -108,7 +95,7 @@ class RadioMemory:
         self._load_comment()
         self._load_bands()
 
-        self.region = Region.from_etcdata(self.file_etcdata)
+        self.region = region_from_etcdata(self.file_etcdata)
         _LOG.debug("region: %r", self.region)
 
     def commit(self) -> None:
@@ -182,10 +169,10 @@ class RadioMemory:
         return False
 
     def is_japan_model(self) -> bool:
-        return self.region == Region.JAPAN
+        return self.region == consts.Region.JAPAN
 
     def is_usa_model(self) -> bool:
-        return self.region == Region.USA
+        return self.region == consts.Region.USA
 
     def validate_loaded_data(self) -> None:
         # check for doubled banks entries
@@ -200,9 +187,9 @@ class RadioMemory:
         # for US and EUR/Global is the same
         # there is only difference in WFM minimal frequency for Japan (guess)
         match self.region:
-            case Region.FRANCE:
+            case consts.Region.FRANCE:
                 bands = consts.BANDS_FRANCE
-            case Region.JAPAN:
+            case consts.Region.JAPAN:
                 bands = consts.BANDS_JAP
             case _:
                 bands = consts.BANDS_DEFAULT

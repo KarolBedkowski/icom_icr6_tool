@@ -100,7 +100,12 @@ class Row(gui_genericlist.BaseRow):
         if channel.hide_channel or not channel.freq:
             return [channel.number, *([""] * 18)]
 
-        return self._extracts_cols(channel.to_record())
+        try:
+            return self._extracts_cols(channel.to_record())
+        except Exception:
+            _LOG.exception("_extracts_cols from %r error", channel)
+
+        return [""] * 19
 
     def _update_freq(self, value: object) -> None:
         try:
@@ -142,8 +147,14 @@ class ChannelsList(gui_genericlist.GenericList[Row, model.Channel]):
 
     def __init__(self, parent: tk.Widget) -> None:
         super().__init__(parent)
+        self.region = consts.Region.GLOBAL
 
         self.on_channel_bank_validate: BankPosValidator | None = None
+
+    def set_region(self, region: consts.Region) -> None:
+        _LOG.debug("set_region: %r", region)
+        self.region = region
+        self.set_hide_canceller(hide=region != consts.Region.JAPAN)
 
     def set_hide_canceller(self, *, hide: bool) -> None:
         canc_columns = [
@@ -259,10 +270,22 @@ class ChannelsList(gui_genericlist.GenericList[Row, model.Channel]):
             if values == "bool":
                 span.checkbox()
 
-            if colname == "ts":
-                # tuning step depend on frequency
+            elif colname == "mode":
+                # mode depend on market
+                vals = (
+                    consts.MODES_JAP
+                    if self.region.is_japan
+                    else consts.MODES_NON_JAP
+                )
+                span.dropdown(values=vals, set_value=data_row[idx])
+
+            elif colname == "ts":
+                # tuning step depend on frequency and market
+
                 span.dropdown(
-                    values=consts.tuning_steps_for_freq(chan.freq),
+                    values=consts.tuning_steps_for_freq(
+                        chan.freq, self.region
+                    ),
                     set_value=data_row[idx],
                 )
 

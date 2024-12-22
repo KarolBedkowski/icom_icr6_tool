@@ -50,9 +50,7 @@ class ChannelsPage(tk.Frame):
 
     def update_tab(self, channel_number: int | None = None) -> None:
         # hide canceller in global models
-        self._chan_list.set_hide_canceller(
-            hide=not self._radio_memory.is_japan_model()
-        )
+        self._chan_list.set_region(self._change_manager.rm.region)
 
         if channel_number is not None:
             group, chanpos = divmod(channel_number, 100)
