@@ -300,5 +300,6 @@ class ChannelsList(gui_genericlist.GenericList[Row, model.Channel]):
         self._set_cell_ro(row, "polarity", not dtcs)
 
         self._set_cell_ro(row, "bank_pos", chan.bank == consts.BANK_NOT_SET)
-        self._set_cell_ro(row, "canceller", not chan.canceller)
+        # canceller is only in Japan model and when mode is FM or Auto
+        self._set_cell_ro(row, "canceller", chan.mode not in (0, 3))
         self._set_cell_ro(row, "canceller freq", chan.canceller != 1)
