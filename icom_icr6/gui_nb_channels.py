@@ -341,7 +341,7 @@ class ChannelsPage(tk.Frame):
         bank_pos: int,
         *,
         try_set_free_slot: bool = False,
-    ) -> int:
+    ) -> int | None:
         _LOG.debug("__on_channel_bank_set %r, %r, %r", bank, channum, bank_pos)
         if bank in (consts.BANK_NOT_SET, ""):
             return bank_pos
@@ -369,8 +369,14 @@ class ChannelsPage(tk.Frame):
                 # find first unused slot
                 pos = bank_channels.find_free_slot()
 
-            if pos is not None:
-                return pos
+            if pos is None:
+                messagebox.showerror(
+                    "Set channel bank",
+                    "Not found free position in bank "
+                    f"{consts.BANK_NAMES[bank]} for this channel.",
+                )
+
+            return None
 
         # not found unused slot - replace, require update other rows
         # this may create duplicates  but this should be cleaned on channel

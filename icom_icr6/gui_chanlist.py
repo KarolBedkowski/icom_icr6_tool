@@ -139,7 +139,7 @@ class BankPosValidator(ty.Protocol):
         bank_pos: int,
         *,
         try_set_free_slot: bool = False,
-    ) -> int: ...
+    ) -> int | None: ...
 
 
 class ChannelsList(gui_genericlist.GenericList[Row, model.Channel]):
@@ -224,13 +224,17 @@ class ChannelsList(gui_genericlist.GenericList[Row, model.Channel]):
 
             case "bank":
                 if chan.bank != value and self.on_channel_bank_validate:
-                    # change bank
-                    row[16] = self.on_channel_bank_validate(
+                    # change bank,
+                    bank_pos = self.on_channel_bank_validate(
                         value,
                         chan.number,
                         0,
                         try_set_free_slot=True,
                     )
+                    if bank_pos is None:
+                        return None
+
+                    row[16] = bank_pos
 
             case "bank_pos":
                 if value != "" and value is not None:
