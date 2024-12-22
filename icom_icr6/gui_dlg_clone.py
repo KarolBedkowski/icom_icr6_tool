@@ -30,12 +30,12 @@ class _Result:
 class _CloneTask(threading.Thread):
     def __init__(
         self,
-        queue: queue.Queue[_Result],
+        result_queue: queue.Queue[_Result],
         port: str,
         hispeed: bool,  # noqa: FBT001
     ) -> None:
         super().__init__()
-        self.queue = queue
+        self.queue = result_queue
         self.port = port
         self.hispeed = hispeed
         self.abort = False
@@ -243,12 +243,12 @@ class CloneToRadioDialog(_CloneDialog):
 class _CloneToTask(_CloneTask):
     def __init__(
         self,
-        queue: queue.Queue[_Result],
+        result_queue: queue.Queue[_Result],
         port: str,
         hispeed: bool,  # noqa: FBT001
         radio_memory: RadioMemory,
     ) -> None:
-        super().__init__(queue, port, hispeed)
+        super().__init__(result_queue, port, hispeed)
         self._radio_memory = radio_memory
 
     def run(self) -> None:
@@ -286,3 +286,6 @@ class RadioInfoDialog(_CloneDialog):
 
         else:
             super().ok()
+
+    def _on_success(self, result: object) -> None:
+        pass

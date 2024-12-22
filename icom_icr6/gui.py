@@ -296,8 +296,9 @@ class App(tk.Frame):
         self._update_tab_content()
 
     def _on_menu_clone_from_radio(
-        self, _event: tk.Event | None = None
-    ) -> None:  # type: ignore
+        self,
+        _event: tk.Event | None = None,  # type: ignore
+    ) -> None:
         dlg = gui_dlg_clone.CloneFromRadioDialog(self)
         if dlg.radio_memory:
             mem = dlg.radio_memory

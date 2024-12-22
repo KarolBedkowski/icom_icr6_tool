@@ -67,6 +67,15 @@ disable = [
   "unused-argument",
   "wrong-import-order",
   "similarities",
+  "empty-docstring",
+  "fixme",
+  "too-many-ancestors",
+  "too-few-public-methods",
+  "too-many-locals",
+  "too-many-instance-attributes",
+  "too-many-arguments",
+  "too-many-positional-arguments",
+  "broad-exception-caught",
 ]
 
 

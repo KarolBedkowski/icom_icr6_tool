@@ -30,8 +30,8 @@ def region_from_etcdata(etcdata: str) -> consts.Region:
             return consts.Region.USA
         case 13:
             return consts.Region.FRANCE  # ??
-        case _:
-            return consts.Region.GLOBAL
+
+    return consts.Region.GLOBAL
 
 
 class RadioMemory:

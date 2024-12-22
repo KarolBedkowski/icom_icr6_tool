@@ -72,7 +72,7 @@ def new_combo(  # noqa: PLR0913
     return combo
 
 
-def new_checkbox(
+def new_checkbox(  # noqa:PLR0913
     parent: tk.Widget,
     row: int,
     col: int,
