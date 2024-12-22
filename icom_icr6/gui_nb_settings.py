@@ -116,9 +116,9 @@ class SettingsPage(tk.Frame):
 
         frame_btns = tk.Frame(self)
         frame_btns.columnconfigure(0, weight=1)
-        ttk.Button(frame_btns, text="Update", command=self.__on_update).grid(
-            row=0, column=0, sticky=tk.E + tk.N
-        )
+        ttk.Button(
+            frame_btns, text="Save settings", command=self.__on_update
+        ).grid(row=0, column=0, sticky=tk.E + tk.N)
 
         frame_btns.pack(side=tk.TOP, fill=tk.X, padx=12, pady=12)
 

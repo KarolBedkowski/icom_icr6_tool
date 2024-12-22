@@ -629,7 +629,6 @@ types:
       # @60
       - id: unknown15
         size: 2
-        doc:
 
       # @62
       - id: padding_0x6c0e

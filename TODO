@@ -1,8 +1,6 @@
 v1.0
 
-- validation / show errors
 - handle errors
-
 
 v2.0
 
@@ -10,11 +8,15 @@ v2.0
 - reorder banks
 - reorder scan links
 - reorder scan edges on delete (?)
+- reports /  statistics
+
+v3.0:
+- monitor / control radio from gui
+
 
 asap
 
-- how to read region from radio? from serial number? - add support for clone from US radio
+- how to read region from radio? from serial number? 
 
-other:
-- monitor
-- statistics
+
+

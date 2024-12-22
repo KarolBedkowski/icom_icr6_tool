@@ -500,7 +500,6 @@ def start_gui() -> None:
     root.title("ICOM IC-R6 Tool")
     style = ttk.Style()
     style.theme_use("clam")
-    style.configure("pad.TEntry", padding="1 1 1 1")
     myapp = App(root, file)
     root.geometry(config.CONFIG.main_window_geometry)
     root.wait_visibility()
