@@ -112,7 +112,7 @@ class StreamLogger:
 
     def __init__(self, impl: Serial) -> None:
         self._impl = impl
-        self._log = Path("data.log").open("at", encoding="ascii")  # noqa: SIM115
+        self._log = Path("data.log").open("at", encoding="ascii")  # noqa: SIM115 # pylint:disable=consider-using-with
 
     def open(self, stream: str) -> None:
         self._impl.open(stream)
@@ -189,8 +189,8 @@ class FakeSerial:
 
     def open(self, stream: str) -> None:
         _LOG.info("opening files %s", stream)
-        self._file_in = Path(f"{stream}-in.bin").open("rb")  # noqa:SIM115
-        self._file_out = Path(f"{stream}-out.bin").open("wb")  # noqa:SIM115
+        self._file_in = Path(f"{stream}-in.bin").open("rb")  # noqa:SIM115 # pylint:disable=consider-using-with
+        self._file_out = Path(f"{stream}-out.bin").open("wb")  # noqa:SIM115 # pylint:disable=consider-using-with
 
     def close(self) -> None:
         _LOG.info("closing files")

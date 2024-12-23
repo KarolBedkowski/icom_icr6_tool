@@ -198,7 +198,7 @@ class ChannelsList(gui_genericlist.GenericList[Row, model.Channel]):
         match column[0]:
             case "channel":
                 value = int(value)
-                if not (0 <= value <= consts.NUM_CHANNELS):
+                if not 0 <= value <= consts.NUM_CHANNELS:
                     return None
 
             case "freq":
@@ -225,7 +225,7 @@ class ChannelsList(gui_genericlist.GenericList[Row, model.Channel]):
             case "bank":
                 if chan.bank != value and self.on_channel_bank_validate:
                     # change bank,
-                    bank_pos = self.on_channel_bank_validate(
+                    bank_pos = self.on_channel_bank_validate(  # pylint:disable=not-callable
                         value,
                         chan.number,
                         0,
@@ -239,13 +239,14 @@ class ChannelsList(gui_genericlist.GenericList[Row, model.Channel]):
             case "bank_pos":
                 if value != "" and value is not None:
                     value = max(min(int(value), 99), 0)
-                    value = (
-                        self.on_channel_bank_validate(
-                            chan.bank, chan.number, value
+                    if self.on_channel_bank_validate:
+                        value = (
+                            self.on_channel_bank_validate(  # pylint:disable=not-callable
+                                chan.bank, chan.number, value
+                            )
+                            if self.on_channel_bank_validate
+                            else value
                         )
-                        if self.on_channel_bank_validate
-                        else value
-                    )
 
         _LOG.debug("_on_validate_edits: result value=%r", value)
         return value

@@ -63,9 +63,7 @@ jobs = 4
 py-version = [3, 11]
 disable = [
   "missing-docstring",
-  "format",
   "unused-argument",
-  "wrong-import-order",
   "similarities",
   "empty-docstring",
   "fixme",

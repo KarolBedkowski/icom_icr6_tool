@@ -369,4 +369,4 @@ class ChangeManeger:
         )
 
         if self.on_undo_changes:
-            self.on_undo_changes(bool(undo_len), bool(redo_len))
+            self.on_undo_changes(bool(undo_len), bool(redo_len))  # pylint:disable=not-callable

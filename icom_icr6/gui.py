@@ -12,6 +12,7 @@ from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
 from . import (
+    VERSION,
     config,
     expimp,
     gui_dlg_clone,
@@ -216,8 +217,6 @@ class App(tk.Frame):
     # menu callbacks
 
     def _on_menu_about(self) -> None:
-        from . import VERSION
-
         messagebox.showinfo(
             "About",
             f"Icom IC-R6 tool\nVersion: {VERSION}\n\n"

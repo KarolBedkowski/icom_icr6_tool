@@ -2,6 +2,8 @@
 #
 # Distributed under terms of the GPLv3 license.
 # ruff: noqa: PLR2004
+# pylint:disable=too-many-lines
+# TODO: split
 """ """
 
 from __future__ import annotations
@@ -496,7 +498,7 @@ class Channel:
             "bank_pos": self.bank_pos if bank else "",
         }
 
-    def from_record(self, data: dict[str, object]) -> None:  # noqa: PLR0912,C901
+    def from_record(self, data: dict[str, object]) -> None:  # noqa: PLR0912,C901 pylint:disable=too-many-branches
         _LOG.debug("from_record: %r", data)
         if (freq := data.get("freq")) is not None:
             ifreq = int(freq or "0")  # type: ignore

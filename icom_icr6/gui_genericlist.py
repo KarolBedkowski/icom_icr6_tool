@@ -206,7 +206,7 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
                 data.add(row)
 
             if data and self.on_record_update:
-                self.on_record_update("move", data)
+                self.on_record_update("move", data)  # pylint:disable=not-callable
 
             return
 
@@ -217,7 +217,7 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
             data.add(row)
 
         if data and self.on_record_update:
-            self.on_record_update("update", data)
+            self.on_record_update("update", data)  # pylint:disable=not-callable
 
     def __on_validate_edits(self, event: EventDataDict) -> object:
         _LOG.debug("__on_validate_edits: %r", event)
@@ -246,7 +246,7 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
                 self.sheet.data[r]
                 for r in range(sel_box.from_r, sel_box.upto_r)
             ]
-            self.on_record_selected(rows)
+            self.on_record_selected(rows)  # pylint:disable=not-callable
 
     def selected_rows(self) -> ty.Sequence[int]:
         return self.sheet.get_selected_rows(  # type: ignore
@@ -350,7 +350,7 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
             data = [self.sheet.data[r] for r in range(box.from_r, box.upto_r)]
 
             if data and self.on_record_update:
-                self.on_record_update("delete", data)
+                self.on_record_update("delete", data)  # pylint:disable=not-callable
 
             for row in range(box.from_r, box.upto_r):
                 self.update_row_state(row)
@@ -362,7 +362,7 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
             data = [self.sheet.data[r] for r in range(box.from_r, box.upto_r)]
 
             if data and self.on_record_update:
-                self.on_record_update("update", data)
+                self.on_record_update("update", data)  # pylint:disable=not-callable
 
             for r in range(box.from_r, box.upto_r):
                 self.update_row_state(r)
