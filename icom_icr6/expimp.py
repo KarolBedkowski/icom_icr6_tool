@@ -78,6 +78,9 @@ def import_channels_str(data: str) -> ty.Iterable[dict[str, object]]:
         raise ValueError
 
     for row in reader:
+        # lowercase all keys
+        row.update((key.lower(), val) for key, val in row.items())
+
         # only freq is required
         if not row.get("freq"):
             raise ValueError
@@ -195,6 +198,9 @@ def import_scan_edges_str(data: str) -> ty.Iterable[dict[str, object]]:
         raise ValueError
 
     for row in reader:
+        # lowercase all keys
+        row.update((key.lower(), val) for key, val in row.items())
+
         if not all(f in row for f in _SCAN_EDGE_FIELDS):
             raise ValueError
 
