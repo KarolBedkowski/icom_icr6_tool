@@ -11,7 +11,7 @@ import binascii
 
 import pytest
 
-from . import consts, model
+from icom_icr6 import consts, model
 
 
 @pytest.mark.parametrize(

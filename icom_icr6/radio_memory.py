@@ -264,7 +264,7 @@ class RadioMemory:
 
         # load hidden flags
         chan_hidden = list(
-            model.bitarray2bits(mv[0x6A10:], consts.NUM_AUTOWRITE_CHANNELS)
+            bitarray2bits(mv[0x6A10:], consts.NUM_AUTOWRITE_CHANNELS)
         )
         # chan position map
         chan_positiions = mv[0x6A30 : 0x6A30 + consts.NUM_AUTOWRITE_CHANNELS]
@@ -414,3 +414,11 @@ class RadioMemory:
             bands.append(
                 model.BandDefaults.from_data(idx, mv[start : start + 16])
             )
+
+
+def bitarray2bits(
+    data: memoryview | bytes | list[int], number: int
+) -> ty.Iterable[bool]:
+    for n in range(number):
+        pos, bit = divmod(n, 8)
+        yield bool(data[pos] & (1 << bit))

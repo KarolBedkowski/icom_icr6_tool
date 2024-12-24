@@ -162,9 +162,7 @@ sort_by_size = true
 [tool.deptry]
 pep621_dev_dependency_groups = ["dev"]
 exclude = [".git", "htmlcov", ".*_test.py", "run_.*\\.py", "tmp"]
-
-[tool.deptry.per_rule_ignores]
-DEP003 = ["icom_icr6"]
+known_first_party = ["icom_icr6"]
 
 [tool.deptry.package_module_name_map]
 python-dateutil = "dateutil"
