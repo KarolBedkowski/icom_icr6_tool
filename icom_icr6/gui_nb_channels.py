@@ -376,7 +376,7 @@ class ChannelsPage(tk.Frame):
                     f"{consts.BANK_NAMES[bank]} for this channel.",
                 )
 
-            return None
+            return pos
 
         # not found unused slot - replace, require update other rows
         # this may create duplicates  but this should be cleaned on channel
