@@ -71,6 +71,8 @@ class App(tk.Frame):
 
         if file:
             self._load_icf(file)
+        else:
+            self._set_loaded_filename(None)
 
         self.bind("<Destroy>", self.__on_destroy)
 
@@ -94,6 +96,11 @@ class App(tk.Frame):
         master.config(menu=menu_bar)
 
         file_menu = tk.Menu(menu_bar, tearoff=False)
+        file_menu.add_command(
+            label="New...",
+            command=self._on_menu_file_new,
+            accelerator="Ctrl+N",
+        )
         file_menu.add_command(
             label="Open...",
             command=self._on_menu_file_open,
@@ -221,6 +228,15 @@ class App(tk.Frame):
             f"Icom IC-R6 tool\nVersion: {VERSION}\n\n"
             "Future information in README.rst, COPYING files.",
         )
+
+    def _on_menu_file_new(self, _event: tk.Event | None = None) -> None:  # type: ignore
+        mem = self._load_default_icf()
+        self._radio_memory.update_from(mem)
+        self._set_loaded_filename(None)
+        self._update_tab_content()
+        self.set_status("Loaded default file")
+        self._safe_for_clone = True
+        self._change_manager.reset()
 
     def _on_menu_file_open(self, _event: tk.Event | None = None) -> None:  # type: ignore
         fname = filedialog.askopenfilename(
