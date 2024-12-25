@@ -54,9 +54,6 @@ class RadioMemory:
         self.comment = ""
         self.bands: list[model.BandDefaults] = []
 
-        # this create all lists etc
-        self.load_memory()
-
     def update_from(self, rm: RadioMemory) -> None:
         """Load memory data from other RadioMemory."""
         self.mem = rm.mem
