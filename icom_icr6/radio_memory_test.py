@@ -17,7 +17,7 @@ from . import consts, radio_memory as rm
     [
         ("0003", consts.Region.JAPAN),
         ("001A", consts.Region.GLOBAL),
-        ("002A", consts.Region.GLOBAL),
+        ("002A", consts.Region.GLOBAL2),
         ("00AB", consts.Region.USA),
     ],
 )

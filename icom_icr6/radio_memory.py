@@ -26,6 +26,8 @@ def region_from_etcdata(etcdata: str) -> consts.Region:
     match area:
         case 0 | 14 | 15:
             return consts.Region.JAPAN
+        case 2:
+            return consts.Region.GLOBAL2
         case 6:
             return consts.Region.USA
         case 13:
@@ -34,13 +36,29 @@ def region_from_etcdata(etcdata: str) -> consts.Region:
     return consts.Region.GLOBAL
 
 
+def etcdata_from_region(region: consts.Region) -> str:
+    """Map region to etcdata; this may be inaccurate as i.e. Japan uses
+    probably more that one "regions"."""
+    match region:
+        case consts.Region.GLOBAL2:
+            return "002A"
+        case consts.Region.JAPAN:
+            return "0003"
+        case consts.Region.USA:
+            return "00AB"
+        case consts.Region.FRANCE:
+            return "01D2"
+
+    return "001A"
+
+
 class RadioMemory:
     def __init__(self) -> None:
         self.mem = bytearray(consts.MEM_SIZE)
 
         self.file_comment = ""
         self.file_maprev = "1"
-        self.file_etcdata = "001A"
+        self.file_etcdata = ""
         self.region = consts.Region.GLOBAL
 
         self.channels: list[model.Channel] = []
@@ -92,7 +110,12 @@ class RadioMemory:
         self._load_comment()
         self._load_bands()
 
-        self.region = region_from_etcdata(self.file_etcdata)
+        if self.file_etcdata:
+            self.region = region_from_etcdata(self.file_etcdata)
+        else:
+            self.region = self._guess_region()
+            self.file_etcdata = etcdata_from_region(self.region)
+
         _LOG.debug("region: %r", self.region)
 
     def commit(self) -> None:
@@ -411,6 +434,22 @@ class RadioMemory:
             bands.append(
                 model.BandDefaults.from_data(idx, mv[start : start + 16])
             )
+
+    def _guess_region(self) -> consts.Region:
+        """Guess region from configuration of default bands."""
+        if self.bands[0].tuning_step == 14:  # noqa: PLR2004
+            return consts.Region.JAPAN
+
+        if self.bands[3].tuning_step == self.bands[10].tuning_step == 7:  # noqa: PLR2004
+            return consts.Region.FRANCE
+
+        if self.bands[1].tuning_step == 4:  # noqa: PLR2004
+            return consts.Region.USA
+
+        if self.bands[3].tuning_step == 7:  # noqa: PLR2004
+            return consts.Region.GLOBAL2
+
+        return consts.Region.GLOBAL
 
 
 def bitarray2bits(
