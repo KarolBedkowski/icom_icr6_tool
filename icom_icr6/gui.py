@@ -43,7 +43,7 @@ class App(tk.Frame):
         self.master = master
 
         self._last_file: Path | None = None
-        self._radio_memory = RadioMemory()
+        self._radio_memory = self._load_default_icf()
         self._change_manager = ChangeManeger(self._radio_memory)
         self._change_manager.on_undo_changes = self._on_undo_change
         self._status_value = tk.StringVar()
@@ -453,6 +453,10 @@ class App(tk.Frame):
             self._nb_settings,
         )
         pages[selected_tab].update_tab()
+
+    def _load_default_icf(self) -> RadioMemory:
+        icf_file = Path(__file__).parent.joinpath("data", "default_global.icf")
+        return io.load_icf_file(icf_file)
 
     def _load_icf(self, file: Path) -> None:
         try:
