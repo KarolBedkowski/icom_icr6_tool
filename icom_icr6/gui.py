@@ -5,7 +5,6 @@
 """ """
 
 import logging
-import sys
 import tkinter as tk
 import typing as ty
 from pathlib import Path
@@ -491,11 +490,9 @@ class App(tk.Frame):
             menu.add_command(label=fname, command=command)
 
 
-def start_gui() -> None:
-    config_path = config.default_config_path()
+def start_gui(cfg_file: Path | None, icf_file: Path | None) -> None:
+    config_path = cfg_file or config.default_config_path()
     config.load(config_path)
-
-    file = Path(sys.argv[1]) if len(sys.argv) > 1 else None
 
     root = tk.Tk()
     gui_model.Clipboard.initialize(root)
@@ -503,7 +500,7 @@ def start_gui() -> None:
     root.title("ICOM IC-R6 Tool")
     style = ttk.Style()
     style.theme_use("clam")
-    myapp = App(root, file)
+    myapp = App(root, icf_file)
     root.geometry(config.CONFIG.main_window_geometry)
     root.wait_visibility()
     root.grab_set()

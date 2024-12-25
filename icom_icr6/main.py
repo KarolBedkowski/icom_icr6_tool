@@ -14,7 +14,7 @@ import sys
 import typing as ty
 from pathlib import Path
 
-from . import gui, io
+from . import io
 
 LOG = logging.getLogger(__name__)
 
@@ -285,7 +285,3 @@ def main() -> None:
         cmd[1]()
     else:
         main_help(cmds)
-
-
-def main_gui() -> None:
-    gui.start_gui()

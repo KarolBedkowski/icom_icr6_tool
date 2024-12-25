@@ -103,6 +103,6 @@ except ImportError:
     pass
 
 
-from icom_icr6 import main
+from icom_icr6 import main_gui
 
-main.main_gui()
+main_gui.main()

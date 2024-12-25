@@ -34,7 +34,8 @@ dev = [
 ]
 
 [project.scripts]
-icom_icr6 = "icom_icr6:main"
+icom_icr6_cli = "icom_icr6.main:main"
+icom_icr6 = "icom_icr6.main_gui:main"
 
 
 [tool.hatch.version]
