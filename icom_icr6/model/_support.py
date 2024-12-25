@@ -11,7 +11,7 @@ from __future__ import annotations
 import typing as ty
 from collections import abc
 
-DEBUG = True
+DEBUG = False
 
 MutableMemory = abc.MutableSequence[int] | memoryview
 
@@ -21,7 +21,7 @@ def is_valid_index(inlist: ty.Collection[object], idx: int, name: str) -> None:
         raise ValidateError(name, idx)
 
 
-def try_get(inlist: list[str] | tuple[str, ...], idx: int) -> str:
+def try_get(inlist: ty.Sequence[str], idx: int) -> str:
     try:
         return inlist[idx]
     except IndexError:
@@ -45,7 +45,7 @@ def obj2bool(val: object) -> bool:
     return bool(val)
 
 
-def bool2bit(val: bool | int, mask: int) -> int:
+def bool2bit(val: object, mask: int) -> int:
     return mask if val else 0
 
 

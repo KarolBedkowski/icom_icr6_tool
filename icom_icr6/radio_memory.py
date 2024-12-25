@@ -20,7 +20,11 @@ DEBUG = True
 def region_from_etcdata(etcdata: str) -> consts.Region:
     """Looks like etcdata contain 5 bits of "region",
     there are also some unknown flags at last two bit. Rest is some
-    checksum?."""
+    checksum - seems to checksum is arithmetic sum of all "1" in region and
+    flags & 7. Bits: (r=market, C=checksum, f=some flag)
+        fedcba98 76543210
+        ------rr rCrrCffC
+    """
     etc = int(etcdata, 16)
     area = ((etc & 0b1110000000) >> 5) | ((etc & 0b110000) >> 4)
     match area:
@@ -38,7 +42,8 @@ def region_from_etcdata(etcdata: str) -> consts.Region:
 
 def etcdata_from_region(region: consts.Region) -> str:
     """Map region to etcdata; this may be inaccurate as i.e. Japan uses
-    probably more that one "regions"."""
+    probably more that one etcdata code; also there are also unknown flags.
+    """
     match region:
         case consts.Region.GLOBAL2:
             return "002A"
@@ -112,11 +117,11 @@ class RadioMemory:
 
         if self.file_etcdata:
             self.region = region_from_etcdata(self.file_etcdata)
+            _LOG.debug("region: %r", self.region)
         else:
             self.region = self._guess_region()
+            _LOG.debug("region: %r (guess)", self.region)
             self.file_etcdata = etcdata_from_region(self.region)
-
-        _LOG.debug("region: %r", self.region)
 
     def commit(self) -> None:
         """Write data to mem."""

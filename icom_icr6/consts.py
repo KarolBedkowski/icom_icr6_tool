@@ -13,7 +13,7 @@ from enum import StrEnum
 class Region(StrEnum):
     # global model, no restrictions
     GLOBAL = "global"
-    # unkown
+    # unknown
     GLOBAL2 = "global2"
     # gaps 30-50.2 51.2-87.5 108-144 146-430 440-1240 1300-1310
     FRANCE = "france"

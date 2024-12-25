@@ -70,7 +70,7 @@ seq:
   - id: bands
     type: band
     size: 16
-    doc: pos 0x6b00 - 0x6bcf look like default band definition; not changing
+    doc: pos 0x6b00 - 0x6bcf look like default band definition; read-only
     repeat: expr
     repeat-expr: 13
 
@@ -318,8 +318,9 @@ types:
         type: b4
         enum: steps
         doc: |
-          channels not use "auto" and "-" steps; for broadcast there
-          is available additional 9k step; for aviation band - 8.33k
+          channels use "auto" only for Japan model, not use "-" steps;
+          for broadcast there is available additional 9k step; for aviation band
+          - 8.33k
 
       # 4
       - id: unknown1
@@ -873,7 +874,7 @@ enums:
     10: f1200m
 
   priority_scan_type:
-    0: off
+    0: priority_scan_off
     1: mem_ch
     2: mem_ch_beep
     5: mem_scan
