@@ -13,7 +13,7 @@ classifiers = [
   "Operating System :: OS Independent",
   "Topic :: Utilities",
 ]
-description = ""
+description = "TK application for manage Icom IC-R6 memory."
 name = "icom_icr6"
 license = { text = "GPL-3.0-or-later" }
 readme = "README.rst"

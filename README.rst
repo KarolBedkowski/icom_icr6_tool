@@ -1,20 +1,26 @@
-Icom IC-R6 Manager  [WIP]
-=========================
-
+Icom IC-R6 Manager  1.0
+========================
 
 Simple TK application for manage Icom IC-R6 scanner memory.
 
 Features:
-- load and save ifc file
+- load and save ICF file
 - clone data from and to radio
-- edit channels, banks, scan links / edges
+- edit channels, banks, scan links / edges; reordering, ctrl-c/ctrl-v operations.
 - display autowrite channels
 - change settings
+- export data in csv format
 
+Additional tools are available in included cli tool (icom_icr6_cli).
+
+
+Missing:
+- detect radio version; there is some workarounds.
 
 WARNING
 -------
-This is software i alfa state. Tested only on EUR version of IR-R6.
+This is software is alpha state. Tested only on EUR version of IR-R6, but
+should support other versions as well.
 
 Cloning from and to device seems to be quite safe operation. In my test
 sending broken data to radio cause at least memory reset.
@@ -25,9 +31,27 @@ Using at on own risk.
 
 Requirements
 -------------
-- Python 3.11+
-- Tkinter
+- Python 3.11+ with Tkinter
+- tksheet 7+
 - pyserial
+
+
+Installation
+-----------
+``pip install .``
+
+
+Using
+-----
+GUI:
+
+``icom_icr6 <optional icf filename>``
+
+CLI:
+
+``icom_icr6_cli <commands``.
+
+Run with ``-h`` for available commands and options.
 
 
 Credits
