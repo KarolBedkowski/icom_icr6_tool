@@ -129,3 +129,19 @@ def test_scan_link1():
     sl.to_data(o_data, o_data_e)
     assert o_data == data
     assert o_data_e == data_e
+
+    sl[0] = True
+    sl[2] = True
+    assert sl.edges == 0b000000000000110000000101
+
+
+def test_scan_link_remap1():
+    sl = model.ScanLink(0, "", 0b000000100000110000000101)
+    mapping = {
+        0: 1,
+        1: 0,
+        4: 10,
+        10: 9,
+    }
+    sl.remap_edges(mapping)
+    assert sl.edges == 0b000000100000100000010110, bin(sl.edges)

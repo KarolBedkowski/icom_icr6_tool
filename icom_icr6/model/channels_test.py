@@ -148,3 +148,25 @@ def test_bank_links(inp, exp):
     bl.to_data(data)
 
     assert data == inp
+
+
+def test_bank():
+    inp = b"434220202020ffff"
+    data = bytearray(binascii.unhexlify(inp))
+    b = model.Bank.from_data(0, data)
+    assert b.idx == 0
+    assert b.name == "CB    "
+
+    o_data = data[:]
+    b.to_data(o_data)
+    assert o_data == data
+
+    inp = b"48414d202020ffff"
+    data = bytearray(binascii.unhexlify(inp))
+    b = model.Bank.from_data(2, data)
+    assert b.idx == 2
+    assert b.name == "HAM   "
+
+    o_data = data[:]
+    b.to_data(o_data)
+    assert o_data == data
