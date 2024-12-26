@@ -72,7 +72,10 @@ class ScanLink:
             idx=idx,
             name=bytes(data[0:6]).decode() if data[0] else "",
             edges=edges,
-            debug_info={"raw": binascii.hexlify(data)}
+            debug_info={
+                "raw": binascii.hexlify(data),
+                "raw_edata": binascii.hexlify(edata),
+            }
             if _support.DEBUG
             else None,
         )

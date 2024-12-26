@@ -30,13 +30,15 @@ from icom_icr6 import consts, model
     ],
 )
 def test_encode_decode_channel(inp):
-    data = list(binascii.unhexlify(inp))
-    cflags = [0, 0]
+    data = bytearray(binascii.unhexlify(inp))
+    cflags = bytearray([0, 0])
 
     chan = model.Channel.from_data(0, data, cflags)
 
-    new_data = list(binascii.unhexlify(b"c706f020000000080072000a73ca196c"))
-    new_cflags = [1, 1]
+    new_data = bytearray(
+        binascii.unhexlify(b"c706f020000000080072000a73ca196c")
+    )
+    new_cflags = bytearray([1, 1])
 
     chan.to_data(new_data, new_cflags)
 
