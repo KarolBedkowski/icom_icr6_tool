@@ -11,7 +11,8 @@ import copy
 import typing as ty
 from dataclasses import dataclass
 
-from ._support import DEBUG, MutableMemory, data_set, data_set_bit
+from . import _support
+from ._support import MutableMemory, data_set, data_set_bit
 
 
 @dataclass
@@ -74,7 +75,7 @@ class RadioSettings:
                 "scan_mem_type": data[55],
                 "mem_chan_data": data[56],
             }
-            if DEBUG
+            if _support.DEBUG
             else None
         )
 
@@ -182,7 +183,7 @@ class BandDefaults:
                 "raw": binascii.hexlify(data),
                 "unknown6": data[11],
             }
-            if DEBUG
+            if _support.DEBUG
             else None
         )
 

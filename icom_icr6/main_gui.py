@@ -38,7 +38,7 @@ def main() -> None:
             logging.getLogger().setLevel(logging.WARNING)
         case 1:
             logging.getLogger().setLevel(logging.INFO)
-        case 0:
+        case _:
             logging.getLogger().setLevel(logging.DEBUG)
             model.enable_debug()
 

@@ -14,8 +14,8 @@ from dataclasses import dataclass, field
 
 from icom_icr6 import coding, consts, fixers, validators
 
+from . import _support
 from ._support import (
-    DEBUG,
     MutableMemory,
     ValidateError,
     bool2bit,
@@ -56,7 +56,9 @@ class ChannelFlags:
             skip=(data[0] & 0b01100000) >> 5,
             bank=data[0] & 0b00011111,
             bank_pos=data[1],
-            debug_info={"raw": binascii.hexlify(data)} if DEBUG else None,
+            debug_info={"raw": binascii.hexlify(data)}
+            if _support.DEBUG
+            else None,
         )
 
     def to_data(self, cflags: MutableMemory) -> None:
@@ -204,7 +206,7 @@ class Channel:
                 "offset": offset,
                 "flags": (data[2] & 0b11110000) >> 4,
             }
-            if DEBUG
+            if _support.DEBUG
             else None
         )
 
@@ -526,7 +528,9 @@ class Bank:
         return Bank(
             idx,
             name=bytes(data[0:6]).decode() if data[0] else "",
-            debug_info={"raw": binascii.hexlify(data)} if DEBUG else None,
+            debug_info={"raw": binascii.hexlify(data)}
+            if _support.DEBUG
+            else None,
         )
 
     def to_data(self, data: MutableMemory) -> None:

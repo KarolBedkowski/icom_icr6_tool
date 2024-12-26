@@ -9,7 +9,7 @@ from __future__ import annotations
 import binascii
 from dataclasses import dataclass
 
-from ._support import DEBUG
+from . import _support
 
 
 @dataclass
@@ -50,7 +50,7 @@ class RadioModel:
                 "unk2": data[22:25],
                 "unk_serial": serial[4],
             }
-            if DEBUG
+            if _support.DEBUG
             else None
         )
 

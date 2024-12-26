@@ -14,8 +14,8 @@ from dataclasses import dataclass
 
 from icom_icr6 import consts, validators
 
+from . import _support
 from ._support import (
-    DEBUG,
     MutableMemory,
     ValidateError,
     data_set,
@@ -72,7 +72,9 @@ class ScanLink:
             idx=idx,
             name=bytes(data[0:6]).decode() if data[0] else "",
             edges=edges,
-            debug_info={"raw": binascii.hexlify(data)} if DEBUG else None,
+            debug_info={"raw": binascii.hexlify(data)}
+            if _support.DEBUG
+            else None,
         )
 
     def to_data(self, data: MutableMemory, edata: MutableMemory) -> None:
@@ -153,7 +155,7 @@ class ScanEdge:
                 "start_flags_freq": (data[9] >> 2) & 0b11,
                 "end_flags_freq": data[9] & 0b11,
             }
-            if DEBUG
+            if _support.DEBUG
             else None
         )
 
