@@ -1,8 +1,5 @@
-v1.0
 
-- handle errors
-
-v2.0
+v1.1.0
 
 - export / import data in bank/group
 - reorder banks
@@ -10,7 +7,7 @@ v2.0
 - reorder scan edges on delete (?)
 - reports /  statistics
 
-v3.0:
+v1.2.0:
 - monitor / control radio from gui
 
 
