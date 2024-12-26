@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import binascii
 import copy
+import typing as ty
 from dataclasses import dataclass
 
 from ._support import DEBUG, MutableMemory, data_set, data_set_bit
@@ -139,6 +140,11 @@ class RadioSettings:
         data_set_bit(data, 53, 3, self.program_skip_scan)
         data[59] = max(min(self.wx_channel, 9), 0)
 
+    def values(self) -> ty.Iterable[tuple[str, object]]:
+        for key, val in self.__dict__.items():
+            if key not in ("debug_info", "updated"):
+                yield key, val
+
 
 @dataclass
 class BandDefaults:
@@ -198,3 +204,6 @@ class BandDefaults:
             attenuator=bool(data[13] & 0b0000001),
             debug_info=debug_info,
         )
+
+    def to_record(self) -> dict[str, object]:
+        return self.__dict__

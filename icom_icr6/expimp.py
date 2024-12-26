@@ -132,7 +132,7 @@ def export_channels_file(
         writer.writerows(chan.to_record() for chan in channels)
 
 
-_AWCHANNEL_FIELDS = (
+AWCHANNEL_FIELDS = (
     "channel",
     "freq",
     "af",
@@ -157,7 +157,7 @@ def export_awchannels_file(
     with output.open("w") as out:
         writer = csv.DictWriter(
             out,
-            fieldnames=_AWCHANNEL_FIELDS,
+            fieldnames=AWCHANNEL_FIELDS,
             quoting=csv.QUOTE_NONNUMERIC,
             extrasaction="ignore",
         )
@@ -165,7 +165,7 @@ def export_awchannels_file(
         writer.writerows(chan.to_record() for chan in channels)
 
 
-_SCAN_EDGE_FIELDS = (
+SCAN_EDGE_FIELDS = (
     "idx",
     "start",
     "end",
@@ -181,7 +181,7 @@ def export_scan_edges_str(ses: ty.Iterable[model.ScanEdge]) -> str:
     output = io.StringIO()
     writer = csv.DictWriter(
         output,
-        fieldnames=_SCAN_EDGE_FIELDS,
+        fieldnames=SCAN_EDGE_FIELDS,
         quoting=csv.QUOTE_NONNUMERIC,
         extrasaction="ignore",
     )
@@ -201,7 +201,26 @@ def import_scan_edges_str(data: str) -> ty.Iterable[dict[str, object]]:
         # lowercase all keys
         row.update((key.lower(), val) for key, val in row.items())
 
-        if not all(f in row for f in _SCAN_EDGE_FIELDS):
+        if not all(f in row for f in SCAN_EDGE_FIELDS):
             raise ValueError
 
         yield row
+
+
+BANDS_FIELDS = (
+    "idx",
+    "freq",
+    "offset",
+    "tuning_step",
+    "tsql_freq",
+    "dtcs",
+    "mode",
+    "canceller_freq",
+    "duplex",
+    "tone_mode",
+    "vsc",
+    "canceller",
+    "polarity",
+    "af_filter",
+    "attenuator",
+)

@@ -129,7 +129,7 @@ class Channel:
             bank = f"{self.bank}/{self.bank_pos}"
 
         return (
-            f"Channel {id(self)}-{self.number}: "
+            f"Channel {self.number}: "
             f"f={self.freq}, "
             f"ff={self.freq_flags} ({self.freq_flags:>04b}), "
             f"af={self.af_filter}, "
