@@ -117,7 +117,7 @@ class _CloneDialog(simpledialog.Dialog):
 
     def _progress_cb(self, progress: int) -> bool:
         perc = min(100 * progress / consts.MEM_SIZE, 100.0)
-        self._var_progress.set(f"Read: {perc:0.1f}%")
+        self._var_progress.set(f"Done: {perc:0.1f}%")
         self.update_idletasks()
         return True
 
