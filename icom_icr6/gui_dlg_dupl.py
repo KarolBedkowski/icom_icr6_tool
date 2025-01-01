@@ -35,6 +35,8 @@ class DuplicatedFreqDialog(tk.Toplevel):
 
         self._radio_memory = radio_memory
         self._precision = tk.StringVar()
+        self._ignore_mode = tk.IntVar()
+        self._ignore_bank = tk.IntVar()
         self._status = tk.StringVar()
         self._status.set("")
         self._result: list[tuple[str, object]] = []
@@ -74,8 +76,24 @@ class DuplicatedFreqDialog(tk.Toplevel):
             exportselection=False,
             state="readonly",
             values=list(_PRECISIONS),
-        ).pack(side=tk.LEFT, pady=6, expand=False)
+        ).pack(side=tk.LEFT, padx=6, expand=False)
         self._precision.set("100kHZ")
+
+        ttk.Checkbutton(
+            master,
+            text="Ignore mode",
+            variable=self._ignore_mode,
+            onvalue=1,
+            offvalue=0,
+        ).pack(side=tk.LEFT, padx=6)
+
+        ttk.Checkbutton(
+            master,
+            text="Ignore bank",
+            variable=self._ignore_bank,
+            onvalue=1,
+            offvalue=0,
+        ).pack(side=tk.LEFT, padx=6)
 
         tk.Button(
             master,
@@ -114,7 +132,11 @@ class DuplicatedFreqDialog(tk.Toplevel):
         tree.delete(*tree.get_children())
 
         precision = _PRECISIONS[self._precision.get()]
-        result = self._radio_memory.find_duplicated_channels_freq(precision)
+        result = self._radio_memory.find_duplicated_channels_freq(
+            precision,
+            ignore_mode=self._ignore_mode.get() == 0,
+            ignore_bank=self._ignore_bank.get() == 0,
+        )
 
         cnt_groups, cnt_channels = 0, 0
 
