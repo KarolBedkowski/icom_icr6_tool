@@ -31,10 +31,7 @@ class ChannelsPage(tk.Frame):
         super().__init__(parent)
         self._parent = parent
         self._change_manager = cm
-        self._last_selected_group = 0
-        self._last_selected_chan: tuple[int, ...] = ()
         self.__need_full_refresh = False
-        self.__select_after_refresh: int | None = None
 
         pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
         self._groups_list = tk.Listbox(pw, selectmode=tk.SINGLE, width=10)
@@ -53,26 +50,26 @@ class ChannelsPage(tk.Frame):
         self._chan_list.set_region(self._change_manager.rm.region)
 
         if channel_number is not None:
-            group, chanpos = divmod(channel_number, 100)
-            self._last_selected_group = group
-            self.__select_after_refresh = chanpos
+            self.select(channel_number)
+            return
 
-        self._groups_list.selection_set(self._last_selected_group)
+        self._groups_list.selection_set(self._selected_group or 0)
         self.__update_chan_list()
 
     def select(self, channel_number: int) -> None:
         group, chanpos = divmod(channel_number, 100)
 
-        if group == self._last_selected_group:
-            self._last_selected_chan = (chanpos,)
-            self._chan_list.selection_set(self._last_selected_chan)
+        current_sel_group = self._selected_group
+
+        if group == current_sel_group:
+            self._chan_list.selection_set([chanpos])
             return
 
-        self._groups_list.selection_clear(self._last_selected_group)
-        self._last_selected_group = group
-        self.__select_after_refresh = chanpos
+        if current_sel_group is not None:
+            self._groups_list.selection_clear(current_sel_group)
+
         self._groups_list.selection_set(group)
-        self.__update_chan_list()
+        self.__update_chan_list(select=chanpos)
 
     @property
     def _radio_memory(self) -> RadioMemory:
@@ -207,12 +204,15 @@ class ChannelsPage(tk.Frame):
             for rec in rows:
                 _LOG.debug("chan selected: %r", rec.channel)
 
-    def __update_chan_list(self, _event: tk.Event | None = None) -> None:  # type: ignore
+    def __update_chan_list(
+        self,
+        _event: tk.Event | None = None,  # type: ignore
+        *,
+        select: int | None = None,
+    ) -> None:
         sel_group = self._selected_group
         if sel_group is None:
             return
-
-        self._last_selected_group = sel_group
 
         range_start = sel_group * 100
         self._chan_list.set_data(
@@ -222,10 +222,8 @@ class ChannelsPage(tk.Frame):
         self._show_stats()
         self.__need_full_refresh = False
 
-        if self.__select_after_refresh is not None:
-            sel = self.__select_after_refresh
-            self.after(100, lambda: self._chan_list.selection_set([sel]))
-            self.__select_after_refresh = None
+        if select is not None:
+            self.after(100, lambda: self._chan_list.selection_set([select]))
 
     def __on_channel_copy(self, _event: tk.Event) -> None:  # type: ignore
         selected = self._chan_list.sheet.get_currently_selected()
@@ -269,6 +267,11 @@ class ChannelsPage(tk.Frame):
     def __on_channel_paste_channels(
         self, sel: tuple[int, ...], data: str
     ) -> None:
+        if (sel_group := self._selected_group) is not None:
+            range_start = sel_group * 100
+        else:
+            return
+
         try:
             rows = list(expimp.import_channels_str(data))
         except ValueError:
@@ -276,8 +279,6 @@ class ChannelsPage(tk.Frame):
         except Exception:
             _LOG.exception("import from clipboard error")
             raise
-
-        range_start = self._last_selected_group * 100
 
         # special case - when in clipboard is one record and selected  many-
         # duplicate

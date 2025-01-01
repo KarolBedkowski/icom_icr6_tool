@@ -41,8 +41,6 @@ class BanksPage(tk.Frame):
         self._bank_name = tk.StringVar()
         self._bank_link = gui_model.BoolVar()
         self._change_manager = cm
-        self._last_selected_bank = 0
-        self._select_after_refresh: int | None = None
 
         pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
         banks = self._banks_list = tk.Listbox(
@@ -66,23 +64,27 @@ class BanksPage(tk.Frame):
     ) -> None:
         # hide canceller in global models
         self._chan_list.set_region(self._change_manager.rm.region)
+
         if bank is not None:
-            self._last_selected_bank = bank
-            self._select_after_refresh = bank_pos
+            self.select(bank, bank_pos)
+            return
 
         self._update_banks_list()
-        self._banks_list.selection_set(self._last_selected_bank)
+        self._banks_list.selection_set(self._selected_bank or 0)
         self._update_chan_list()
 
     def select(self, bank: int, bank_pos: int | None = None) -> None:
-        if bank == self._last_selected_bank and bank_pos is not None:
+        selected_bank = self._selected_bank
+
+        if bank == selected_bank and bank_pos is not None:
             self._chan_list.selection_set([bank_pos])
-        else:
-            self._banks_list.selection_clear(self._last_selected_bank)
-            self._banks_list.selection_set(bank)
-            self._last_selected_bank = bank
-            self._select_after_refresh = bank_pos
-            self._update_chan_list()
+            return
+
+        if selected_bank is not None:
+            self._banks_list.selection_clear(selected_bank)
+
+        self._banks_list.selection_set(bank)
+        self._update_chan_list(select=bank_pos)
 
     @property
     def _radio_memory(self) -> RadioMemory:
@@ -163,13 +165,17 @@ class BanksPage(tk.Frame):
             self._chan_list.set_data([])
             self._bank_name.set("")
 
-    def _update_chan_list(self, _event: tk.Event | None = None) -> None:  # type: ignore
+    def _update_chan_list(
+        self,
+        _event: tk.Event | None = None,  # type: ignore
+        *,
+        select: int | None = None,
+    ) -> None:
         selected_bank = self._selected_bank
         if selected_bank is None:
             return
 
         self._chan_list.set_bank(selected_bank)
-        self._last_selected_bank = selected_bank
 
         bank = self._radio_memory.banks[selected_bank]
         self._bank_name.set(bank.name.rstrip())
@@ -192,10 +198,8 @@ class BanksPage(tk.Frame):
         self._btn_update["state"] = "normal"
         self._show_stats()
 
-        if self._select_after_refresh is not None:
-            sel = self._select_after_refresh
-            self.after(100, lambda: self._chan_list.selection_set([sel]))
-            self._select_after_refresh = None
+        if select is not None:
+            self.after(100, lambda: self._chan_list.selection_set([select]))
 
     def _show_stats(self) -> None:
         active = sum(
