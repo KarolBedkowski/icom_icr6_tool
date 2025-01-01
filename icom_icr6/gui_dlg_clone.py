@@ -101,7 +101,7 @@ class _CloneDialog(simpledialog.Dialog):
             box,
             text="Start clone",
             width=10,
-            command=self.ok,
+            command=self._on_ok,
             default=tk.ACTIVE,
         )
         w.pack(side=tk.LEFT, padx=5, pady=5)
@@ -110,7 +110,7 @@ class _CloneDialog(simpledialog.Dialog):
         )
         w.pack(side=tk.LEFT, padx=5, pady=5)
 
-        self.bind("<Return>", self.ok)
+        self.bind("<Return>", self._on_ok)
         self.bind("<Escape>", self.cancel)
 
         box.pack()
@@ -140,6 +140,9 @@ class _CloneDialog(simpledialog.Dialog):
         self._working = False
         self._var_progress.set(msg)
 
+    def _on_ok(self, _event: tk.Event | None = None) -> None:  # type: ignore
+        raise NotImplementedError
+
     def _on_success(self, result: object) -> None:
         raise NotImplementedError
 
@@ -153,10 +156,11 @@ class _CloneDialog(simpledialog.Dialog):
                     continue
 
                 if res.status == "finished":
+                    _LOG.debug("bg task finished")
                     self._var_progress.set("Done")
                     self.update_idletasks()
                     self._on_success(res.result)
-                    super().ok()
+                    self.destroy()
                     return
 
                 if res.status == "abort":
@@ -169,6 +173,8 @@ class _CloneDialog(simpledialog.Dialog):
                     self._stop_working(f"ERROR: {res.error}.")
                     return
 
+                _LOG.error("unknown result: %r", res)
+
         self.after(250, self._monitor_bg_task)
 
 
@@ -177,7 +183,7 @@ class CloneFromRadioDialog(_CloneDialog):
         self.radio_memory: RadioMemory | None = None
         super().__init__(parent, "Clone from radio")
 
-    def ok(self, _event: tk.Event | None = None) -> None:  # type: ignore
+    def _on_ok(self, _event: tk.Event | None = None) -> None:  # type: ignore
         if self._working:
             return
 
@@ -219,7 +225,7 @@ class CloneToRadioDialog(_CloneDialog):
         self.result = False
         super().__init__(parent, "Clone to radio")
 
-    def ok(self, _event: tk.Event | None = None) -> None:  # type: ignore
+    def _on_ok(self, _event: tk.Event | None = None) -> None:  # type: ignore
         if self._working:
             return
 
@@ -272,7 +278,7 @@ class RadioInfoDialog(_CloneDialog):
         self.result: model.RadioModel | None = None
         super().__init__(parent, "Radio info")
 
-    def ok(self, _event: tk.Event | None = None) -> None:  # type: ignore
+    def _on_ok(self, _event: tk.Event | None = None) -> None:  # type: ignore
         radio = io.Radio(self._var_port.get())
         try:
             self.result = radio.get_model()
