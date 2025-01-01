@@ -1,0 +1,21 @@
+Changelog
+=========
+
+v1.1 2025-01-01
+---------------
+
+Bug Fixes
+~~~~~~~~~
+
+- Fix jump to selected channel/banks from find windows
+- Fix storing find dialog position
+- Fix gui freeze after clone finish
+- Fix log after clone bad checksum error
+- Fix sorting/packing - handle hidden channels
+- Fix label in clone dialog
+- Use ttk.Checkbutton instead of tk.Checkbutton
+
+Features
+~~~~~~~~
+
+- Dialog and cli command: looking for channel duplicates.
