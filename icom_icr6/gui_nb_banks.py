@@ -75,8 +75,14 @@ class BanksPage(tk.Frame):
         self._update_chan_list()
 
     def select(self, bank: int, bank_pos: int | None = None) -> None:
-        self._banks_list.selection_set(bank)
-        self._select_after_refresh = bank_pos
+        if bank == self._last_selected_bank and bank_pos is not None:
+            self._chan_list.selection_set([bank_pos])
+        else:
+            self._banks_list.selection_clear(self._last_selected_bank)
+            self._banks_list.selection_set(bank)
+            self._last_selected_bank = bank
+            self._select_after_refresh = bank_pos
+            self._update_chan_list()
 
     @property
     def _radio_memory(self) -> RadioMemory:

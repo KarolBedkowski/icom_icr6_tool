@@ -54,18 +54,25 @@ class ChannelsPage(tk.Frame):
 
         if channel_number is not None:
             group, chanpos = divmod(channel_number, 100)
-            self._last_selected_chan = (group,)
+            self._last_selected_group = group
             self.__select_after_refresh = chanpos
 
         self._groups_list.selection_set(self._last_selected_group)
         self.__update_chan_list()
-        self._chan_list.selection_set(self._last_selected_chan)
 
     def select(self, channel_number: int) -> None:
         group, chanpos = divmod(channel_number, 100)
-        self.__select_after_refresh = chanpos
 
+        if group == self._last_selected_group:
+            self._last_selected_chan = (chanpos,)
+            self._chan_list.selection_set(self._last_selected_chan)
+            return
+
+        self._groups_list.selection_clear(self._last_selected_group)
+        self._last_selected_group = group
+        self.__select_after_refresh = chanpos
         self._groups_list.selection_set(group)
+        self.__update_chan_list()
 
     @property
     def _radio_memory(self) -> RadioMemory:
