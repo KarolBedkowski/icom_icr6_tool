@@ -46,6 +46,7 @@ class FindDialog(tk.Toplevel):
         self._result_lb.bind("<<ListboxSelect>>", self._on_select_result_list)
 
         self.bind("<Escape>", self._on_close)
+        self.bind("<Destroy>", self._on_destroy)
         self.geometry(config.CONFIG.find_window_geometry)
 
     def _body(self, master: tk.Widget) -> None:
@@ -107,8 +108,11 @@ class FindDialog(tk.Toplevel):
 
             listbox.insert(tk.END, line)
 
+    def _on_destroy(self, event: tk.Event) -> None:  # type: ignore
+        if event.widget == self:
+            config.CONFIG.find_window_geometry = self.geometry()
+
     def _on_close(self, _event: tk.Event | None = None) -> None:  # type:ignore
-        config.CONFIG.find_window_geometry = self.geometry()
         self.grab_release()
         self.destroy()
 
