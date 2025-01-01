@@ -365,10 +365,10 @@ class Radio:
                 my_checksum = calc_checksum(rawdata[: length + 3])
                 if checksum != my_checksum:
                     _LOG.error(
-                        "invalid checksum: idx=%d, exp=%d, rec=%d, "
+                        "invalid checksum: idx=%d, exp=%r, rec=%r, "
                         "frame=%s",
                         idx,
-                        calc_checksum,
+                        my_checksum,
                         checksum,
                         binascii.hexlify(rawdata),
                     )
