@@ -244,6 +244,42 @@ def main_print_bands(args: argparse.Namespace) -> None:
         _print_csv((b.to_record() for b in mem.bands), expimp.BANDS_FIELDS)
 
 
+def main_print_dupl_freq(args: argparse.Namespace) -> None:
+    """cmd: duplicated-freq
+    args: <icf file>
+    """
+    mem = io.load_icf_file(args.icf_file)
+
+    print("Duplicated channels by frequency")
+
+    freq_channels = sorted(mem.find_duplicated_channels_freq(args.precision))
+    if not freq_channels:
+        print("no duplicates")
+        return
+
+    if args.verbose > 2:
+        for freq, num, channels in freq_channels:
+            print(freq, "channels:", num)
+            for ch in channels:
+                print(ch)
+
+            print()
+
+    else:
+        data = []
+        for freq, num, channels in freq_channels:
+            for ch in channels:
+                rec = ch.to_record()
+                rec["dupl_freq"] = freq
+                rec["dupl_channels"] = num
+                data.append(rec)
+
+        _print_csv(
+            data,
+            ["dupl_freq", "dupl_channels", *expimp.CHANNEL_FIELDS_W_BANKS],
+        )
+
+
 def main_send_command(args: argparse.Namespace) -> None:
     """cmd: send
     args: <port> <command> <payload>
@@ -331,6 +367,18 @@ def _parse_args() -> argparse.Namespace:
     cmd = cmds.add_parser("bands", help="Print default bands configuration")
     cmd.add_argument("icf_file", type=Path, help="Input ICF file")
     cmd.set_defaults(func=main_print_bands)
+
+    cmd = cmds.add_parser(
+        "duplicated-freq", help="Print duplicated channels by frequency"
+    )
+    cmd.add_argument("icf_file", type=Path, help="Input ICF file")
+    cmd.add_argument(
+        "--precision",
+        type=int,
+        default=3,
+        help="Skip given number of less significant digits",
+    )
+    cmd.set_defaults(func=main_print_dupl_freq)
 
     cmd = cmds.add_parser("send", help="Send command to radio")
     cmd.add_argument("port", help="USB/TTY/COM port")

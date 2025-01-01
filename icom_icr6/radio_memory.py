@@ -248,6 +248,37 @@ class RadioMemory:
             if str(se.freq).startswith(query):
                 yield "awchannel", se
 
+    def find_duplicated_channels_freq(
+        self,
+        precision: int = 1,
+        *,
+        ignore_mode: bool = False,
+        ignore_bank: bool = False,
+    ) -> ty.Iterable[tuple[int, int, list[model.Channel]]]:
+        """Find active channels with the same frequency (after round last
+        `precision` digits).
+        yield (rounded frequency, number of channels for this freq,
+        channel)
+        """
+        div = pow(10, precision)
+
+        freq_channels: defaultdict[tuple[int, int, int], list[model.Channel]]
+        freq_channels = defaultdict(list)
+
+        for chan in self.channels:
+            if not chan.hide_channel:
+                key = (
+                    chan.freq // div,
+                    0 if ignore_mode else chan.mode,
+                    0 if ignore_bank else chan.bank,
+                )
+                freq_channels[key].append(chan)
+
+        for key, channels in freq_channels.items():
+            if (num := len(channels)) > 1:
+                freq = key[0] * div
+                yield freq, num, channels
+
     # Loading and Writing
 
     def _load_channels(self) -> None:
