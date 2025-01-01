@@ -80,8 +80,8 @@ def new_checkbox(  # noqa:PLR0913
     var: tk.Variable,
     *,
     colspan: int = 1,
-) -> tk.Checkbutton:
-    cbox = tk.Checkbutton(
+) -> ttk.Checkbutton:
+    cbox = ttk.Checkbutton(
         parent,
         text=label,
         variable=var,
