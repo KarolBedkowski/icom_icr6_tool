@@ -1,7 +1,7 @@
-# Copyright © 2024 Karol Będkowski <Karol Będkowski@kkomp>
+# Copyright © 2024-2025 Karol Będkowski <Karol Będkowski@kkomp>
 #
 # Distributed under terms of the GPLv3 license.
 
 """ """
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"

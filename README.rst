@@ -1,4 +1,4 @@
-Icom IC-R6 Manager  1.0
+Icom IC-R6 Manager  1.1
 ========================
 
 Simple TK application for manage Icom IC-R6 scanner memory.
@@ -37,12 +37,18 @@ Requirements
 
 
 Installation
------------
+------------
+
 ``pip install .``
+
+or
+
+``pipx install .``
 
 
 Using
 -----
+
 GUI:
 
 ``icom_icr6 <optional icf filename>``
@@ -63,7 +69,7 @@ https://github.com/jbradsha/chirp/
 Licence
 -------
 
-Copyright (c) Karol Będkowski, 2024
+Copyright (c) Karol Będkowski, 2024-2025
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
