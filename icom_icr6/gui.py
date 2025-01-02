@@ -15,7 +15,6 @@ from . import (
     config,
     expimp,
     gui_dlg_clone,
-    gui_dlg_dupl,
     gui_dlg_find,
     gui_model,
     gui_nb_awchannels,
@@ -157,10 +156,6 @@ class App(tk.Frame):
             accelerator="Ctrl+F",
         )
         master.bind_all("<Control-f>", self._on_menu_find)
-        edit_menu.add_command(
-            label="Find duplicated channels...",
-            command=self._on_menu_find_dup,
-        )
         menu_bar.add_cascade(label="Edit", menu=edit_menu)
 
         radio_menu = tk.Menu(menu_bar, tearoff=False)
@@ -307,11 +302,6 @@ class App(tk.Frame):
 
     def _on_menu_find(self, _event: tk.Event | None = None) -> None:  # type: ignore
         gui_dlg_find.FindDialog(
-            self, self._radio_memory, self._on_find_object_select
-        )
-
-    def _on_menu_find_dup(self, _event: tk.Event | None = None) -> None:  # type: ignore
-        gui_dlg_dupl.DuplicatedFreqDialog(
             self, self._radio_memory, self._on_find_object_select
         )
 
