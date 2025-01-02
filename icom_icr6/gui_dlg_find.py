@@ -32,18 +32,25 @@ class FindDialog(tk.Toplevel):
 
         self._radio_memory = radio_memory
         self._query = tk.StringVar()
-        self._result: list[tuple[str, object]] = []
+        self._status = tk.StringVar()
+        self._status.set("")
         self._on_select_result = on_select_result
 
         frame_body = tk.Frame(self)
         self._body(frame_body)
         frame_body.pack(side=tk.TOP, fill=tk.BOTH, padx=12, pady=12)
 
-        self._result_lb = tk.Listbox(self, selectmode=tk.SINGLE)
-        self._result_lb.pack(
-            side=tk.TOP, fill=tk.BOTH, expand=True, padx=12, pady=12
+        frame_status = tk.Frame(self)
+        tk.Label(frame_status, textvariable=self._status).pack(side=tk.LEFT)
+        frame_status.pack(side=tk.BOTTOM, fill=tk.X, padx=12, pady=12)
+
+        frame_tree, self._result_tree = self._create_result_tree()
+        frame_tree.pack(
+            side=tk.TOP, fill=tk.BOTH, expand=True, padx=12, pady=0
         )
-        self._result_lb.bind("<<ListboxSelect>>", self._on_select_result_list)
+        self._result_tree.bind(
+            "<<TreeviewSelect>>", self._on_select_result_tree
+        )
 
         self.bind("<Escape>", self._on_close)
         self.bind("<Destroy>", self._on_destroy)
@@ -68,45 +75,79 @@ class FindDialog(tk.Toplevel):
 
         self.bind("<Return>", self._on_search)
 
+    def _create_result_tree(self) -> tuple[tk.Widget, ttk.Treeview]:
+        frame = tk.Frame(self)
+        tree = ttk.Treeview(
+            frame,
+            selectmode=tk.BROWSE,
+            columns=("freq", "mode", "name"),
+        )
+        tree.column("freq", width=100)
+        tree.heading("freq", text="Frequency")
+        tree.column("mode", width=50)
+        tree.heading("mode", text="Mode")
+        tree.column("name", width=50)
+        tree.heading("name", text="Name")
+        tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        vsb = ttk.Scrollbar(frame, orient="vertical", command=tree.yview)
+        vsb.pack(side=tk.RIGHT, fill=tk.Y)
+
+        tree.configure(yscrollcommand=vsb.set)
+
+        return frame, tree
+
     def _on_search(self, _event: tk.Event | None = None) -> None:  # type:ignore
         query = self._query.get()
         if not query:
             return
 
-        listbox = self._result_lb
-        listbox.delete(0, listbox.size())
+        tree = self._result_tree
+        tree.delete(*tree.get_children())
 
-        self._result = list(self._radio_memory.find(query))
-
-        for kind, obj in self._result:
+        result = self._radio_memory.find(query)
+        for idx, (kind, obj) in enumerate(result):  # noqa: B007
             match kind:
                 case "channel":
                     assert isinstance(obj, model.Channel)
-                    line = f"Channel {obj.number}  frequency: {obj.freq}  "
-                    if obj.name:
-                        line += f"name: {obj.name}"
-
-                case "bank_pos":
-                    assert isinstance(obj, model.Channel)
-                    bank = consts.BANK_NAMES[obj.bank]
-                    line = (
-                        f"Bank {bank}  pos: {obj.bank_pos}  "
-                        f"channel: {obj.number}   frequency: {obj.freq}"
+                    chan = obj
+                    ciid = tree.insert(
+                        "",
+                        tk.END,
+                        text=f"Channel {chan.number}",
+                        tags=("chan", str(chan.number)),
+                        values=(
+                            f"{chan.freq:_}".replace("_", " "),
+                            consts.MODES[chan.mode],
+                            chan.name,
+                        ),
+                        open=True,
                     )
-                    if obj.name:
-                        line += f"  channel name: {obj.name}"
+
+                    if chan.bank != consts.BANK_NOT_SET:
+                        bank = consts.BANK_NAMES[chan.bank]
+                        tree.insert(
+                            ciid,
+                            tk.END,
+                            text=f"Bank {bank} / {chan.bank_pos}",
+                            tags=("bank", str(chan.bank), str(chan.bank_pos)),
+                        )
 
                 case "awchannel":
                     assert isinstance(obj, model.Channel)
-                    line = (
-                        f"Autowrite channel {obj.number}  "
-                        f"frequency: {obj.freq}"
+                    tree.insert(
+                        "",
+                        tk.END,
+                        text=f"Autowrite channel {obj.number}",
+                        tags=("awchan", str(obj.number)),
+                        values=(
+                            f"{obj.freq:_}".replace("_", " "),
+                            consts.MODES[obj.mode],
+                            "",
+                        ),
                     )
 
-                case _:
-                    line = str(obj)
-
-            listbox.insert(tk.END, line)
+        self._status.set(f"Found {idx} elements")
 
     def _on_destroy(self, event: tk.Event) -> None:  # type: ignore
         if event.widget == self:
@@ -116,21 +157,24 @@ class FindDialog(tk.Toplevel):
         self.grab_release()
         self.destroy()
 
-    def _on_select_result_list(self, _event: tk.Event) -> None:  # type: ignore
-        selection = self._result_lb.curselection()  # type: ignore
+    def _on_select_result_tree(self, _event: tk.Event) -> None:  # type: ignore
+        selection = self._result_tree.selection()
         if not selection:
             return
 
-        kind, obj = self._result[int(selection[0])]
-        match kind:
-            case "channel":
-                assert isinstance(obj, model.Channel)
-                self._on_select_result("channel", obj.number)
+        selected = self._result_tree.item(selection[0])
+        match selected["tags"]:
+            case ["freq", _]:
+                pass
 
-            case "bank_pos":
-                assert isinstance(obj, model.Channel)
-                self._on_select_result("bank_pos", (obj.bank, obj.bank_pos))
+            case ["chan", num]:
+                self._on_select_result("channel", int(num))
 
-            case "awchannel":
-                assert isinstance(obj, model.Channel)
-                self._on_select_result("awchannel", obj.number)
+            case ["bank", bank, bank_pos]:
+                self._on_select_result("bank_pos", (int(bank), int(bank_pos)))
+
+            case ["awchan", num]:
+                self._on_select_result("awchannel", int(num))
+
+            case _:
+                _LOG.error("unknown selected item: %r", selected)

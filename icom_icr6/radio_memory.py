@@ -234,15 +234,16 @@ class RadioMemory:
 
         Return tuple[object type, object]
         """
+
+        # all names are in upper case
+        query = query.upper()
+
         for chan in self.channels:
             if chan.hide_channel:
                 continue
 
             if str(chan.freq).startswith(query) or chan.name.startswith(query):
                 yield "channel", chan
-
-                if chan.bank != consts.BANK_NOT_SET:
-                    yield "bank_pos", chan
 
         for se in self.awchannels:
             if str(se.freq).startswith(query):
