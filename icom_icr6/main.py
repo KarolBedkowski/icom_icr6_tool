@@ -47,9 +47,9 @@ def main_radio_info(args: argparse.Namespace) -> None:
     args: <port>
     """
     radio = io.Radio(args.port)
-    if model := radio.get_model():
-        print(f"Model: {model!r}")
-        print(f"Is IC-R6: {model.is_icr6()}")
+    if rm := radio.get_model():
+        print(f"Model: {rm!r}")
+        print(f"Is IC-R6: {rm.is_icr6()}")
     else:
         print("ERROR")
 
