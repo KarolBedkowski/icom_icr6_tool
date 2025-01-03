@@ -45,7 +45,7 @@ class RadioModel:
 
         debug_info = (
             {
-                "raw": binascii.hexlify(data),
+                "raw": data.hex(" ", -8),
                 "unk1": data[4],
                 "unk2": data[22:25],
                 "unk_serial": serial[4],
@@ -66,4 +66,4 @@ class RadioModel:
         return self.model == b"\x32\x50\x00\x01"
 
     def human_model(self) -> str:
-        return binascii.hexlify(self.model).decode()
+        return self.model.hex()

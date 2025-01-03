@@ -4,7 +4,6 @@
 
 """ """
 
-import binascii
 import itertools
 import logging
 import time
@@ -73,7 +72,7 @@ class Frame:
             "), ",
             f"cmd={self.cmd:02x}, ",
             "payload=",
-            binascii.hexlify(self.payload).decode(),
+            self.payload.hex(),
             ")",
         ]
 
@@ -122,17 +121,17 @@ class StreamLogger:
         self._log.close()
 
     def write(self, data: bytes) -> None:
-        self._log.write(f"<{binascii.hexlify(data)!r}\n")
+        self._log.write(f"<{data.hex()}\n")
         self._impl.write(data)
 
     def read(self, length: int) -> bytes:
         data = self._impl.read(length)
-        self._log.write(f">{binascii.hexlify(data)!r}\n")
+        self._log.write(f">{data.hex()}\n")
         return data
 
     def read_frame(self) -> bytes:
         data = self._impl.read_frame()
-        self._log.write(f">{binascii.hexlify(data)!r}\n")
+        self._log.write(f">{data.hex()}\n")
         return data
 
     def switch_to_hispeed(self) -> None:
@@ -251,7 +250,7 @@ class Radio:
 
     def _write(self, s: Serial, payload: bytes) -> None:
         if _LOG.isEnabledFor(logging.DEBUG):
-            _LOG.debug("write: %s", binascii.hexlify(payload))
+            _LOG.debug("write: %s", payload.hex())
 
         s.write(payload)
 
@@ -269,7 +268,7 @@ class Radio:
         data = s.read_frame()
 
         if _LOG.isEnabledFor(logging.DEBUG):
-            _LOG.debug("read: %s", binascii.hexlify(data))
+            _LOG.debug("read: %s", data.hex())
 
         if not data:
             _LOG.error("no data")
@@ -370,7 +369,7 @@ class Radio:
                         idx,
                         my_checksum,
                         checksum,
-                        binascii.hexlify(rawdata),
+                        rawdata.hex(),
                     )
                     raise ChecksumError
 
@@ -449,7 +448,7 @@ class Radio:
                 _LOG.debug("process addr: %d", addr)
 
                 chunk = [(addr >> 8), addr & 0xFF, 32, *mv[addr : addr + 32]]
-                # encode paload
+                # encode payload
                 payload = "".join(f"{d:02X}" for d in chunk)
                 # add checksum
                 payload += f"{calc_checksum(chunk):02X}"
@@ -561,7 +560,7 @@ def _update_from_icf_file(mv: memoryview, line: str) -> None:
     size = int(line[4:6], 16)
     data_raw = line[6:]
     assert size * 2 == len(data_raw)
-    data = binascii.unhexlify(data_raw)
+    data = bytes.fromhex(data_raw)
     mv[addr : addr + size] = data
 
 
@@ -621,7 +620,7 @@ def _dump_memory(mem: bytearray, step: int = 16) -> ty.Iterator[str]:
     mv = memoryview(mem)
     for idx in range(0, 0x6E60, step):
         data = mv[idx : idx + step]
-        data_hex = binascii.hexlify(bytes(data)).decode()
+        data_hex = data.hex().upper()
         res = f"{idx:04x}{step:02x}{data_hex}"
         yield res.upper()
 

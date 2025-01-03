@@ -6,7 +6,6 @@
 
 from __future__ import annotations
 
-import binascii
 import copy
 import logging
 import typing as ty
@@ -56,9 +55,7 @@ class ChannelFlags:
             skip=(data[0] & 0b01100000) >> 5,
             bank=data[0] & 0b00011111,
             bank_pos=data[1],
-            debug_info={"raw": binascii.hexlify(data)}
-            if _support.DEBUG
-            else None,
+            debug_info={"raw": data.hex(" ", -8)} if _support.DEBUG else None,
         )
 
     def to_data(self, cflags: MutableMemory) -> None:
@@ -198,10 +195,8 @@ class Channel:
                     data[7] & 0b11000000,  # 0 for valid channels
                     data[10] & 0b01111000,  # always 0
                 ],
-                "raw": binascii.hexlify(bytes(data)),
-                "raw_flags": binascii.hexlify(bytes(cflags))
-                if cflags
-                else None,
+                "raw": data.hex(" ", -8),
+                "raw_flags": cflags.hex(" ", -8) if cflags else None,
                 "freq": freq,
                 "offset": offset,
                 "flags": (data[2] & 0b11110000) >> 4,
@@ -528,9 +523,7 @@ class Bank:
         return Bank(
             idx,
             name=bytes(data[0:6]).decode() if data[0] else "",
-            debug_info={"raw": binascii.hexlify(data)}
-            if _support.DEBUG
-            else None,
+            debug_info={"raw": data.hex(" ", -8)} if _support.DEBUG else None,
         )
 
     def to_data(self, data: MutableMemory) -> None:

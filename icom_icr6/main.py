@@ -9,7 +9,6 @@
 """ """
 
 import argparse
-import binascii
 import csv
 import logging
 import sys
@@ -285,7 +284,7 @@ def main_send_command(args: argparse.Namespace) -> None:
     args: <port> <command> <payload>
     """
     cmd = int(args.command, 16)
-    payload = binascii.unhexlify(args.payload) if args.payload else b""
+    payload = bytes.fromhex(args.payload) if args.payload else b""
 
     r = io.Radio(args.port)
     print("Response: ")
