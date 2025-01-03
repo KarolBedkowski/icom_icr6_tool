@@ -14,17 +14,16 @@ from . import _support
 
 @dataclass
 class RadioModel:
-    # Data format - 40B
+    # Data format - 39B
     # model: 4B
     # unknown: 1B - is this mapped to region?
     # rev: 1B
     # comment: 16B
     # unknown: 3B
-    # serial 14B
+    # serial 14B (hex)
     #    4B
     #    1B unknown
     #    2B
-    # unknown 7B
     model: bytes
     rev: int
     comment: str
