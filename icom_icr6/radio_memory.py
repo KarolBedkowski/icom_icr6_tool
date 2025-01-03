@@ -284,59 +284,58 @@ class RadioMemory:
 
     def _load_channels(self) -> None:
         self.channels = channels = []
-        mv = memoryview(self.mem)
+        with memoryview(self.mem) as mv:
+            for idx in range(consts.NUM_CHANNELS):
+                start = idx * 16
+                cflags_start = idx * 2 + 0x5F80
 
-        for idx in range(consts.NUM_CHANNELS):
-            start = idx * 16
-            cflags_start = idx * 2 + 0x5F80
-
-            channels.append(
-                model.Channel.from_data(
-                    idx,
-                    mv[start : start + 16],
-                    mv[cflags_start : cflags_start + 2],
+                channels.append(
+                    model.Channel.from_data(
+                        idx,
+                        mv[start : start + 16],
+                        mv[cflags_start : cflags_start + 2],
+                    )
                 )
-            )
 
     def _save_channels(self) -> None:
-        mv = memoryview(self.mem)
+        with memoryview(self.mem) as mv:
+            for idx, chan in enumerate(self.channels):
+                assert idx == chan.number
 
-        for idx, chan in enumerate(self.channels):
-            assert idx == chan.number
+                if not chan.updated:
+                    continue
 
-            if not chan.updated:
-                continue
+                start = idx * 16
+                cflags_start = idx * 2 + 0x5F80
 
-            start = idx * 16
-            cflags_start = idx * 2 + 0x5F80
-
-            chan.to_data(
-                mv[start : start + 16], mv[cflags_start : cflags_start + 2]
-            )
-            chan.updated = False
+                chan.to_data(
+                    mv[start : start + 16], mv[cflags_start : cflags_start + 2]
+                )
+                chan.updated = False
 
     def _load_autowrite_channels(self) -> None:
         # load position map
-        mv = memoryview(self.mem)
+        with memoryview(self.mem) as mv:
+            # load hidden flags
+            chan_hidden = list(
+                bitarray2bits(mv[0x6A10:], consts.NUM_AUTOWRITE_CHANNELS)
+            )
+            # chan position map
+            chan_positiions = mv[
+                0x6A30 : 0x6A30 + consts.NUM_AUTOWRITE_CHANNELS
+            ]
+            channels = []
 
-        # load hidden flags
-        chan_hidden = list(
-            bitarray2bits(mv[0x6A10:], consts.NUM_AUTOWRITE_CHANNELS)
-        )
-        # chan position map
-        chan_positiions = mv[0x6A30 : 0x6A30 + consts.NUM_AUTOWRITE_CHANNELS]
-        channels = []
+            # load only channels that have valid position and are not hidden
+            for idx, (hidden, chan_pos) in enumerate(
+                zip(chan_hidden, chan_positiions, strict=True)
+            ):
+                if hidden or chan_pos >= consts.NUM_AUTOWRITE_CHANNELS:
+                    continue
 
-        # load only channels that have valid position and are not hidden
-        for idx, (hidden, chan_pos) in enumerate(
-            zip(chan_hidden, chan_positiions, strict=True)
-        ):
-            if hidden or chan_pos >= consts.NUM_AUTOWRITE_CHANNELS:
-                continue
-
-            start = idx * 16 + 0x5140
-            data = mv[start : start + 16]
-            channels.append(model.Channel.from_data(chan_pos, data, None))
+                start = idx * 16 + 0x5140
+                data = mv[start : start + 16]
+                channels.append(model.Channel.from_data(chan_pos, data, None))
 
         # sort channels by position in awchan list
         channels.sort()
@@ -348,34 +347,33 @@ class RadioMemory:
 
     def _load_scan_edge(self) -> None:
         self.scan_edges = ses = []
-        mv = memoryview(self.mem)
 
-        for idx in range(consts.NUM_SCAN_EDGES):
-            start = 0x5DC0 + idx * 16
-            start_flags = 0x69A8 + 4 * idx
-            ses.append(
-                model.ScanEdge.from_data(
-                    idx,
-                    mv[start : start + 16],
-                    mv[start_flags : start_flags + 3],
+        with memoryview(self.mem) as mv:
+            for idx in range(consts.NUM_SCAN_EDGES):
+                start = 0x5DC0 + idx * 16
+                start_flags = 0x69A8 + 4 * idx
+                ses.append(
+                    model.ScanEdge.from_data(
+                        idx,
+                        mv[start : start + 16],
+                        mv[start_flags : start_flags + 3],
+                    )
                 )
-            )
 
     def _save_scan_edges(self) -> None:
-        mv = memoryview(self.mem)
+        with memoryview(self.mem) as mv:
+            for idx, se in enumerate(self.scan_edges):
+                assert idx == se.idx
 
-        for idx, se in enumerate(self.scan_edges):
-            assert idx == se.idx
+                if not se.updated:
+                    continue
 
-            if not se.updated:
-                continue
-
-            start = 0x5DC0 + se.idx * 16
-            start_flags = 0x69A8 + 4 * idx
-            se.to_data(
-                mv[start : start + 16], mv[start_flags : start_flags + 4]
-            )
-            se.updated = False
+                start = 0x5DC0 + se.idx * 16
+                start_flags = 0x69A8 + 4 * idx
+                se.to_data(
+                    mv[start : start + 16], mv[start_flags : start_flags + 4]
+                )
+                se.updated = False
 
     # not used due to update via channel
     # def _get_channel_flags(self, idx: int) -> ChannelFlags:
@@ -399,41 +397,40 @@ class RadioMemory:
 
     def _load_banks(self) -> None:
         self.banks = banks = []
-        mv = memoryview(self.mem)
-        for idx in range(consts.NUM_BANKS):
-            start = 0x6D10 + idx * 8
-            banks.append(model.Bank.from_data(idx, mv[start : start + 8]))
+        with memoryview(self.mem) as mv:
+            for idx in range(consts.NUM_BANKS):
+                start = 0x6D10 + idx * 8
+                banks.append(model.Bank.from_data(idx, mv[start : start + 8]))
 
     def _save_banks(self) -> None:
-        mv = memoryview(self.mem)
-        for idx, bank in enumerate(self.banks):
-            assert idx == bank.idx
-            start = 0x6D10 + idx * 8
-            bank.to_data(mv[start : start + 8])
+        with memoryview(self.mem) as mv:
+            for idx, bank in enumerate(self.banks):
+                assert idx == bank.idx
+                start = 0x6D10 + idx * 8
+                bank.to_data(mv[start : start + 8])
 
     def _load_scan_links(self) -> None:
         self.scan_links = sls = []
-        mv = memoryview(self.mem)
-        for idx in range(consts.NUM_SCAN_LINKS):
-            start = 0x6DC0 + idx * 8
-            # edges
-            estart = 0x6C2C + 4 * idx
+        with memoryview(self.mem) as mv:
+            for idx in range(consts.NUM_SCAN_LINKS):
+                start = 0x6DC0 + idx * 8
+                # edges
+                estart = 0x6C2C + 4 * idx
 
-            sls.append(
-                model.ScanLink.from_data(
-                    idx, mv[start : start + 8], mv[estart : estart + 4]
+                sls.append(
+                    model.ScanLink.from_data(
+                        idx, mv[start : start + 8], mv[estart : estart + 4]
+                    )
                 )
-            )
 
     def _save_scan_links(self) -> None:
-        mv = memoryview(self.mem)
-
-        for idx, sl in enumerate(self.scan_links):
-            assert idx == sl.idx
-            start = 0x6DC0 + idx * 8
-            # edges mapping
-            estart = 0x6C2C + 4 * idx
-            sl.to_data(mv[start : start + 8], mv[estart : estart + 4])
+        with memoryview(self.mem) as mv:
+            for idx, sl in enumerate(self.scan_links):
+                assert idx == sl.idx
+                start = 0x6DC0 + idx * 8
+                # edges mapping
+                estart = 0x6C2C + 4 * idx
+                sl.to_data(mv[start : start + 8], mv[estart : estart + 4])
 
     def _load_settings(self) -> None:
         self.settings = model.RadioSettings.from_data(
@@ -441,10 +438,10 @@ class RadioMemory:
         )
 
     def _save_settings(self) -> None:
-        mv = memoryview(self.mem)
-        if self.settings.updated:
-            self.settings.to_data(mv[0x6BD0 : 0x6BD0 + 64])
-            self.settings.updated = False
+        with memoryview(self.mem) as mv:
+            if self.settings.updated:
+                self.settings.to_data(mv[0x6BD0 : 0x6BD0 + 64])
+                self.settings.updated = False
 
     def _load_bank_links(self) -> None:
         self.bank_links = model.BankLinks.from_data(
@@ -452,25 +449,25 @@ class RadioMemory:
         )
 
     def _save_bank_links(self) -> None:
-        mv = memoryview(self.mem)
-        self.bank_links.to_data(mv[0x6C28 : 0x6C28 + 3])
+        with memoryview(self.mem) as mv:
+            self.bank_links.to_data(mv[0x6C28 : 0x6C28 + 3])
 
     def _load_comment(self) -> None:
         self.comment = self.mem[0x6D00 : 0x6D00 + 16].decode().rstrip()
 
     def _save_comment(self) -> None:
         cmt = fixers.fix_comment(self.comment).ljust(16).encode()
-        mv = memoryview(self.mem)
-        mv[0x6D00 : 0x6D00 + 16] = cmt
+        with memoryview(self.mem) as mv:
+            mv[0x6D00 : 0x6D00 + 16] = cmt
 
     def _load_bands(self) -> None:
         self.bands = bands = []
-        mv = memoryview(self.mem)
-        for idx in range(13):
-            start = 0x6B00 + idx * 16
-            bands.append(
-                model.BandDefaults.from_data(idx, mv[start : start + 16])
-            )
+        with memoryview(self.mem) as mv:
+            for idx in range(13):
+                start = 0x6B00 + idx * 16
+                bands.append(
+                    model.BandDefaults.from_data(idx, mv[start : start + 16])
+                )
 
     def _guess_region(self) -> consts.Region:
         """Guess region from configuration of default bands."""

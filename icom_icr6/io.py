@@ -431,12 +431,11 @@ class Radio:
         cb: ty.Callable[[int], bool] | None = None,
     ) -> bool:
         self._check_radio()
-        mv = memoryview(mem.mem)
 
         time.sleep(1)
         prev_send_frame: Frame | None = None
 
-        with self._open_serial("clone_to") as s:
+        with memoryview(mem.mem) as mv, self._open_serial("clone_to") as s:
             # clone in
             self._start_clone(s, CMD_CLONE_IN)
 
@@ -568,9 +567,8 @@ def load_icf_file(file: Path) -> RadioMemory:
     """Load icf file as RadioMemory."""
     _LOG.info("loading %s", file)
     mem = RadioMemory()
-    mv = memoryview(mem.mem)
 
-    with file.open("rt") as inp:
+    with memoryview(mem.mem) as mv, file.open("rt") as inp:
         try:
             # check header == model in hex
             if next(inp).strip() != "32500001":
@@ -617,12 +615,12 @@ def load_raw_memory(file: Path) -> RadioMemory:
 def _dump_memory(mem: bytearray, step: int = 16) -> ty.Iterator[str]:
     """Dump data in icf file format."""
 
-    mv = memoryview(mem)
-    for idx in range(0, 0x6E60, step):
-        data = mv[idx : idx + step]
-        data_hex = data.hex().upper()
-        res = f"{idx:04x}{step:02x}{data_hex}"
-        yield res.upper()
+    with memoryview(mem) as mv:
+        for idx in range(0, 0x6E60, step):
+            data = mv[idx : idx + step]
+            data_hex = data.hex().upper()
+            res = f"{idx:04x}{step:02x}{data_hex}"
+            yield res.upper()
 
 
 def save_icf_file(file: Path, mem: RadioMemory) -> None:

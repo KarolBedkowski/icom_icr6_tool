@@ -19,8 +19,8 @@ def test_decode_radio_model():
         "010001"
         "3043423233453330303030314137"
     )
-    data = memoryview(bytearray.fromhex(inp))
-    rm = model.RadioModel.from_data(data)
+    with memoryview(bytearray.fromhex(inp)) as data:
+        rm = model.RadioModel.from_data(data)
 
     assert rm.model == b"2P\x00\x01"
     assert rm.rev == 1
