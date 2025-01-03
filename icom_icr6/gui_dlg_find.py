@@ -11,7 +11,7 @@ import tkinter as tk
 import typing as ty
 from tkinter import ttk
 
-from . import config, consts, model
+from . import config, consts, gui_support, model
 
 if ty.TYPE_CHECKING:
     from .radio_memory import RadioMemory
@@ -48,7 +48,7 @@ class _BasePage(tk.Frame):
             text=f"Channel {chan.number}",
             tags=("chan", str(chan.number)),
             values=(
-                f"{chan.freq:_}".replace("_", " "),
+                gui_support.format_freq(chan.freq),
                 consts.MODES[chan.mode],
                 chan.name,
             ),
@@ -112,7 +112,7 @@ class _FindChannelsPage(_BasePage):
                         text=f"Autowrite channel {obj.number}",
                         tags=("awchan", str(obj.number)),
                         values=(
-                            f"{obj.freq:_}".replace("_", " "),
+                            gui_support.format_freq(obj.freq),
                             consts.MODES[obj.mode],
                             "",
                         ),
@@ -192,7 +192,7 @@ class _FindDuplicatedPage(_BasePage):
             fiid = tree.insert(
                 "",
                 tk.END,
-                text=f"{freq}: {num} channels",
+                text=f"{gui_support.format_freq(freq)}: {num} channels",
                 tags=("freq", str(freq)),
                 open=True,
             )
@@ -200,7 +200,7 @@ class _FindDuplicatedPage(_BasePage):
                 self._insert_result_channel(chan, fiid)
 
         self._status.set(
-            f"Found {cnt_channels} channels in {cnt_groups} groups"
+            f"Found {cnt_channels} duplicated channels in {cnt_groups} groups"
         )
 
 

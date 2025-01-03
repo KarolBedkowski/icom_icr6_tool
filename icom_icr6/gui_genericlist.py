@@ -20,6 +20,8 @@ from tksheet import (
 )
 from tksheet.other_classes import Box_nt
 
+from .gui_support import format_freq
+
 _LOG = logging.getLogger(__name__)
 
 Column = tuple[str, str, str | ty.Collection[str]]
@@ -78,10 +80,6 @@ def to_freq(o: object, **_kwargs: object) -> int:
         val = float(o)  # type: ignore
 
     return int(val * 1_000_000 if 0 < val < 1400.0 else val)  # noqa:PLR2004
-
-
-def format_freq(freq: int, **_kwargs: object) -> str:
-    return f"{freq:_}".replace("_", " ")
 
 
 class GenericList(tk.Frame, ty.Generic[T, RT]):
