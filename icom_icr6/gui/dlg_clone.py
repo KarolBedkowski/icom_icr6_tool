@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from tkinter import simpledialog, ttk
 
-from icom_icr6 import config, consts, io, model
+from icom_icr6 import config, consts, ic_io, model
 from icom_icr6.radio_memory import RadioMemory
 
 _LOG = logging.getLogger(__name__)
@@ -204,11 +204,11 @@ class CloneFromRadioDialog(_CloneDialog):
 
 class _CloneFromTask(_CloneTask):
     def run(self) -> None:
-        radio = io.Radio(self.port, hispeed=self.hispeed)
+        radio = ic_io.Radio(self.port, hispeed=self.hispeed)
         try:
             radio_memory = radio.clone_from(self._progress_cb)
 
-        except io.AbortError:
+        except ic_io.AbortError:
             self.queue.put(_Result(status="abort"))
 
         except Exception as err:
@@ -258,11 +258,11 @@ class _CloneToTask(_CloneTask):
         self._radio_memory = radio_memory
 
     def run(self) -> None:
-        radio = io.Radio(self.port, hispeed=self.hispeed)
+        radio = ic_io.Radio(self.port, hispeed=self.hispeed)
         try:
             radio.clone_to(self._radio_memory, self._progress_cb)
 
-        except io.AbortError:
+        except ic_io.AbortError:
             self.queue.put(_Result(status="abort"))
 
         except Exception as err:
@@ -279,11 +279,11 @@ class RadioInfoDialog(_CloneDialog):
         super().__init__(parent, "Radio info")
 
     def _on_ok(self, _event: tk.Event | None = None) -> None:  # type: ignore
-        radio = io.Radio(self._var_port.get())
+        radio = ic_io.Radio(self._var_port.get())
         try:
             self.result = radio.get_model()
 
-        except io.AbortError:
+        except ic_io.AbortError:
             self.cancel()
 
         except Exception as err:

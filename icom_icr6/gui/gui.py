@@ -10,7 +10,7 @@ import typing as ty
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
-from icom_icr6 import VERSION, config, expimp, io
+from icom_icr6 import VERSION, config, expimp, ic_io
 from icom_icr6.change_manager import ChangeManeger
 from icom_icr6.radio_memory import RadioMemory
 
@@ -258,7 +258,7 @@ class App(tk.Frame):
             messagebox.showerror("Save file error - Invalid data", str(err))
             return
 
-        io.save_icf_file(self._last_file, self._radio_memory)
+        ic_io.save_icf_file(self._last_file, self._radio_memory)
         self.set_status(f"File {self._last_file} saved")
 
     def _on_menu_file_save_as(self, _event: tk.Event | None = None) -> None:  # type: ignore
@@ -278,7 +278,7 @@ class App(tk.Frame):
 
         if fname:
             try:
-                io.save_icf_file(Path(fname), self._radio_memory)
+                ic_io.save_icf_file(Path(fname), self._radio_memory)
             except Exception as err:
                 _LOG.exception("_on_menu_file_save_as error")
                 messagebox.showerror("Save file error", str(err))
@@ -471,11 +471,11 @@ class App(tk.Frame):
         icf_file = Path(__file__).parent.parent.joinpath(
             "data", "default_global.icf"
         )
-        return io.load_icf_file(icf_file)
+        return ic_io.load_icf_file(icf_file)
 
     def _load_icf(self, file: Path) -> None:
         try:
-            mem = io.load_icf_file(file)
+            mem = ic_io.load_icf_file(file)
             mem.validate()
             self._radio_memory.update_from(mem)
         except ValueError as err:
