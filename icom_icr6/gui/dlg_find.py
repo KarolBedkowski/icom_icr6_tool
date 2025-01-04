@@ -59,10 +59,11 @@ class _BasePage(tk.Frame):
 
         if chan.bank != consts.BANK_NOT_SET:
             bank = consts.BANK_NAMES[chan.bank]
+            bank_name = self._radio_memory.banks[chan.bank].name.strip()
             tree.insert(
                 ciid,
                 tk.END,
-                text=f"Bank {bank} / {chan.bank_pos}",
+                text=f"Bank {bank}: {bank_name} / {chan.bank_pos}",
                 tags=("bank", str(chan.bank), str(chan.bank_pos)),
             )
 
