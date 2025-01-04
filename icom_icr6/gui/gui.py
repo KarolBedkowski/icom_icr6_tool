@@ -4,6 +4,7 @@
 
 """ """
 
+import importlib.resources
 import logging
 import tkinter as tk
 import typing as ty
@@ -468,10 +469,10 @@ class App(tk.Frame):
         pages[selected_tab].update_tab()
 
     def _load_default_icf(self) -> RadioMemory:
-        icf_file = Path(__file__).parent.parent.joinpath(
-            "data", "default_global.icf"
-        )
-        return ic_io.load_icf_file(icf_file)
+        with importlib.resources.path(
+            "icom_icr6.data", "default_global.icf"
+        ) as icf_file:
+            return ic_io.load_icf_file(icf_file)
 
     def _load_icf(self, file: Path) -> None:
         try:
