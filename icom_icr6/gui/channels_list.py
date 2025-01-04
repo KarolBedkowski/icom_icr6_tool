@@ -46,7 +46,6 @@ class Row(genericlist.BaseRow):
         self.channel = channel
         self.new_freq = 0
         super().__init__(rownum, self._from_channel(channel))
-        self.errors: tuple[str, ...] = ()
 
     def __repr__(self) -> str:
         return (

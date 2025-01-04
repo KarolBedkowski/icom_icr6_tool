@@ -386,22 +386,6 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
             self.sheet.MT.cell_options, (row, col), readonly=ro
         )
 
-    def _set_cell_error(self, row: int, colname: str, error: object) -> None:
-        err = bool(error)
-        if not err:
-            return
-
-        col = self.colmap.get(colname)
-        if not col:
-            return
-
-        self.sheet.highlight_cells(
-            row,
-            column=col,
-            fg="#FF0000" if err else "black",
-            bg=self._ALTERNATE_COLOR if row & 1 else None,
-        )
-
     def _on_begin_col_move(self, _event: EventDataDict) -> None:
         # prevent moving columns
         raise ValueError

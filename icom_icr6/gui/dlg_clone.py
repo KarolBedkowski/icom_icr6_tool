@@ -105,10 +105,9 @@ class _CloneDialog(simpledialog.Dialog):
             default=tk.ACTIVE,
         )
         w.pack(side=tk.LEFT, padx=5, pady=5)
-        self._btn_cancel = w = ttk.Button(
-            box, text="Cancel", width=10, command=self.cancel
+        ttk.Button(box, text="Cancel", width=10, command=self.cancel).pack(
+            side=tk.LEFT, padx=5, pady=5
         )
-        w.pack(side=tk.LEFT, padx=5, pady=5)
 
         self.bind("<Return>", self._on_ok)
         self.bind("<Escape>", self.cancel)

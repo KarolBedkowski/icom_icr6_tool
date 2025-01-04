@@ -181,23 +181,6 @@ class RadioMemory:
             )
         )
 
-    def is_bank_pos_duplicated(
-        self, bank: int, bank_pos: int, channum: int
-    ) -> bool:
-        for idx, chan in enumerate(self.channels):
-            if (
-                channum != idx
-                and chan.bank == bank
-                and chan.bank_pos == bank_pos
-                and not chan.hide_channel
-            ):
-                return True
-
-        return False
-
-    def is_japan_model(self) -> bool:
-        return self.region == consts.Region.JAPAN
-
     def is_usa_model(self) -> bool:
         return self.region == consts.Region.USA
 

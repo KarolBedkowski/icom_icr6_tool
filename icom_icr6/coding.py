@@ -109,10 +109,6 @@ class EncodedFreq(ty.NamedTuple):
         return self.offset & 0x00FF, (self.offset & 0xFF00) >> 8
 
 
-class InvalidFlagError(ValueError):
-    pass
-
-
 def _find_div_for_freq(freq: int, avail: tuple[int, ...]) -> ty.Iterable[int]:
     if not freq:
         return

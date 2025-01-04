@@ -437,24 +437,6 @@ class Channel:
         if (bp := data.get("bank_pos")) is not None and bp != "":
             self.bank_pos = int(bp)  # type: ignore
 
-    def load_defaults(self, freq: int | None = None) -> None:
-        if freq is None:
-            freq = self.freq
-
-        self.name = ""
-        self.mode = consts.default_mode_for_freq(freq) if freq else 0
-        self.af_filter = False
-        self.attenuator = False
-        self.tuning_step = consts.default_tuning_step_for_freq(freq)
-        self.duplex = 0
-        self.offset = 0
-        self.tone_mode = 0
-        self.tsql_freq = 0
-        self.dtcs = 0
-        self.polarity = 0
-        self.vsc = False
-        self.skip = 0
-
     def load_defaults_from_band(self, band: BandDefaults) -> None:
         self.name = ""
         self.mode = band.mode
@@ -546,9 +528,6 @@ class BankLinks:
 
     def clone(self) -> BankLinks:
         return BankLinks(self.banks)
-
-    def bits(self) -> ty.Iterable[bool]:
-        return (bool(self.banks & (1 << i)) for i in range(consts.NUM_BANKS))
 
     @classmethod
     def from_data(

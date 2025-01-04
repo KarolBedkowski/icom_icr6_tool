@@ -230,7 +230,6 @@ def calc_checksum(data: bytes | list[int]) -> int:
 class Radio:
     def __init__(self, port: str = "", *, hispeed: bool = False) -> None:
         self._port = port
-        self._logger = None
         self._hispeed = hispeed
         self.addr_radio = ADDR_RADIO
 
