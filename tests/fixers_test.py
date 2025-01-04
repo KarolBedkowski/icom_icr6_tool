@@ -9,7 +9,7 @@
 
 import pytest
 
-from . import fixers
+from icom_icr6 import fixers
 
 
 @pytest.mark.parametrize(
