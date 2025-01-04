@@ -79,11 +79,11 @@ seq:
     size: 64
     doc: pos 0x6bd0 - 0x6c0f
 
-  - id: unknown2_0x6c10
+  - id: unknown_0x6c10
     size: 22
     doc: pos 0x6c10 - 0x6c1, always 0?
 
-  - id: unknown2_0x6c2
+  - id: unknown_0x6c2
     type: u1
     doc: pos 0x6c2, related to settings or device state?
 
@@ -107,11 +107,11 @@ seq:
     repeat-expr: 10
     doc: pos 0x6c2c - 0x6c53
 
-  - id: unknown3_0x6c54
+  - id: unknown_0x6c54
     size: 2
     doc: 0x6c54 - 0x6c55  related to settings?
 
-  - id: unknown4_0x6c56
+  - id: unknown_0x6c56
     size: 1
     doc: 0x6c56  unused?
 
@@ -150,6 +150,7 @@ seq:
 types:
   channel_flag:
     seq:
+      # @0
       - id: hide_channel
         type: b1
       - id: skip_mode
@@ -162,6 +163,7 @@ types:
         type: b5
         doc: bank number (0-22); 31 when bank is not set
 
+      # @1
       - id: bank_pos
         type: u1
         doc: position channel in bank
@@ -216,25 +218,25 @@ types:
       # 0
       - id: hidden1
         type: b1
-      - id: unknown1
+      - id: unknown_b0
         type: b7
         doc: always 0b1111111
 
       # 1
-      - id: unknown2
+      - id: unknown_b1
         type: u1
         doc: always 0xFF ?
 
       # 2
       - id: hidden2
         type: b1
-        doc: the same as unknown1
-      - id: unknown3
+        doc: the same as hidden1
+      - id: unknown_b2
         type: b7
         doc: always 0b1111111
 
       # 3
-      - id: unknown4
+      - id: unknown_b3
         type: u1
         doc: always 0xFF ?
 
@@ -301,7 +303,7 @@ types:
         enum: freq_mul
       - id: flag_unknown
         type: b2
-        doc: always 0?
+        doc: always 0? pad?
       - id: freq2
         type: b2
         doc: msb; 1 bit usable
@@ -323,13 +325,13 @@ types:
           - 8.33k
 
       # 4
-      - id: unknown1
+      - id: unknown_b4_1
         type: b2
-        doc: alawys 0
+        doc: alawys 0; padding
       - id: duplex
         type: b2
         enum: duplex
-      - id: unknown3
+      - id: unknown_b4_2
         type: b1
         doc: |
           1 for invalid channels?  must be 0 - when enabled channel
@@ -344,7 +346,7 @@ types:
         type: u2le
 
       # 7
-      - id: unknown2
+      - id: unknown_b7
         type: b2
         doc: 1 for invalid channels?  must be 0 when enabled channel?
       - id: tsql_freq
@@ -361,7 +363,7 @@ types:
       - id: canceller_freq
         type: b9
         doc: range 30-300 -> 300Hz-3kHz; EU 228=2280Hz
-      - id: unknown4
+      - id: unknown_b10
         type: b4
         doc: always 0 - paddign; probably canceller_freq lower 4 bits
       - id: vcs
@@ -382,116 +384,133 @@ types:
 
   settings:
     seq:
-      - id: padding_0x6bd0
+      - id: unknown_0x6bd0
         size: 12
-        doc: pos 0x6bd0; 12x 0x20
+        doc: pos 0x6bd0; probably padding
 
-      - id: unknown0_1
+      # @12
+      - id: unknown_b12
         size: 1
         doc: pos 0x6bdc - 0
 
       # @13
-      - id: unknown1
+      - id: unknown_b13
         type: b6
-        doc: unused?
+        doc: unused? padding?
       - id: func_dial_step
         type: b2
 
       # @14
-      - id: unknown2
+      - id: unknown_b14
         type: b5
-        doc: 0? unused?
+        doc: 0? unused? padding?
       - id: priority_scan_type
         type: b3
         enum: priority_scan_type
 
       # @15
-      - id: unknown3
+      - id: unknown_b15
         type: b7
+        doc: padding?
       - id: key_beep
         type: b1
 
       # @16
-      - id: unknown4
+      - id: unknown_b16
         type: b2
+        doc: padding?
       - id: beep_level
         type: b6
+        doc: 0=Volume, levels 1-39
 
       # @17
-      - id: unknown4a
+      - id: unknown_b17
         type: b6
+        doc: padding?
       - id: backlight
         type: b2
 
       # @18
-      - id: unknown5
+      - id: unknown_b18
         type: b7
+        doc: padding?
       - id: power_save
         type: b1
 
       # @19
-      - id: unknown6
+      - id: unknown_b19
         type: b7
+        doc: padding?
       - id: am_ant
         type: b1
 
       # @20
-      - id: unknown7
+      - id: unknown_b20
         type: b7
+        doc: padding?
       - id: fm_ant
         type: b1
 
       # @21
-      - id: unknown7a
+      - id: unknown_b21
         type: b7
+        doc: padding?
       - id: set_expand
         type: b1
 
       # @22
-      - id: unknown7b
+      - id: unknown_b22
         type: b5
+        doc: padding?
       - id: key_lock
         type: b2
 
       # @23
-      - id: unknown7c
+      - id: unknown_b23
         type: b7
+        doc: padding?
       - id: dial_speed_up
         type: b1
 
       # @24
-      - id: unknown7d
+      - id: unknown_b24
         type: b7
+        doc: padding?
       - id: monitor
         type: b1
 
       # @25
-      - id: unknown8
+      - id: unknown_b25
         type: b5
+        doc: padding?
       - id: auto_power_off
         type: b3
 
       # @26
-      - id: unknown8b
+      - id: unknown_b26
         type: b4
+        doc: padding?
       - id: pause_timer
         type: b4
 
       # @27
-      - id: unknown8c
+      - id: unknown_b27
         type: b5
+        doc: padding?
       - id: resume_timer
         type: b3
 
       # @28
-      - id: unknown8d
+      - id: unknown_b28
         type: b7
+        doc: padding?
       - id: stop_beep
         type: b1
 
       # @29
-      - id: unknown8a
+      - id: unknown_b29
         type: b5
+        doc: padding?
       - id: lcd_contrast
         type: b3
 
@@ -501,20 +520,23 @@ types:
         doc: 0=off, 1=on
 
       # @31
-      - id: unknown8f
+      - id: unknown_b31
         type: b7
+        doc: padding?
       - id: af_filer_fm
         type: b1
 
       # @32
-      - id: unknown8f1
+      - id: unknown_b32
         type: b7
+        doc: padding?
       - id: af_filer_wfm
         type: b1
 
       # @33
-      - id: unknown8g
+      - id: unknown_b33
         type: b7
+        doc: padding?
       - id: af_filer_am
         type: b1
 
@@ -523,20 +545,23 @@ types:
         type: u1
 
       # @35
-      - id: unknown9
+      - id: unknown_b35
         type: b5
+        doc: padding?
       - id: civ_baud_rate
         type: b3
 
       # @36
-      - id: unknown10
+      - id: unknown_b36
         type: b7
+        doc: padding?
       - id: civ_transceive
         type: b1
 
       # @37
-      - id: unknown10a
+      - id: unknown_b37
         type: b7
+        doc: padding?
       - id: charging_type
         type: b1
 
@@ -551,7 +576,7 @@ types:
         enum: scanning_band
 
       # @48
-      - id: unknown11b
+      - id: unknown_b48
         size: 2
 
       # @50
@@ -561,16 +586,18 @@ types:
         enum: scanning_bank
 
       # @51
-      - id: unknown11c
+      - id: unknown_b51
         type: u1
 
       # @52
-      - id: unknown12
+      - id: unknown_b52_1
         type: b1
+        doc: padding?
       - id: scan_enabled
         type: b1
-      - id: unknown12b
+      - id: unknown_b52_2
         type: b1
+        doc: unused?
       - id: dial_function
         type: b1
       - id: mem_scan_priority
@@ -583,19 +610,21 @@ types:
         enum: mem_display_type
 
       # @53
-      - id: unknown14a
+      - id: unknown_b53_1
         type: b1
-        doc: refresh flag?
+        doc: unknown, padding?
       - id: unprotected_frequency_flag
         type: b1
+        doc: probably
       - id: autowrite_memory
         type: b1
       - id: keylock
         type: b1
       - id: program_skip_scan
         type: b1
-      - id: unknown15b
+      - id: unknown_b53_2
         type: b1
+        doc: unused?
       - id: priority_scan
         type: b1
       - id: scan_direction
@@ -628,7 +657,7 @@ types:
         doc: wx channel - 0-9 -> 1-10
 
       # @60
-      - id: unknown15
+      - id: unknown_b50x2
         size: 2
 
       # @62
@@ -638,17 +667,18 @@ types:
 
   bank_links:
     seq:
-      # @60
+      # @0
       - id: bank_link_1
         type: u1
 
-      # @61
+      # @1
       - id: bank_link_2
         type: u1
 
-      # @62
-      - id: unknown14c
+      # @2
+      - id: unknown_b2
         type: b2
+        doc: padding?
       - id: bank_link_3
         type: b6
 
@@ -679,7 +709,7 @@ types:
         doc: dscs
 
       # @11
-      - id: unknown6
+      - id: unknown_b11
         type: u1
         doc: |
           unknown flags for offset & freq?; look like 4bit for offset
@@ -697,14 +727,16 @@ types:
         doc: tone mode?
 
       # @13
-      - id: unknown8
+      - id: unknown_b13_1
         type: b1
+        doc: padding?
       - id: vsc
         type: b1
       - id: canceller
         type: b2
-      - id: unknown8a
+      - id: unknown_b13_2
         type: b1
+        doc: unused?
       - id: polarity
         type: b1
       - id: af
