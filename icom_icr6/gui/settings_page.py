@@ -13,7 +13,7 @@ from icom_icr6.change_manager import ChangeManeger
 from icom_icr6.radio_memory import RadioMemory
 
 from . import gui_model
-from .gui_widgets import new_checkbox, new_combo, new_entry
+from .widgets import new_checkbox, new_combo, new_entry
 
 _LOG = logging.getLogger(__name__)
 

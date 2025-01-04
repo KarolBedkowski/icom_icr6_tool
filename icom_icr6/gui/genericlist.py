@@ -20,7 +20,7 @@ from tksheet import (
 )
 from tksheet.other_classes import Box_nt
 
-from .gui_support import format_freq
+from .support import format_freq
 
 _LOG = logging.getLogger(__name__)
 
@@ -70,12 +70,13 @@ class RecordSelectedCallback(ty.Protocol[T]):
 
 def to_freq(o: object, **_kwargs: object) -> int:
     val = 0.0
+
     if isinstance(o, int):
         val = o
     elif isinstance(o, str):
         val = float(o.replace(" ", "").replace(",", "."))
     elif isinstance(o, float):
-        pass
+        val = o
     else:
         val = float(o)  # type: ignore
 

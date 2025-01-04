@@ -11,7 +11,7 @@ from tksheet import EventDataDict
 
 from icom_icr6 import consts, fixers, model
 
-from . import gui_genericlist
+from . import genericlist
 
 _LOG = logging.getLogger(__name__)
 
@@ -21,7 +21,7 @@ class ScanLink(ty.NamedTuple):
     selected: bool
 
 
-class Row(gui_genericlist.BaseRow):
+class Row(genericlist.BaseRow):
     COLUMNS = (
         ("idx", "Num", "int"),
         ("selected", "Selected", "bool"),
@@ -121,7 +121,7 @@ class Row(gui_genericlist.BaseRow):
             super().__setitem__(idx, value)
 
 
-class ScanLnksList(gui_genericlist.GenericList[Row, ScanLink]):
+class ScanLnksList(genericlist.GenericList[Row, ScanLink]):
     _ROW_CLASS = Row
 
     def set_data_links(self, links: list[bool]) -> None:
@@ -145,7 +145,7 @@ class ScanLnksList(gui_genericlist.GenericList[Row, ScanLink]):
 
         match column[0]:
             case "start" | "end":
-                val = gui_genericlist.to_freq(value)
+                val = genericlist.to_freq(value)
                 value = fixers.fix_frequency(val)
 
             case "name":

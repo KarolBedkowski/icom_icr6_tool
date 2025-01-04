@@ -13,12 +13,12 @@ from icom_icr6 import consts, expimp, model
 from icom_icr6.change_manager import ChangeManeger
 from icom_icr6.radio_memory import RadioMemory
 
-from . import gui_model, gui_scanedgeslist
+from . import gui_model, scanedges_list
 
 _LOG = logging.getLogger(__name__)
 
 
-class ScanEdgePage(tk.Frame):
+class ScanEdgesPage(tk.Frame):
     def __init__(self, parent: tk.Widget, cm: ChangeManeger) -> None:
         super().__init__(parent)
         self._change_manager = cm
@@ -35,7 +35,7 @@ class ScanEdgePage(tk.Frame):
         return self._change_manager.rm
 
     def _create_list(self, frame: tk.Frame) -> None:
-        self._scanedges_list = gui_scanedgeslist.ScanEdgesList(frame)
+        self._scanedges_list = scanedges_list.ScanEdgesList(frame)
         self._scanedges_list.pack(
             expand=True, fill=tk.BOTH, side=tk.TOP, padx=12, pady=12
         )
@@ -61,7 +61,7 @@ class ScanEdgePage(tk.Frame):
     #     _LOG.debug("scan_edge: %r", se)
 
     def __on_scan_edge_updated(
-        self, action: str, rows: ty.Collection[gui_scanedgeslist.Row]
+        self, action: str, rows: ty.Collection[scanedges_list.Row]
     ) -> None:
         match action:
             case "delete":
@@ -74,7 +74,7 @@ class ScanEdgePage(tk.Frame):
                 self.__do_move_scan_edge(rows)
 
     def __do_delete_scan_edge(
-        self, rows: ty.Collection[gui_scanedgeslist.Row]
+        self, rows: ty.Collection[scanedges_list.Row]
     ) -> None:
         se: model.ScanEdge | None
         if not messagebox.askyesno(
@@ -99,7 +99,7 @@ class ScanEdgePage(tk.Frame):
         self.__update_scan_edges_list()
 
     def __do_update_scan_edge(
-        self, rows: ty.Collection[gui_scanedgeslist.Row]
+        self, rows: ty.Collection[scanedges_list.Row]
     ) -> None:
         for rec in rows:
             _LOG.debug(
@@ -113,7 +113,7 @@ class ScanEdgePage(tk.Frame):
         self._change_manager.commit()
 
     def __do_move_scan_edge(
-        self, rows: ty.Collection[gui_scanedgeslist.Row]
+        self, rows: ty.Collection[scanedges_list.Row]
     ) -> None:
         changes: dict[int, int] = {}
         for rec in rows:

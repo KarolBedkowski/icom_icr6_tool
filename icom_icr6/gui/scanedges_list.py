@@ -10,12 +10,12 @@ from tksheet import EventDataDict
 
 from icom_icr6 import consts, fixers, model
 
-from . import gui_genericlist
+from . import genericlist
 
 _LOG = logging.getLogger(__name__)
 
 
-class Row(gui_genericlist.BaseRow):
+class Row(genericlist.BaseRow):
     COLUMNS = (
         ("idx", "Num", "int"),
         ("name", "Name", "str"),
@@ -108,7 +108,7 @@ class Row(gui_genericlist.BaseRow):
             super().__setitem__(idx, value)
 
 
-class ScanEdgesList(gui_genericlist.GenericList[Row, model.ScanEdge]):
+class ScanEdgesList(genericlist.GenericList[Row, model.ScanEdge]):
     _ROW_CLASS = Row
 
     def _on_validate_edits(self, event: EventDataDict) -> object:
@@ -129,7 +129,7 @@ class ScanEdgesList(gui_genericlist.GenericList[Row, model.ScanEdge]):
                 if value is None or value == "":
                     return value
 
-                val = gui_genericlist.to_freq(value)
+                val = genericlist.to_freq(value)
                 value = fixers.fix_frequency(val)
 
             case "name":

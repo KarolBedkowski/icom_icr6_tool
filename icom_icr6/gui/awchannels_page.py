@@ -14,7 +14,7 @@ from icom_icr6 import expimp
 from icom_icr6.change_manager import ChangeManeger
 from icom_icr6.radio_memory import RadioMemory
 
-from . import gui_awchannlist, gui_model
+from . import awchannels_list, gui_model
 
 _LOG = logging.getLogger(__name__)
 _ = ty
@@ -42,7 +42,7 @@ class AutoWriteChannelsPage(tk.Frame):
         return self._change_manager.rm
 
     def _create_channel_list(self, frame: tk.Frame) -> None:
-        self._chan_list = gui_awchannlist.ChannelsList(frame)
+        self._chan_list = awchannels_list.ChannelsList(frame)
         self._chan_list.pack(
             expand=True, fill=tk.BOTH, side=tk.TOP, padx=12, pady=12
         )
