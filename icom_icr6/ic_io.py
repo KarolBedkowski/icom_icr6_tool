@@ -482,6 +482,8 @@ class Radio:
 
                 prev_send_frame = frame
 
+            time.sleep(0.5)
+
             return self._clone_to_send_end(s)
 
     def _send_abort(self, s: Serial) -> None:
@@ -504,6 +506,8 @@ class Radio:
                 if result_frame.cmd == CMD_OK:
                     # clone ok
                     break
+
+            time.sleep(0.1)
 
         if not result_frame:
             raise NoDataError
