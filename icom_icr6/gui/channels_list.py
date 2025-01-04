@@ -10,14 +10,16 @@ import typing as ty
 
 from tksheet import EventDataDict, Span, functions
 
-from . import consts, fixers, gui_genericlist, model
+from icom_icr6 import consts, fixers, model
+
+from . import genericlist
 
 _LOG = logging.getLogger(__name__)
 _BANKS = ["", *consts.BANK_NAMES]
 _SKIPS: ty.Final = ["", "S", "P"]
 
 
-class Row(gui_genericlist.BaseRow):
+class Row(genericlist.BaseRow):
     COLUMNS = (
         ("channel", "Num", "int"),
         ("freq", "Frequency", "freq"),
@@ -142,8 +144,8 @@ class BankPosValidator(ty.Protocol):
     ) -> int | None: ...
 
 
-class ChannelsList(gui_genericlist.GenericList[Row, model.Channel]):
-    _ROW_CLASS: type[gui_genericlist.BaseRow] = Row
+class ChannelsList(genericlist.GenericList[Row, model.Channel]):
+    _ROW_CLASS: type[genericlist.BaseRow] = Row
 
     def __init__(self, parent: tk.Widget) -> None:
         super().__init__(parent)
@@ -166,9 +168,7 @@ class ChannelsList(gui_genericlist.GenericList[Row, model.Channel]):
         else:
             self.sheet.show_columns(canc_columns)
 
-    def _configure_col(
-        self, column: gui_genericlist.Column, span: Span
-    ) -> None:
+    def _configure_col(self, column: genericlist.Column, span: Span) -> None:
         _colname, _c, values = column
         if values == "bool" or isinstance(values, (list, tuple)):
             # do not create checkbox and dropdown for columns; create
@@ -202,14 +202,14 @@ class ChannelsList(gui_genericlist.GenericList[Row, model.Channel]):
                     return None
 
             case "freq":
-                val = gui_genericlist.to_freq(value)
+                val = genericlist.to_freq(value)
                 value = fixers.fix_frequency(val)
 
             case "name":
                 value = fixers.fix_name(value)
 
             case "offset":
-                val = gui_genericlist.to_freq(value)
+                val = genericlist.to_freq(value)
                 value = (
                     fixers.fix_offset(chan.freq, off) if (off := val) else 0
                 )

@@ -10,24 +10,21 @@ import typing as ty
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
+from icom_icr6 import VERSION, config, expimp, ic_io
+from icom_icr6.change_manager import ChangeManeger
+from icom_icr6.radio_memory import RadioMemory
+
 from . import (
-    VERSION,
-    config,
-    expimp,
-    gui_dlg_clone,
-    gui_dlg_dupl,
-    gui_dlg_find,
+    awchannels_page,
+    banks_page,
+    channels_page,
+    dlg_clone,
+    dlg_find,
     gui_model,
-    gui_nb_awchannels,
-    gui_nb_banks,
-    gui_nb_channels,
-    gui_nb_scan_edge,
-    gui_nb_scan_links,
-    gui_nb_settings,
-    io,
+    scanedges_page,
+    scanlinks_page,
+    settings_page,
 )
-from .change_manager import ChangeManeger
-from .radio_memory import RadioMemory
 
 _LOG = logging.getLogger(__name__)
 
@@ -157,10 +154,6 @@ class App(tk.Frame):
             accelerator="Ctrl+F",
         )
         master.bind_all("<Control-f>", self._on_menu_find)
-        edit_menu.add_command(
-            label="Find duplicated channels...",
-            command=self._on_menu_find_dup,
-        )
         menu_bar.add_cascade(label="Edit", menu=edit_menu)
 
         radio_menu = tk.Menu(menu_bar, tearoff=False)
@@ -192,35 +185,35 @@ class App(tk.Frame):
         return menu
 
     def _create_nb_channels(self) -> tk.Widget:
-        self._nb_channels = gui_nb_channels.ChannelsPage(
+        self._nb_channels = channels_page.ChannelsPage(
             self, self._change_manager
         )
         return self._nb_channels
 
     def _create_nb_banks(self) -> tk.Widget:
-        self._nb_banks = gui_nb_banks.BanksPage(self, self._change_manager)
+        self._nb_banks = banks_page.BanksPage(self, self._change_manager)
         return self._nb_banks
 
     def _create_nb_scan_edge(self) -> tk.Frame:
-        self._nb_scan_edge = gui_nb_scan_edge.ScanEdgePage(
+        self._nb_scan_edge = scanedges_page.ScanEdgesPage(
             self, self._change_manager
         )
         return self._nb_scan_edge
 
     def _create_nb_scan_links(self) -> tk.Widget:
-        self._nb_scan_links = gui_nb_scan_links.ScanLinksPage(
+        self._nb_scan_links = scanlinks_page.ScanLinksPage(
             self, self._change_manager
         )
         return self._nb_scan_links
 
     def _create_nb_awchannels(self) -> tk.Widget:
-        self._nb_aw_channels = gui_nb_awchannels.AutoWriteChannelsPage(
+        self._nb_aw_channels = awchannels_page.AutoWriteChannelsPage(
             self, self._change_manager
         )
         return self._nb_aw_channels
 
     def _create_nb_settings(self) -> tk.Widget:
-        self._nb_settings = gui_nb_settings.SettingsPage(
+        self._nb_settings = settings_page.SettingsPage(
             self, self._change_manager
         )
         return self._nb_settings
@@ -265,7 +258,7 @@ class App(tk.Frame):
             messagebox.showerror("Save file error - Invalid data", str(err))
             return
 
-        io.save_icf_file(self._last_file, self._radio_memory)
+        ic_io.save_icf_file(self._last_file, self._radio_memory)
         self.set_status(f"File {self._last_file} saved")
 
     def _on_menu_file_save_as(self, _event: tk.Event | None = None) -> None:  # type: ignore
@@ -285,7 +278,7 @@ class App(tk.Frame):
 
         if fname:
             try:
-                io.save_icf_file(Path(fname), self._radio_memory)
+                ic_io.save_icf_file(Path(fname), self._radio_memory)
             except Exception as err:
                 _LOG.exception("_on_menu_file_save_as error")
                 messagebox.showerror("Save file error", str(err))
@@ -306,12 +299,7 @@ class App(tk.Frame):
             self._update_tab_content()
 
     def _on_menu_find(self, _event: tk.Event | None = None) -> None:  # type: ignore
-        gui_dlg_find.FindDialog(
-            self, self._radio_memory, self._on_find_object_select
-        )
-
-    def _on_menu_find_dup(self, _event: tk.Event | None = None) -> None:  # type: ignore
-        gui_dlg_dupl.DuplicatedFreqDialog(
+        dlg_find.FindDialog(
             self, self._radio_memory, self._on_find_object_select
         )
 
@@ -323,7 +311,7 @@ class App(tk.Frame):
         self,
         _event: tk.Event | None = None,  # type: ignore
     ) -> None:
-        dlg = gui_dlg_clone.CloneFromRadioDialog(self)
+        dlg = dlg_clone.CloneFromRadioDialog(self)
         if dlg.radio_memory:
             mem = dlg.radio_memory
             try:
@@ -356,10 +344,10 @@ class App(tk.Frame):
             messagebox.showerror("Clone to device - Invalid data", str(err))
             return
 
-        gui_dlg_clone.CloneToRadioDialog(self, self._radio_memory)
+        dlg_clone.CloneToRadioDialog(self, self._radio_memory)
 
     def _on_menu_radio_info(self, _event: tk.Event | None = None) -> None:  # type: ignore
-        dlg = gui_dlg_clone.RadioInfoDialog(self)
+        dlg = dlg_clone.RadioInfoDialog(self)
         if model := dlg.result:
             info = (
                 f"Model: {model.human_model()}\n"
@@ -480,12 +468,14 @@ class App(tk.Frame):
         pages[selected_tab].update_tab()
 
     def _load_default_icf(self) -> RadioMemory:
-        icf_file = Path(__file__).parent.joinpath("data", "default_global.icf")
-        return io.load_icf_file(icf_file)
+        icf_file = Path(__file__).parent.parent.joinpath(
+            "data", "default_global.icf"
+        )
+        return ic_io.load_icf_file(icf_file)
 
     def _load_icf(self, file: Path) -> None:
         try:
-            mem = io.load_icf_file(file)
+            mem = ic_io.load_icf_file(file)
             mem.validate()
             self._radio_memory.update_from(mem)
         except ValueError as err:

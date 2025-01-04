@@ -11,12 +11,14 @@ from itertools import starmap
 
 from tksheet import EventDataDict, Span
 
-from . import consts, gui_chanlist, gui_genericlist, model
+from icom_icr6 import consts, model
+
+from . import channels_list, genericlist
 
 _LOG = logging.getLogger(__name__)
 
 
-class AWCRow(gui_genericlist.BaseRow):
+class AWCRow(genericlist.BaseRow):
     COLUMNS = (
         ("channel", "Number", "int"),
         ("freq", "Frequency", "freq"),
@@ -56,7 +58,7 @@ class AWCRow(gui_genericlist.BaseRow):
         return [""] * 16
 
 
-class ChannelsList(gui_chanlist.ChannelsList):
+class ChannelsList(channels_list.ChannelsList):
     _ROW_CLASS = AWCRow
 
     def __init__(self, parent: tk.Widget) -> None:
@@ -84,9 +86,7 @@ class ChannelsList(gui_chanlist.ChannelsList):
         self._set_cell_ro(row, "canceller", not chan.canceller)
         self._set_cell_ro(row, "canceller freq", chan.canceller != 1)
 
-    def _configure_col(
-        self, column: gui_genericlist.Column, span: Span
-    ) -> None:
+    def _configure_col(self, column: genericlist.Column, span: Span) -> None:
         _colname, _c, values = column
         if isinstance(values, (list, tuple)):
             # show dict-ed value as string

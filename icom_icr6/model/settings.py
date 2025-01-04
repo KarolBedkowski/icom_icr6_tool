@@ -6,7 +6,6 @@
 
 from __future__ import annotations
 
-import binascii
 import copy
 import typing as ty
 from dataclasses import dataclass
@@ -58,7 +57,7 @@ class RadioSettings:
     ) -> RadioSettings:
         debug_info = (
             {
-                "raw": binascii.hexlify(data),
+                "raw": data.hex(" ", -8),
                 "priority_scan_type": data[14] & 0b111,
                 "scanning_band": data[47],
                 "scanning_bank": data[50],
@@ -180,7 +179,7 @@ class BandDefaults:
 
         debug_info = (
             {
-                "raw": binascii.hexlify(data),
+                "raw": data.hex(" ", -8),
                 "unknown6": data[11],
             }
             if _support.DEBUG

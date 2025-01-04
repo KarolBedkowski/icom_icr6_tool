@@ -11,22 +11,15 @@ import tkinter as tk
 import typing as ty
 from tkinter import messagebox, ttk
 
-from . import (
-    consts,
-    expimp,
-    fixers,
-    gui_bankchanlist,
-    gui_model,
-    model,
-    model_support,
-    validators,
-)
-from .change_manager import ChangeManeger
-from .gui_widgets import (
+from icom_icr6 import consts, expimp, fixers, model, model_support, validators
+from icom_icr6.change_manager import ChangeManeger
+from icom_icr6.radio_memory import RadioMemory
+
+from . import banks_channelslist, gui_model
+from .widgets import (
     new_checkbox,
     new_entry,
 )
-from .radio_memory import RadioMemory
 
 _LOG = logging.getLogger(__name__)
 
@@ -121,7 +114,7 @@ class BanksPage(tk.Frame):
         fields.pack(side=tk.TOP, fill=tk.X)
 
     def _create_chan_list(self, frame: tk.Frame) -> None:
-        self._chan_list = gui_bankchanlist.ChannelsList(frame)
+        self._chan_list = banks_channelslist.ChannelsList(frame)
         self._chan_list.pack(side=tk.TOP, expand=True, fill=tk.BOTH, pady=6)
 
         self._chan_list.on_record_selected = self._on_channel_select  # type: ignore
@@ -224,7 +217,7 @@ class BanksPage(tk.Frame):
         self._change_manager.commit()
         self._update_banks_list()
 
-    def _on_channel_select(self, rows: list[gui_bankchanlist.BLRow]) -> None:
+    def _on_channel_select(self, rows: list[banks_channelslist.BLRow]) -> None:
         self._btn_sort["state"] = "normal" if len(rows) > 1 else "disabled"
 
         if _LOG.isEnabledFor(logging.DEBUG):
@@ -232,7 +225,7 @@ class BanksPage(tk.Frame):
                 _LOG.debug("chan selected: %r", rec.channel)
 
     def _on_channel_update(
-        self, action: str, rows: ty.Collection[gui_bankchanlist.BLRow]
+        self, action: str, rows: ty.Collection[banks_channelslist.BLRow]
     ) -> None:
         match action:
             case "delete":
@@ -245,7 +238,7 @@ class BanksPage(tk.Frame):
                 self._do_move_channels(rows)
 
     def _do_delete_channels(
-        self, rows: ty.Collection[gui_bankchanlist.BLRow]
+        self, rows: ty.Collection[banks_channelslist.BLRow]
     ) -> None:
         chan: model.Channel | None
         if not messagebox.askyesno(
@@ -268,7 +261,7 @@ class BanksPage(tk.Frame):
         self._update_chan_list()
 
     def _do_update_channels(
-        self, rows: ty.Collection[gui_bankchanlist.BLRow]
+        self, rows: ty.Collection[banks_channelslist.BLRow]
     ) -> None:
         chan: model.Channel | None
 
@@ -323,7 +316,7 @@ class BanksPage(tk.Frame):
         self._update_chan_list()
 
     def _do_move_channels(
-        self, rows: ty.Collection[gui_bankchanlist.BLRow]
+        self, rows: ty.Collection[banks_channelslist.BLRow]
     ) -> None:
         channels = []
         for rec in rows:

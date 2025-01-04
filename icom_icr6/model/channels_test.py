@@ -7,8 +7,6 @@
 
 """ """
 
-import binascii
-
 import pytest
 
 from icom_icr6 import consts, model
@@ -17,27 +15,25 @@ from icom_icr6 import consts, model
 @pytest.mark.parametrize(
     "inp",
     [
-        b"e9030020000000080072000ba5c21b00",
-        b"f4030020000000080072000d7a8a5ae9",
-        b"9f040020000000080072000cecbf686b",
-        b"a6040020000000080072000d21a77351",
-        b"a9040020000000080072000ba5d28353",
-        b"ab0400200000000800720008efb35b62",
-        b"b00400200000000800720008f58a1351",
-        b"b4040020000000080072000d35cab979",
-        b"b7040020000000080072000daf84d440",
-        b"b80400200000000800720008e1b8f9e5",
+        "e9030020000000080072000ba5c21b00",
+        "f4030020000000080072000d7a8a5ae9",
+        "9f040020000000080072000cecbf686b",
+        "a6040020000000080072000d21a77351",
+        "a9040020000000080072000ba5d28353",
+        "ab0400200000000800720008efb35b62",
+        "b00400200000000800720008f58a1351",
+        "b4040020000000080072000d35cab979",
+        "b7040020000000080072000daf84d440",
+        "b80400200000000800720008e1b8f9e5",
     ],
 )
 def test_encode_decode_channel(inp):
-    data = bytearray(binascii.unhexlify(inp))
+    data = bytearray.fromhex(inp)
     cflags = bytearray([0, 0])
 
     chan = model.Channel.from_data(0, data, cflags)
 
-    new_data = bytearray(
-        binascii.unhexlify(b"c706f020000000080072000a73ca196c")
-    )
+    new_data = bytearray.fromhex("c706f020000000080072000a73ca196c")
     new_cflags = bytearray([1, 1])
 
     chan.to_data(new_data, new_cflags)
@@ -48,9 +44,7 @@ def test_encode_decode_channel(inp):
 
 class TestDecodeChannel:
     def test_decode1(self):
-        data = bytearray(
-            binascii.unhexlify(b"E9030020000000080072000BA5C21B00")
-        )
+        data = bytearray.fromhex("E9030020000000080072000BA5C21B00")
         cflags = bytearray(b"\x01\x00")
 
         chan = model.Channel.from_data(100, data, cflags)
@@ -76,9 +70,7 @@ class TestDecodeChannel:
         assert chan.bank_pos == 0
 
     def test_decode2(self):
-        data = bytearray(
-            binascii.unhexlify(b"0a8b0205146009028472000935c0d000")
-        )
+        data = bytearray.fromhex("0a8b0205146009028472000935c0d000")
         cflags = bytearray(b"\x01\x00")
 
         chan = model.Channel.from_data(25, data, cflags)
@@ -105,10 +97,8 @@ class TestDecodeChannel:
         assert chan.bank_pos == 0
 
     def test_decode3(self):
-        data = bytearray(
-            binascii.unhexlify(b"282300c82420032cba72040d25cf4452")
-        )
-        cflags = bytearray(binascii.unhexlify(b"732b"))
+        data = bytearray.fromhex("282300c82420032cba72040d25cf4452")
+        cflags = bytearray.fromhex("732b")
 
         chan = model.Channel.from_data(99, data, cflags)
         assert chan.number == 99
@@ -151,8 +141,8 @@ def test_bank_links(inp, exp):
 
 
 def test_bank():
-    inp = b"434220202020ffff"
-    data = bytearray(binascii.unhexlify(inp))
+    inp = "434220202020ffff"
+    data = bytearray.fromhex(inp)
     b = model.Bank.from_data(0, data)
     assert b.idx == 0
     assert b.name == "CB    "
@@ -161,8 +151,8 @@ def test_bank():
     b.to_data(o_data)
     assert o_data == data
 
-    inp = b"48414d202020ffff"
-    data = bytearray(binascii.unhexlify(inp))
+    inp = "48414d202020ffff"
+    data = bytearray.fromhex(inp)
     b = model.Bank.from_data(2, data)
     assert b.idx == 2
     assert b.name == "HAM   "

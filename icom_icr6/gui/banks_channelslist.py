@@ -12,14 +12,16 @@ from contextlib import suppress
 
 from tksheet import functions
 
-from . import consts, gui_chanlist, gui_genericlist, model
+from icom_icr6 import consts, model
+
+from . import channels_list, genericlist
 
 _LOG = logging.getLogger(__name__)
 
 _SKIPS: ty.Final = ["", "S", "P"]
 
 
-class BLRow(gui_genericlist.BaseRow):
+class BLRow(genericlist.BaseRow):
     COLUMNS = (
         ("bank_pos", "Pos", "int"),
         ("channel", "Channel", "int"),
@@ -130,7 +132,7 @@ class BLRow(gui_genericlist.BaseRow):
         ]
 
 
-class ChannelsList(gui_chanlist.ChannelsList):
+class ChannelsList(channels_list.ChannelsList):
     _ROW_CLASS = BLRow
 
     def __init__(self, parent: tk.Widget) -> None:

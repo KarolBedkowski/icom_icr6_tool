@@ -7,17 +7,15 @@
 
 """ """
 
-import binascii
-
 from icom_icr6 import model
 
 
 def test_decode_settings():
     inp = (
-        b"2020202020202020202020200001000109000101000100010004090600020000"
-        b"00007e050100ffffffffffffffffff0600ff00002acd00000000ff001301ffff"
+        "2020202020202020202020200001000109000101000100010004090600020000"
+        "00007e050100ffffffffffffffffff0600ff00002acd00000000ff001301ffff"
     )
-    data = bytearray(binascii.unhexlify(inp))
+    data = bytearray.fromhex(inp)
     sett = model.RadioSettings.from_data(data)
 
     assert not sett.af_filer_am
@@ -56,10 +54,10 @@ def test_decode_settings():
 
 def test_decode_settings2():
     inp = (
-        b"2020202020202020202020200001000100020100000000010000040200010000"
-        b"00007e050101ffffffffffffffffff0600ff000028cd00000000ff001301ffff"
+        "2020202020202020202020200001000100020100000000010000040200010000"
+        "00007e050101ffffffffffffffffff0600ff000028cd00000000ff001301ffff"
     )
-    data = bytearray(binascii.unhexlify(inp))
+    data = bytearray.fromhex(inp)
     sett = model.RadioSettings.from_data(data)
     assert not sett.af_filer_am
     assert not sett.af_filer_fm
@@ -97,10 +95,10 @@ def test_decode_settings2():
 
 def test_decode_settings3():
     inp = (
-        b"2020202020202020202020200002000023020000010002000102030201000001"
-        b"01017f030001ffffffffffffffffff0600ff000039c500000000ff001301ffff"
+        "2020202020202020202020200002000023020000010002000102030201000001"
+        "01017f030001ffffffffffffffffff0600ff000039c500000000ff001301ffff"
     )
-    data = bytearray(binascii.unhexlify(inp))
+    data = bytearray.fromhex(inp)
     sett = model.RadioSettings.from_data(data)
     assert sett.af_filer_am
     assert sett.af_filer_fm
@@ -137,8 +135,8 @@ def test_decode_settings3():
 
 
 def test_bands1():
-    inp = b"d0dd060000000000000800002000e808"
-    data = bytearray(binascii.unhexlify(inp))
+    inp = "d0dd060000000000000800002000e808"
+    data = bytearray.fromhex(inp)
     band = model.BandDefaults.from_data(0, data)
 
     assert band.freq == 150000
@@ -158,8 +156,8 @@ def test_bands1():
 
 
 def test_bands2():
-    inp = b"80d6e34c80e65b01080800000000e808"
-    data = bytearray(binascii.unhexlify(inp))
+    inp = "80d6e34c80e65b01080800000000e808"
+    data = bytearray.fromhex(inp)
     band = model.BandDefaults.from_data(0, data)
 
     assert band.freq == 430000000

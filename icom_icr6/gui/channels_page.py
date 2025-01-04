@@ -10,22 +10,17 @@ import typing as ty
 from contextlib import suppress
 from tkinter import messagebox, ttk
 
-from . import (
-    consts,
-    expimp,
-    fixers,
-    gui_chanlist,
-    gui_model,
-    model_support,
-)
-from .change_manager import ChangeManeger
-from .radio_memory import RadioMemory
+from icom_icr6 import consts, expimp, fixers, model_support
+from icom_icr6.change_manager import ChangeManeger
+from icom_icr6.radio_memory import RadioMemory
+
+from . import channels_list, gui_model
 
 _LOG = logging.getLogger(__name__)
 
 
 class ChannelsPage(tk.Frame):
-    _chan_list: gui_chanlist.ChannelsList
+    _chan_list: channels_list.ChannelsList
 
     def __init__(self, parent: tk.Widget, cm: ChangeManeger) -> None:
         super().__init__(parent)
@@ -76,7 +71,7 @@ class ChannelsPage(tk.Frame):
         return self._change_manager.rm
 
     def _create_channel_list(self, frame: tk.Frame) -> None:
-        self._chan_list = gui_chanlist.ChannelsList(frame)
+        self._chan_list = channels_list.ChannelsList(frame)
         self._chan_list.on_record_update = self.__on_channel_update
         self._chan_list.on_record_selected = self.__on_channel_select
         self._chan_list.on_channel_bank_validate = self.__on_channel_bank_set
@@ -108,7 +103,7 @@ class ChannelsPage(tk.Frame):
         self.__update_chan_list()
 
     def __on_channel_update(
-        self, action: str, rows: ty.Collection[gui_chanlist.Row]
+        self, action: str, rows: ty.Collection[channels_list.Row]
     ) -> None:
         match action:
             case "delete":
@@ -121,7 +116,7 @@ class ChannelsPage(tk.Frame):
                 self.__do_move_channels(rows)
 
     def __do_delete_channels(
-        self, rows: ty.Collection[gui_chanlist.Row]
+        self, rows: ty.Collection[channels_list.Row]
     ) -> None:
         if not messagebox.askyesno(
             "Delete channel",
@@ -143,7 +138,7 @@ class ChannelsPage(tk.Frame):
         self.__update_chan_list()
 
     def __do_update_channels(
-        self, rows: ty.Collection[gui_chanlist.Row]
+        self, rows: ty.Collection[channels_list.Row]
     ) -> None:
         channels = []
         for rec in rows:
@@ -176,7 +171,7 @@ class ChannelsPage(tk.Frame):
         return None
 
     def __do_move_channels(
-        self, rows: ty.Collection[gui_chanlist.Row]
+        self, rows: ty.Collection[channels_list.Row]
     ) -> None:
         sel_group = self._selected_group
         if sel_group is None:
@@ -195,7 +190,7 @@ class ChannelsPage(tk.Frame):
         self._change_manager.commit()
         self.__update_chan_list()
 
-    def __on_channel_select(self, rows: list[gui_chanlist.Row]) -> None:
+    def __on_channel_select(self, rows: list[channels_list.Row]) -> None:
         btn_state = "normal" if len(rows) > 1 else "disabled"
         self._btn_sort["state"] = btn_state
         self._btn_fill["state"] = btn_state

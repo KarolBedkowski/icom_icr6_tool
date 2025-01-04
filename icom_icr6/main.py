@@ -9,14 +9,13 @@
 """ """
 
 import argparse
-import binascii
 import csv
 import logging
 import sys
 import typing as ty
 from pathlib import Path
 
-from . import expimp, io, model
+from . import expimp, ic_io, model
 
 _LOG = logging.getLogger()
 
@@ -38,8 +37,8 @@ def main_clone_from_radio(args: argparse.Namespace) -> None:
     """cmd: clone_from_radio
     args: <port> <icf file>
     """
-    radio = io.Radio(args.port)
-    io.save_icf_file(args.icf_file, radio.clone_from())
+    radio = ic_io.Radio(args.port)
+    ic_io.save_icf_file(args.icf_file, radio.clone_from())
     print(f"Saved {args.icf_file}")
 
 
@@ -47,10 +46,10 @@ def main_radio_info(args: argparse.Namespace) -> None:
     """cmd: radio_info
     args: <port>
     """
-    radio = io.Radio(args.port)
-    if model := radio.get_model():
-        print(f"Model: {model!r}")
-        print(f"Is IC-R6: {model.is_icr6()}")
+    radio = ic_io.Radio(args.port)
+    if rm := radio.get_model():
+        print(f"Model: {rm!r}")
+        print(f"Is IC-R6: {rm.is_icr6()}")
     else:
         print("ERROR")
 
@@ -58,7 +57,7 @@ def main_radio_info(args: argparse.Namespace) -> None:
 def main_print_channels(args: argparse.Namespace) -> None:
     """cmd: channels
     args: <icf file> [<start channel num>] [hidden]"""
-    mem = io.load_icf_file(args.icf_file)
+    mem = ic_io.load_icf_file(args.icf_file)
 
     ch_start, ch_end = 0, 1300
     if (gr := args.group) is not None and 0 <= gr <= 12:
@@ -86,7 +85,7 @@ def main_print_channels_4test() -> None:
         print("file name required")
         return
 
-    mem = io.load_icf_file(Path(sys.argv[2]))
+    mem = ic_io.load_icf_file(Path(sys.argv[2]))
 
     hidden = False
     ch_start, ch_end = 0, 1300
@@ -104,7 +103,7 @@ def main_print_aw_channels(args: argparse.Namespace) -> None:
     """cmd: autowrite
     args: <icf file>
     """
-    mem = io.load_icf_file(args.icf_file)
+    mem = ic_io.load_icf_file(args.icf_file)
 
     print("Autowrite channels")
     if args.verbose > 2:
@@ -121,7 +120,7 @@ def main_print_banks(args: argparse.Namespace) -> None:
     """cmd: banks
     args: <icf file>
     """
-    mem = io.load_icf_file(args.icf_file)
+    mem = ic_io.load_icf_file(args.icf_file)
 
     print("Banks")
     if args.verbose > 2:
@@ -152,7 +151,7 @@ def main_print_scan_programs(args: argparse.Namespace) -> None:
     """cmd: scan
     args: <icf file>
     """
-    mem = io.load_icf_file(args.icf_file)
+    mem = ic_io.load_icf_file(args.icf_file)
 
     print("Scan links")
     if args.verbose > 2:
@@ -191,9 +190,9 @@ def main_write_mem_raw(args: argparse.Namespace) -> None:
     """cmd: icf2raw
     args: <icf file> [<raw file>]
     """
-    mem = io.load_icf_file(args.icf_file)
+    mem = ic_io.load_icf_file(args.icf_file)
     dst = args.raw_file or args.icf_file.with_suffix(".raw")
-    io.save_raw_memory(dst, mem)
+    ic_io.save_raw_memory(dst, mem)
     print(f"Saved {dst}")
 
 
@@ -202,9 +201,9 @@ def main_write_icf_mem(args: argparse.Namespace) -> None:
     args: <raw file> [<icf file>]
     """
 
-    mem = io.load_raw_memory(args.raw_file)
+    mem = ic_io.load_raw_memory(args.raw_file)
     dst = args.icf_file or args.raw_file.with_suffix(".icf")
-    io.save_icf_file(dst, mem)
+    ic_io.save_icf_file(dst, mem)
     print(f"Saved {dst}")
 
 
@@ -212,7 +211,7 @@ def main_print_settings(args: argparse.Namespace) -> None:
     """cmd: settings
     args: <icf file>
     """
-    mem = io.load_icf_file(args.icf_file)
+    mem = ic_io.load_icf_file(args.icf_file)
 
     print("Settings")
     if args.verbose > 2:
@@ -234,7 +233,7 @@ def main_print_bands(args: argparse.Namespace) -> None:
     """cmd: bands
     args: <icf file>
     """
-    mem = io.load_icf_file(args.icf_file)
+    mem = ic_io.load_icf_file(args.icf_file)
 
     print("Bands")
     if args.verbose > 2:
@@ -248,7 +247,7 @@ def main_print_dupl_freq(args: argparse.Namespace) -> None:
     """cmd: duplicated-freq
     args: <icf file>
     """
-    mem = io.load_icf_file(args.icf_file)
+    mem = ic_io.load_icf_file(args.icf_file)
 
     print("Duplicated channels by frequency")
 
@@ -285,9 +284,9 @@ def main_send_command(args: argparse.Namespace) -> None:
     args: <port> <command> <payload>
     """
     cmd = int(args.command, 16)
-    payload = binascii.unhexlify(args.payload) if args.payload else b""
+    payload = bytes.fromhex(args.payload) if args.payload else b""
 
-    r = io.Radio(args.port)
+    r = ic_io.Radio(args.port)
     print("Response: ")
     try:
         for res in r.write_read(cmd, payload):
@@ -296,7 +295,7 @@ def main_send_command(args: argparse.Namespace) -> None:
     except KeyboardInterrupt:
         pass
 
-    except io.NoDataError:
+    except ic_io.NoDataError:
         print("no more data")
 
 
