@@ -12,7 +12,9 @@ from contextlib import suppress
 
 from tksheet import functions
 
-from . import consts, gui_chanlist, gui_genericlist, model
+from icom_icr6 import consts, model
+
+from . import gui_chanlist, gui_genericlist
 
 _LOG = logging.getLogger(__name__)
 

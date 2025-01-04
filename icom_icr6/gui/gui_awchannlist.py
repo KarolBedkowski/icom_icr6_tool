@@ -11,7 +11,9 @@ from itertools import starmap
 
 from tksheet import EventDataDict, Span
 
-from . import consts, gui_chanlist, gui_genericlist, model
+from icom_icr6 import consts, model
+
+from . import gui_chanlist, gui_genericlist
 
 _LOG = logging.getLogger(__name__)
 

@@ -11,10 +11,12 @@ import tkinter as tk
 import typing as ty
 from tkinter import ttk
 
-from . import config, consts, gui_support, model
+from icom_icr6 import config, consts, model
+
+from . import gui_support
 
 if ty.TYPE_CHECKING:
-    from .radio_memory import RadioMemory
+    from icom_icr6.radio_memory import RadioMemory
 
 _LOG = logging.getLogger(__name__)
 

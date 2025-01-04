@@ -10,16 +10,11 @@ import typing as ty
 from contextlib import suppress
 from tkinter import messagebox, ttk
 
-from . import (
-    consts,
-    expimp,
-    fixers,
-    gui_chanlist,
-    gui_model,
-    model_support,
-)
-from .change_manager import ChangeManeger
-from .radio_memory import RadioMemory
+from icom_icr6 import consts, expimp, fixers, model_support
+from icom_icr6.change_manager import ChangeManeger
+from icom_icr6.radio_memory import RadioMemory
+
+from . import gui_chanlist, gui_model
 
 _LOG = logging.getLogger(__name__)
 

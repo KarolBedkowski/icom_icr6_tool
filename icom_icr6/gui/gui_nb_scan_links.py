@@ -9,10 +9,12 @@ import tkinter as tk
 import typing as ty
 from tkinter import messagebox, ttk
 
-from . import consts, expimp, gui_model, gui_scanlinkslist, model, validators
-from .change_manager import ChangeManeger
+from icom_icr6 import consts, expimp, model, validators
+from icom_icr6.change_manager import ChangeManeger
+from icom_icr6.radio_memory import RadioMemory
+
+from . import gui_model, gui_scanlinkslist
 from .gui_widgets import new_entry
-from .radio_memory import RadioMemory
 
 _LOG = logging.getLogger(__name__)
 

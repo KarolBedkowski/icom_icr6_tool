@@ -10,10 +10,11 @@ import typing as ty
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
+from icom_icr6 import VERSION, config, expimp, io
+from icom_icr6.change_manager import ChangeManeger
+from icom_icr6.radio_memory import RadioMemory
+
 from . import (
-    VERSION,
-    config,
-    expimp,
     gui_dlg_clone,
     gui_dlg_find,
     gui_model,
@@ -23,10 +24,7 @@ from . import (
     gui_nb_scan_edge,
     gui_nb_scan_links,
     gui_nb_settings,
-    io,
 )
-from .change_manager import ChangeManeger
-from .radio_memory import RadioMemory
 
 _LOG = logging.getLogger(__name__)
 
@@ -470,7 +468,9 @@ class App(tk.Frame):
         pages[selected_tab].update_tab()
 
     def _load_default_icf(self) -> RadioMemory:
-        icf_file = Path(__file__).parent.joinpath("data", "default_global.icf")
+        icf_file = Path(__file__).parent.parent.joinpath(
+            "data", "default_global.icf"
+        )
         return io.load_icf_file(icf_file)
 
     def _load_icf(self, file: Path) -> None:

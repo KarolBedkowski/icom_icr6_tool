@@ -13,8 +13,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from tkinter import simpledialog, ttk
 
-from . import config, consts, io, model
-from .radio_memory import RadioMemory
+from icom_icr6 import config, consts, io, model
+from icom_icr6.radio_memory import RadioMemory
 
 _LOG = logging.getLogger(__name__)
 

@@ -10,7 +10,9 @@ import typing as ty
 
 from tksheet import EventDataDict, Span, functions
 
-from . import consts, fixers, gui_genericlist, model
+from icom_icr6 import consts, fixers, model
+
+from . import gui_genericlist
 
 _LOG = logging.getLogger(__name__)
 _BANKS = ["", *consts.BANK_NAMES]

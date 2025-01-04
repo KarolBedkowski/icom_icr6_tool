@@ -11,22 +11,15 @@ import tkinter as tk
 import typing as ty
 from tkinter import messagebox, ttk
 
-from . import (
-    consts,
-    expimp,
-    fixers,
-    gui_bankchanlist,
-    gui_model,
-    model,
-    model_support,
-    validators,
-)
-from .change_manager import ChangeManeger
+from icom_icr6 import consts, expimp, fixers, model, model_support, validators
+from icom_icr6.change_manager import ChangeManeger
+from icom_icr6.radio_memory import RadioMemory
+
+from . import gui_bankchanlist, gui_model
 from .gui_widgets import (
     new_checkbox,
     new_entry,
 )
-from .radio_memory import RadioMemory
 
 _LOG = logging.getLogger(__name__)
 

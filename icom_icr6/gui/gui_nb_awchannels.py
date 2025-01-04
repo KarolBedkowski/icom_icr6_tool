@@ -10,9 +10,11 @@ import logging
 import tkinter as tk
 import typing as ty
 
-from . import expimp, gui_awchannlist, gui_model
-from .change_manager import ChangeManeger
-from .radio_memory import RadioMemory
+from icom_icr6 import expimp
+from icom_icr6.change_manager import ChangeManeger
+from icom_icr6.radio_memory import RadioMemory
+
+from . import gui_awchannlist, gui_model
 
 _LOG = logging.getLogger(__name__)
 _ = ty

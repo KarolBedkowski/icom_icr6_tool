@@ -9,9 +9,11 @@ import tkinter as tk
 import typing as ty
 from tkinter import messagebox
 
-from . import consts, expimp, gui_model, gui_scanedgeslist, model
-from .change_manager import ChangeManeger
-from .radio_memory import RadioMemory
+from icom_icr6 import consts, expimp, model
+from icom_icr6.change_manager import ChangeManeger
+from icom_icr6.radio_memory import RadioMemory
+
+from . import gui_model, gui_scanedgeslist
 
 _LOG = logging.getLogger(__name__)
 

@@ -5,24 +5,19 @@
 """ """
 
 import logging
-import typing as ty
 
 from tksheet import EventDataDict
 
-from . import consts, fixers, gui_genericlist, model
+from icom_icr6 import consts, fixers, model
+
+from . import gui_genericlist
 
 _LOG = logging.getLogger(__name__)
-
-
-class ScanLink(ty.NamedTuple):
-    scan_edge: model.ScanEdge
-    selected: bool
 
 
 class Row(gui_genericlist.BaseRow):
     COLUMNS = (
         ("idx", "Num", "int"),
-        ("selected", "Selected", "bool"),
         ("name", "Name", "str"),
         ("start", "Start", "freq"),
         ("end", "End", "freq"),
@@ -31,10 +26,9 @@ class Row(gui_genericlist.BaseRow):
         ("att", "ATT", consts.ATTENUATOR),
     )
 
-    def __init__(self, rownum: int, sl: ScanLink) -> None:
-        self.se = sl.scan_edge
-        self.selected = sl.selected
-        super().__init__(rownum, self._from_scanedge(sl.scan_edge))
+    def __init__(self, rownum: int, se: model.ScanEdge) -> None:
+        self.se = se
+        super().__init__(rownum, self._from_scanedge(se))
 
     def __setitem__(self, idx: int, val: object, /) -> None:  # type: ignore
         if val == self.data[idx]:
@@ -43,11 +37,7 @@ class Row(gui_genericlist.BaseRow):
         col = self.COLUMNS[idx][0]
         match col:
             case "idx":
-                pass
-
-            case "selected":
-                self.selected = bool(val)
-                self.data[1] = val
+                return
 
             case "name":
                 if val:
@@ -75,10 +65,9 @@ class Row(gui_genericlist.BaseRow):
 
     def _from_scanedge(self, se: model.ScanEdge) -> list[object]:
         if se.hidden:
-            return [se.idx, self.selected, "", "", "", "", "", ""]
+            return [se.idx, "", "", "", "", "", ""]
 
-        data = se.to_record()
-        return [se.idx, self.selected, *(data[c[0]] for c in self.COLUMNS[2:])]
+        return self._extracts_cols(se.to_record())
 
     def _update_start(self, value: object) -> None:
         se = self.se
@@ -119,16 +108,10 @@ class Row(gui_genericlist.BaseRow):
             super().__setitem__(idx, value)
 
 
-class ScanLnksList(gui_genericlist.GenericList[Row, ScanLink]):
+class ScanEdgesList(gui_genericlist.GenericList[Row, model.ScanEdge]):
     _ROW_CLASS = Row
 
-    def set_data_links(self, links: list[bool]) -> None:
-        # update "selected" column
-        self.sheet["B"].options(transposed=True).data = links
-
     def _on_validate_edits(self, event: EventDataDict) -> object:
-        # _LOG.debug("_on_validate_edits: %r", event)
-
         column = self.columns[self.sheet.data_c(event.column)]
         row = self.sheet.data[event.row]
         value = event.value
@@ -143,6 +126,9 @@ class ScanLnksList(gui_genericlist.GenericList[Row, ScanLink]):
 
         match column[0]:
             case "start" | "end":
+                if value is None or value == "":
+                    return value
+
                 val = gui_genericlist.to_freq(value)
                 value = fixers.fix_frequency(val)
 
