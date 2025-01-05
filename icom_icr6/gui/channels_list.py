@@ -44,7 +44,8 @@ class Row(genericlist.BaseRow):
 
     def __init__(self, rownum: int, channel: model.Channel) -> None:
         self.channel = channel
-        self.new_freq = 0
+        # temporary values for hidden channels; its overwrite defaults
+        self.new_values: dict[str, object] | None = None
         super().__init__(rownum, self._from_channel(channel))
 
     def __repr__(self) -> str:
@@ -54,15 +55,10 @@ class Row(genericlist.BaseRow):
         )
 
     def __setitem__(self, idx: int, val: object, /) -> None:  # type: ignore
-        if val == self.data[idx]:
+        if val is None or val == self.data[idx]:
             return
 
-        chan = self.channel
         col = self.COLUMNS[idx][0]
-
-        if (not chan.freq or chan.hide_channel) and idx != 1:
-            return
-
         match col:
             case "number":
                 return
@@ -71,8 +67,12 @@ class Row(genericlist.BaseRow):
                 self._update_freq(val)
                 return
 
-        data = chan.to_record()
-        current_val = data[col]
+        if self.channel.hide_channel:
+            # when channels is hidden - store new values temporary
+            self._store_new_value(col, val)
+            return
+
+        current_val = self.channel.to_record().get(col)
         if current_val == val or (current_val == "" and val is None):
             return
 
@@ -94,6 +94,14 @@ class Row(genericlist.BaseRow):
 
         return self.channel
 
+    def _store_new_value(self, col: str, val: object) -> None:
+        self._make_clone()
+
+        if self.new_values is None:
+            self.new_values = {col: val}
+        else:
+            self.new_values[col] = val
+
     def _from_channel(self, channel: model.Channel) -> list[object]:
         if channel is None:
             return [""] * 19
@@ -114,10 +122,8 @@ class Row(genericlist.BaseRow):
         except (ValueError, TypeError):
             return
 
-        chan = self.channel
-
-        if (not chan.freq or chan.hide_channel) and freq:
-            self.new_freq = freq
+        if self.channel.hide_channel:
+            self._store_new_value("freq", freq)
             return
 
         chan = self._make_clone()
