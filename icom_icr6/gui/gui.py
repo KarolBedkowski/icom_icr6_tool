@@ -33,6 +33,7 @@ _LOG = logging.getLogger(__name__)
 @ty.runtime_checkable
 class TabWidget(ty.Protocol):
     def update_tab(self) -> None: ...
+    def reset(self) -> None: ...
 
 
 class App(tk.Frame):
@@ -327,7 +328,7 @@ class App(tk.Frame):
             self._radio_memory.update_from(mem)
             self._safe_for_clone = True
             self._set_loaded_filename(None)
-            self._update_tab_content()
+            self._reset_tab_content()
             self._change_manager.reset()
 
     def _on_menu_clone_to_radio(self, _event: tk.Event | None = None) -> None:  # type: ignore
@@ -468,6 +469,19 @@ class App(tk.Frame):
         )
         pages[selected_tab].update_tab()
 
+    def _reset_tab_content(self) -> None:
+        pages: tuple[TabWidget, ...] = (
+            self._nb_channels,
+            self._nb_banks,
+            self._nb_scan_edge,
+            self._nb_scan_links,
+            self._nb_aw_channels,
+            self._nb_settings,
+        )
+
+        for page in pages:
+            page.reset()
+
     def _load_default_icf(self) -> RadioMemory:
         with importlib.resources.path(
             "icom_icr6.data", "default_global.icf"
@@ -488,7 +502,7 @@ class App(tk.Frame):
             return
 
         self._set_loaded_filename(file)
-        self._update_tab_content()
+        self._reset_tab_content()
         self.set_status(f"File {file} loaded")
         self._safe_for_clone = True
         self._change_manager.reset()

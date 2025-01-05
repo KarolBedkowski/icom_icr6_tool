@@ -70,6 +70,13 @@ class ChannelsPage(tk.Frame):
         self._groups_list.selection_set(group)
         self.__update_chan_list(select=chanpos)
 
+    def reset(self) -> None:
+        self._chan_list.set_region(self._change_manager.rm.region)
+        self._last_selected_group = 0
+        self._last_selected_pos = [0] * len(gui_model.CHANNEL_RANGES)
+        self._groups_list.selection_set(0)
+        self.__update_chan_list()
+
     @property
     def _radio_memory(self) -> RadioMemory:
         return self._change_manager.rm

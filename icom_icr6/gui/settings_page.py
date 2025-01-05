@@ -31,6 +31,9 @@ class SettingsPage(tk.Frame):
     def update_tab(self) -> None:
         self.__update()
 
+    def reset(self) -> None:
+        pass
+
     @property
     def _radio_memory(self) -> RadioMemory:
         return self._change_manager.rm

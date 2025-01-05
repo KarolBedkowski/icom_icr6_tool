@@ -30,6 +30,10 @@ class ScanEdgesPage(tk.Frame):
         self._scanedges_list.selection_set(self._last_selected_se)
         self.__update_scan_edges_list()
 
+    def reset(self) -> None:
+        self._scanedges_list.selection_set(())
+        self.__update_scan_edges_list()
+
     @property
     def _radio_memory(self) -> RadioMemory:
         return self._change_manager.rm

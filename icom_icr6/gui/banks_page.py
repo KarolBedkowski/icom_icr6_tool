@@ -83,6 +83,14 @@ class BanksPage(tk.Frame):
         self._banks_list.selection_set(bank)
         self._update_chan_list(select=bank_pos)
 
+    def reset(self) -> None:
+        self._chan_list.set_region(self._change_manager.rm.region)
+        self._last_selected_bank = 0
+        self._last_selected_pos = [0] * consts.NUM_BANKS
+        self._update_banks_list()
+        self._banks_list.selection_set(0)
+        self._update_chan_list()
+
     @property
     def _radio_memory(self) -> RadioMemory:
         return self._change_manager.rm

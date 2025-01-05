@@ -37,6 +37,10 @@ class AutoWriteChannelsPage(tk.Frame):
     def select(self, channel_number: int) -> None:
         self._chan_list.selection_set([channel_number])
 
+    def reset(self) -> None:
+        self._chan_list.set_region(self._change_manager.rm.region)
+        self._update_channels_list()
+
     @property
     def _radio_memory(self) -> RadioMemory:
         return self._change_manager.rm

@@ -49,6 +49,12 @@ class ScanLinksPage(tk.Frame):
         self._scan_links_list.selection_set(self._last_selected_sl)
         self.__on_select_scan_link()
 
+    def reset(self) -> None:
+        self.__update_scan_links_list()
+        self.__update_scan_edges()
+        self._scan_links_list.selection_set(0)
+        self.__on_select_scan_link()
+
     @property
     def _radio_memory(self) -> RadioMemory:
         return self._change_manager.rm
