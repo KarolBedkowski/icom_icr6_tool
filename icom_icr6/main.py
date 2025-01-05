@@ -350,7 +350,9 @@ def _parse_args() -> argparse.Namespace:
         type=int,
         help="show channels only in one group (0-12)",
     )
-    cmd.add_argument("-H", "--hidden", type=int, help="Show hidden channels")
+    cmd.add_argument(
+        "-H", "--hidden", help="Show hidden channels", action="store_true"
+    )
     cmd.set_defaults(func=main_print_channels)
 
     cmd = cmds.add_parser("awchannels", help="Print autowrite channels")
