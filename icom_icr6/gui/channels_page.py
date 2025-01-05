@@ -27,6 +27,7 @@ class ChannelsPage(tk.Frame):
         self._parent = parent
         self._change_manager = cm
         self.__need_full_refresh = False
+        self.__in_paste = False
 
         pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
         self._groups_list = tk.Listbox(pw, selectmode=tk.SINGLE, width=10)
@@ -141,22 +142,29 @@ class ChannelsPage(tk.Frame):
         self, rows: ty.Collection[channels_list.Row]
     ) -> None:
         channels = []
-        for rec in rows:
-            _LOG.debug("__do_update_channels: %r", rec)
+        for idx, rec in enumerate(rows):
+            _LOG.debug("__do_update_channels: [%d] %r", idx, rec)
             rec.updated = False
             chan = rec.channel
 
-            if rec.new_freq:
-                chan = chan.clone()
-                band = self._change_manager.rm.get_band_for_freq(rec.new_freq)
-                chan.load_defaults_from_band(band)
-                chan.freq = rec.new_freq
-                chan.hide_channel = False
+            if rec.new_values:
+                freq = rec.new_values.get("freq")
+                if freq:
+                    assert isinstance(freq, int)
+                    band = self._change_manager.rm.get_band_for_freq(freq)
+                    chan.load_defaults_from_band(band)
+
+                chan.from_record(rec.new_values)
+                chan.hide_channel = freq == 0
                 self.__need_full_refresh = True
 
             channels.append(chan)
 
         self.__need_full_refresh |= self._change_manager.set_channel(*channels)
+
+        if self.__in_paste:
+            return
+
         self._change_manager.commit()
         if self.__need_full_refresh:
             self.__update_chan_list()
@@ -245,35 +253,42 @@ class ChannelsPage(tk.Frame):
         if not sel:
             return
 
+        self.__in_paste = True
+
         clip = gui_model.Clipboard.instance()
         data = ty.cast(str, clip.get())
         try:
             # try import whole channels
-            self.__on_channel_paste_channels(sel, data)
-        except ValueError:
-            # try import as plain data
-            self.__on_channel_paste_simple(data)
-        except Exception:
+            if not self.__on_channel_paste_channels(sel, data):
+                # try import as plain data
+                self.__on_channel_paste_simple(data)
+
+        except Exception as err:
             _LOG.exception("__on_channel_paste error")
+            messagebox.showerror(
+                "Paste data error", f"Clipboard content can't be pasted: {err}"
+            )
+
         else:
             self._change_manager.commit()
             self.__update_chan_list()
 
+        self.__in_paste = False
+
     def __on_channel_paste_channels(
         self, sel: tuple[int, ...], data: str
-    ) -> None:
+    ) -> bool:
+        """Try paste data in csv format. Return True on success."""
         if (sel_group := self._selected_group) is not None:
             range_start = sel_group * 100
         else:
-            return
+            return False
 
         try:
             rows = list(expimp.import_channels_str(data))
         except ValueError:
-            raise
-        except Exception:
-            _LOG.exception("import from clipboard error")
-            raise
+            # data in invalid format
+            return False
 
         # special case - when in clipboard is one record and selected  many-
         # duplicate
@@ -292,19 +307,13 @@ class ChannelsPage(tk.Frame):
                 if chan_num % 100 == 99:  # noqa: PLR2004
                     break
 
+        return True
+
     def __on_channel_paste_simple(self, data: str) -> None:
-        try:
-            rows = expimp.import_str_as_table(data)
-        except ValueError:
-            raise
-        except Exception:
-            _LOG.exception("simple import from clipboard error")
-            raise
-
-        if not rows:
-            return
-
-        self._chan_list.paste(rows)
+        """Paste simple data into tksheet.
+        Raise on invalid data."""
+        if rows := expimp.import_str_as_table(data):
+            self._chan_list.paste(rows)
 
     def __paste_channel(self, row: dict[str, object], chan_num: int) -> bool:
         _LOG.debug("__paste_channel chan_num=%d, row=%r", chan_num, row)

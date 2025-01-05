@@ -34,6 +34,7 @@ class BanksPage(tk.Frame):
         self._bank_name = tk.StringVar()
         self._bank_link = gui_model.BoolVar()
         self._change_manager = cm
+        self.__in_paste = False
 
         pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
         banks = self._banks_list = tk.Listbox(
@@ -260,7 +261,7 @@ class BanksPage(tk.Frame):
         self._change_manager.commit()
         self._update_chan_list()
 
-    def _do_update_channels(
+    def _do_update_channels(  # noqa: C901
         self, rows: ty.Collection[banks_channelslist.BLRow]
     ) -> None:
         chan: model.Channel | None
@@ -283,13 +284,15 @@ class BanksPage(tk.Frame):
                 # add chan to bank
                 chan = self._radio_memory.channels[rec.new_channel]
 
-            elif rec.new_freq:  # empty pos, entered freq
+            elif rec.new_values:  # empty pos, entered freq
                 chan = self._radio_memory.find_first_hidden_channel()
                 if not chan:
+                    # TODO: error? is this possible?
                     continue
 
-                chan.freq = rec.new_freq
-                chan.mode = consts.default_mode_for_freq(chan.freq)
+                if freq := rec.new_values.get("freq"):
+                    assert isinstance(freq, int)
+                    chan.freq = freq
 
             elif rec.channel:  # edit existing channel
                 chan = rec.channel
@@ -303,17 +306,22 @@ class BanksPage(tk.Frame):
             chan.bank_pos = rec.rownum
 
             # if new channel - make it visible
-            if chan.hide_channel or not chan.freq:
+            if chan.hide_channel and chan.freq:
                 chan.freq = fixers.fix_frequency(chan.freq)
                 band = self._change_manager.rm.get_band_for_freq(chan.freq)
                 chan.load_defaults_from_band(band)
                 chan.hide_channel = False
 
+            if rec.new_values:
+                chan.from_record(rec.new_values)
+
             channels.append(chan)
 
         self._change_manager.set_channel(*channels)
-        self._change_manager.commit()
-        self._update_chan_list()
+
+        if not self.__in_paste:
+            self._change_manager.commit()
+            self._update_chan_list()
 
     def _do_move_channels(
         self, rows: ty.Collection[banks_channelslist.BLRow]
@@ -362,27 +370,35 @@ class BanksPage(tk.Frame):
         if not sel:
             return
 
+        self.__in_paste = True
+
         clip = gui_model.Clipboard.instance()
         data = ty.cast(str, clip.get())
         try:
             # try import whole channels
-            self._on_channel_paste_channels(selected_bank, sel, data)
-        except ValueError:
-            # try import as plain data
-            self._on_channel_paste_simple(data)
-        except Exception:
+            if not self._on_channel_paste_channels(selected_bank, sel, data):
+                # try import as plain data
+                self._on_channel_paste_simple(data)
+
+        except Exception as err:
             _LOG.exception("_on_channel_paste error")
+            messagebox.showerror(
+                "Paste data error", f"Clipboard content can't be pasted: {err}"
+            )
+
+        else:
+            self._change_manager.commit()
+            self._update_chan_list()
+
+        self.__in_paste = False
 
     def _on_channel_paste_channels(
         self, selected_bank: int, sel_pos: tuple[int, ...], data: str
-    ) -> None:
+    ) -> bool:
         try:
             rows = list(expimp.import_channels_str(data))
         except ValueError:
-            raise
-        except Exception:
-            _LOG.exception("import from clipboard error")
-            return
+            return False
 
         bank_channels = self._radio_memory.get_bank_channels(selected_bank)
 
@@ -406,19 +422,11 @@ class BanksPage(tk.Frame):
                 if pos % 100 == 99:  # noqa: PLR2004
                     break
 
-        self._change_manager.commit()
-        self._update_chan_list()
+        return True
 
     def _on_channel_paste_simple(self, data: str) -> None:
-        try:
-            rows = expimp.import_str_as_table(data)
-        except ValueError:
-            raise
-        except Exception:
-            _LOG.exception("simple import from clipboard error")
-            raise
-
-        self._chan_list.paste(rows)
+        if rows := expimp.import_str_as_table(data):
+            self._chan_list.paste(rows)
 
     def _paste_channel(
         self,

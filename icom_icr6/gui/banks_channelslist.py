@@ -47,7 +47,7 @@ class BLRow(genericlist.BaseRow):
         # channel to set
         self.new_channel: int | None = None
         # new freq to set (if not channel, find free channel and set)
-        self.new_freq: int | None = None
+        self.new_values: dict[str, object] | None = None
         self.channel = channel
         self.rownum = bank_pos
 
@@ -58,7 +58,7 @@ class BLRow(genericlist.BaseRow):
         self.data = self._from_channel(channel)
 
     def __setitem__(self, idx: int, val: object, /) -> None:  # type: ignore
-        if val == self.data[idx]:
+        if val is None or val == self.data[idx]:
             return
 
         chan = self.channel
@@ -83,21 +83,27 @@ class BLRow(genericlist.BaseRow):
 
                 # valid frequency
                 # if not chan - create new
-                if not chan or not chan.freq or chan.hide_channel:
-                    self.new_freq = freq
+                if not chan or chan.hide_channel:
+                    self._store_new_value("freq", freq)
                     return
 
-                # otherwise - update existing by standard way
+        if not chan or chan.hide_channel:
+            # when channels is hidden - store new values temporary
+            self._store_new_value(col, val)
+            return
+
+        current_val = chan.to_record().get(col)
+        if current_val == val or (current_val == "" and val is None):
+            return
 
         # if chan exists and is valid - update
-        if chan and chan.freq and not chan.hide_channel:
-            chan = self._make_clone()
-            try:
-                chan.from_record({col: val})
-            except Exception:
-                _LOG.exception("from record error: %r=%r", col, val)
+        chan = self._make_clone()
+        try:
+            chan.from_record({col: val})
+        except Exception:
+            _LOG.exception("from record error: %r=%r", col, val)
 
-            super().__setitem__(idx, val)
+        super().__setitem__(idx, val)
 
     def _make_clone(self) -> model.Channel:
         """Make copy of channel for updates."""
@@ -108,6 +114,15 @@ class BLRow(genericlist.BaseRow):
             self.channel = self.channel.clone()
 
         return self.channel
+
+    def _store_new_value(self, col: str, val: object) -> None:
+        if self.channel:
+            self._make_clone()
+
+        if self.new_values is None:
+            self.new_values = {col: val}
+        else:
+            self.new_values[col] = val
 
     def _from_channel(self, channel: model.Channel | None) -> list[object]:
         # valid channel
@@ -127,7 +142,7 @@ class BLRow(genericlist.BaseRow):
         return [
             self.rownum,
             self.new_channel if self.new_channel is not None else "",
-            self.new_freq or "",
+            self.new_values.get("freq", "") if self.new_values else "",
             *([""] * 15),
         ]
 
