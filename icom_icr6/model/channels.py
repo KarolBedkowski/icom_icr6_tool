@@ -440,8 +440,8 @@ class Channel:
     def load_defaults_from_band(self, band: BandDefaults) -> None:
         # self.name = ""
         self.mode = band.mode
-        self.af_filter = band.af_filter
-        self.attenuator = band.attenuator
+        self.af_filter = False
+        self.attenuator = False
         self.tuning_step = band.tuning_step
         self.duplex = band.duplex
         self.offset = band.offset
@@ -449,7 +449,7 @@ class Channel:
         self.tsql_freq = band.tsql_freq
         self.dtcs = band.dtcs
         self.polarity = band.polarity
-        self.vsc = band.vsc
+        self.vsc = False
         self.skip = 0
         self.canceller = band.canceller
         self.canceller_freq = band.canceller_freq
