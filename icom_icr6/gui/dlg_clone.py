@@ -4,6 +4,7 @@
 
 """ """
 
+import builtins
 import logging
 import queue
 import threading
@@ -176,6 +177,14 @@ class _CloneDialog(simpledialog.Dialog):
 
         self.after(250, self._monitor_bg_task)
 
+    def _check_port(self) -> tuple[str, bool]:
+        port = self._var_port.get().strip()
+        if not port and not getattr(builtins, "APP_DEV_MODE", False):
+            self._var_progress.set("ERROR: port not selected")
+            return "", False
+
+        return port, True
+
 
 class CloneFromRadioDialog(_CloneDialog):
     def __init__(self, parent: tk.Widget) -> None:
@@ -186,9 +195,13 @@ class CloneFromRadioDialog(_CloneDialog):
         if self._working:
             return
 
+        port, ok = self._check_port()
+        if not ok:
+            return
+
         self._start_working()
 
-        config.CONFIG.last_port = port = self._var_port.get()
+        config.CONFIG.last_port = port
         config.CONFIG.hispeed = hispeed = bool(self._var_hispeed.get())
 
         # start bg task
@@ -228,9 +241,13 @@ class CloneToRadioDialog(_CloneDialog):
         if self._working:
             return
 
+        port, ok = self._check_port()
+        if not ok:
+            return
+
         self._start_working()
 
-        config.CONFIG.last_port = port = self._var_port.get()
+        config.CONFIG.last_port = port
         config.CONFIG.hispeed = hispeed = bool(self._var_hispeed.get())
 
         # start bg task
@@ -278,7 +295,11 @@ class RadioInfoDialog(_CloneDialog):
         super().__init__(parent, "Radio info")
 
     def _on_ok(self, _event: tk.Event | None = None) -> None:  # type: ignore
-        radio = ic_io.Radio(self._var_port.get())
+        port, ok = self._check_port()
+        if not ok:
+            return
+
+        radio = ic_io.Radio(port)
         try:
             self.result = radio.get_model()
 

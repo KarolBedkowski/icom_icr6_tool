@@ -9,6 +9,7 @@
 """ """
 
 import argparse
+import builtins
 import csv
 import logging
 import sys
@@ -33,20 +34,35 @@ def _print_csv(
     writer.writerows(data)
 
 
+def _check_port(args: argparse.Namespace) -> tuple[str, bool]:
+    port = args.port.strip()
+    if not port and not getattr(builtins, "APP_DEV_MODE", False):
+        print("ERROR: port not selected")
+        return "", False
+
+    return port, True
+
+
 def main_clone_from_radio(args: argparse.Namespace) -> None:
     """cmd: clone_from_radio
     args: <port> <icf file>
     """
-    radio = ic_io.Radio(args.port)
-    ic_io.save_icf_file(args.icf_file, radio.clone_from())
-    print(f"Saved {args.icf_file}")
+    port, ok = _check_port(args)
+    if ok:
+        radio = ic_io.Radio(port)
+        ic_io.save_icf_file(args.icf_file, radio.clone_from())
+        print(f"Saved {args.icf_file}")
 
 
 def main_radio_info(args: argparse.Namespace) -> None:
     """cmd: radio_info
     args: <port>
     """
-    radio = ic_io.Radio(args.port)
+    port, ok = _check_port(args)
+    if not ok:
+        return
+
+    radio = ic_io.Radio(port)
     if rm := radio.get_model():
         print(f"Model: {rm!r}")
         print(f"Is IC-R6: {rm.is_icr6()}")
@@ -283,10 +299,14 @@ def main_send_command(args: argparse.Namespace) -> None:
     """cmd: send
     args: <port> <command> <payload>
     """
+    port, ok = _check_port(args)
+    if not ok:
+        return
+
     cmd = int(args.command, 16)
     payload = bytes.fromhex(args.payload) if args.payload else b""
 
-    r = ic_io.Radio(args.port)
+    r = ic_io.Radio(port)
     print("Response: ")
     try:
         for res in r.write_read(cmd, payload):

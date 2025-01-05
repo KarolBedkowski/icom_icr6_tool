@@ -6,6 +6,7 @@
 """ """
 
 import logging
+import builtins
 
 
 try:
@@ -87,7 +88,6 @@ try:
 
         return wrapper
 
-    import builtins
 
     builtins.ic_stack = ic_stack
     builtins.ic_trace = ic_trace
@@ -102,6 +102,7 @@ try:
 except ImportError:
     pass
 
+builtins.APP_DEV_MODE = True
 
 from icom_icr6 import main_gui
 
