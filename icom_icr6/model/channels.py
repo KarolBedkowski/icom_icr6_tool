@@ -438,7 +438,7 @@ class Channel:
             self.bank_pos = int(bp)  # type: ignore
 
     def load_defaults_from_band(self, band: BandDefaults) -> None:
-        self.name = ""
+        # self.name = ""
         self.mode = band.mode
         self.af_filter = band.af_filter
         self.attenuator = band.attenuator
