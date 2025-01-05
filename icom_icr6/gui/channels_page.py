@@ -28,6 +28,8 @@ class ChannelsPage(tk.Frame):
         self._change_manager = cm
         self.__need_full_refresh = False
         self.__in_paste = False
+        self._last_selected_group = 0
+        self._last_selected_pos = [0] * len(gui_model.CHANNEL_RANGES)
 
         pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
         self._groups_list = tk.Listbox(pw, selectmode=tk.SINGLE, width=10)
@@ -45,12 +47,13 @@ class ChannelsPage(tk.Frame):
         # hide canceller in global models
         self._chan_list.set_region(self._change_manager.rm.region)
 
-        if channel_number is not None:
-            self.select(channel_number)
-            return
+        if channel_number is None:
+            channel_number = (
+                self._last_selected_group * 100
+                + self._last_selected_pos[self._last_selected_group]
+            )
 
-        self._groups_list.selection_set(self._selected_group or 0)
-        self.__update_chan_list()
+        self.select(channel_number)
 
     def select(self, channel_number: int) -> None:
         group, chanpos = divmod(channel_number, 100)
@@ -100,8 +103,12 @@ class ChannelsPage(tk.Frame):
         bframe.pack(side=tk.BOTTOM, fill=tk.X)
 
     def __on_group_select(self, _event: tk.Event) -> None:  # type: ignore
+        sel_group = self._selected_group
+        if sel_group is None:
+            return
+
         self._chan_list.reset(scroll_top=True)
-        self.__update_chan_list()
+        self.__update_chan_list(select=self._last_selected_pos[sel_group])
 
     def __on_channel_update(
         self, action: str, rows: ty.Collection[channels_list.Row]
@@ -203,6 +210,10 @@ class ChannelsPage(tk.Frame):
         self._btn_sort["state"] = btn_state
         self._btn_fill["state"] = btn_state
 
+        num = rows[0].channel.number
+        self._last_selected_group, pos = divmod(num, 100)
+        self._last_selected_pos[self._last_selected_group] = pos
+
         if _LOG.isEnabledFor(logging.DEBUG):
             for rec in rows:
                 _LOG.debug("chan selected: %r", rec.channel)
@@ -224,9 +235,11 @@ class ChannelsPage(tk.Frame):
 
         self._show_stats()
         self.__need_full_refresh = False
+        self._last_selected_group = sel_group
 
         if select is not None:
-            self.after(100, lambda: self._chan_list.selection_set([select]))
+            self.update_idletasks()
+            self.after(10, lambda: self._chan_list.selection_set([select]))
 
     def __on_channel_copy(self, _event: tk.Event) -> None:  # type: ignore
         selected = self._chan_list.sheet.get_currently_selected()

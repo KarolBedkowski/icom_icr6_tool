@@ -35,6 +35,8 @@ class BanksPage(tk.Frame):
         self._bank_link = gui_model.BoolVar()
         self._change_manager = cm
         self.__in_paste = False
+        self._last_selected_bank = 0
+        self._last_selected_pos = [0] * consts.NUM_BANKS
 
         pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
         banks = self._banks_list = tk.Listbox(
@@ -58,14 +60,15 @@ class BanksPage(tk.Frame):
     ) -> None:
         # hide canceller in global models
         self._chan_list.set_region(self._change_manager.rm.region)
-
-        if bank is not None:
-            self.select(bank, bank_pos)
-            return
-
         self._update_banks_list()
-        self._banks_list.selection_set(self._selected_bank or 0)
-        self._update_chan_list()
+
+        if bank is None:
+            bank = self._last_selected_bank
+
+        if bank_pos is None:
+            bank_pos = self._last_selected_pos[bank]
+
+        self.select(bank, bank_pos)
 
     def select(self, bank: int, bank_pos: int | None = None) -> None:
         selected_bank = self._selected_bank
@@ -135,8 +138,12 @@ class BanksPage(tk.Frame):
         bframe.pack(side=tk.BOTTOM, fill=tk.X)
 
     def _on_bank_select(self, _event: tk.Event) -> None:  # type: ignore
+        selected_bank = self._selected_bank
+        if selected_bank is None:
+            return
+
         self._chan_list.reset(scroll_top=True)
-        self._update_chan_list()
+        self._update_chan_list(select=self._last_selected_pos[selected_bank])
 
     def _update_banks_list(self) -> None:
         selected_bank = self._selected_bank
@@ -170,6 +177,7 @@ class BanksPage(tk.Frame):
             return
 
         self._chan_list.set_bank(selected_bank)
+        self._last_selected_bank = selected_bank
 
         bank = self._radio_memory.banks[selected_bank]
         self._bank_name.set(bank.name.rstrip())
@@ -193,7 +201,8 @@ class BanksPage(tk.Frame):
         self._show_stats()
 
         if select is not None:
-            self.after(100, lambda: self._chan_list.selection_set([select]))
+            self.update_idletasks()
+            self.after(10, lambda: self._chan_list.selection_set([select]))
 
     def _show_stats(self) -> None:
         active = sum(
@@ -221,9 +230,12 @@ class BanksPage(tk.Frame):
     def _on_channel_select(self, rows: list[banks_channelslist.BLRow]) -> None:
         self._btn_sort["state"] = "normal" if len(rows) > 1 else "disabled"
 
+        if (bank := self._selected_bank) is not None:
+            self._last_selected_pos[bank] = rows[0].rownum
+
         if _LOG.isEnabledFor(logging.DEBUG):
             for rec in rows:
-                _LOG.debug("chan selected: %r", rec.channel)
+                _LOG.debug("chan selected: %r", rec)
 
     def _on_channel_update(
         self, action: str, rows: ty.Collection[banks_channelslist.BLRow]
