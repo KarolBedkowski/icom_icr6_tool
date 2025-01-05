@@ -158,10 +158,13 @@ class BandDefaults:
     canceller_freq: int
     duplex: int
     tone_mode: int
+    # not used?
     vsc: bool
     canceller: int
     polarity: int
+    # not used?
     af_filter: bool
+    # not used?
     attenuator: bool
 
     debug_info: dict[str, object] | None
