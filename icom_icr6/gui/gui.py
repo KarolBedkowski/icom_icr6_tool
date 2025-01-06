@@ -25,6 +25,7 @@ from . import (
     scanedges_page,
     scanlinks_page,
     settings_page,
+    stats_page,
 )
 
 _LOG = logging.getLogger(__name__)
@@ -60,6 +61,7 @@ class App(tk.Frame):
         self._ntb.add(self._create_nb_scan_links(), text="Scan Link")
         self._ntb.add(self._create_nb_awchannels(), text="Autowrite channels")
         self._ntb.add(self._create_nb_settings(), text="Settings")
+        self._ntb.add(self._create_nb_stats(), text="Statistics")
         self._ntb.bind("<<NotebookTabChanged>>", self.__on_nb_page_changed)
 
         self._ntb.pack(fill="both", expand=True)
@@ -221,6 +223,10 @@ class App(tk.Frame):
             self, self._change_manager
         )
         return self._nb_settings
+
+    def _create_nb_stats(self) -> tk.Widget:
+        self._nb_stats = stats_page.StatsPage(self, self._change_manager)
+        return self._nb_stats
 
     # menu callbacks
 
@@ -512,6 +518,7 @@ class App(tk.Frame):
             self._nb_scan_links,
             self._nb_aw_channels,
             self._nb_settings,
+            self._nb_stats,
         )
         pages[selected_tab].update_tab()
 
@@ -523,6 +530,7 @@ class App(tk.Frame):
             self._nb_scan_links,
             self._nb_aw_channels,
             self._nb_settings,
+            self._nb_stats,
         )
 
         for page in pages:

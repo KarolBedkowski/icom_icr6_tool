@@ -200,17 +200,20 @@ class RadioMemory:
             )
             raise ValueError(errmsg)
 
-    def get_band_for_freq(self, freq: int) -> model.BandDefaults:
+    def get_bands_range(self) -> list[int]:
         # TODO: don't know how to detect other regions
         # for US and EUR/Global is the same
         # there is only difference in WFM minimal frequency for Japan (guess)
         match self.region:
             case consts.Region.FRANCE:
-                bands = consts.BANDS_FRANCE
+                return consts.BANDS_FRANCE
             case consts.Region.JAPAN:
-                bands = consts.BANDS_JAP
-            case _:
-                bands = consts.BANDS_DEFAULT
+                return consts.BANDS_JAP
+
+        return consts.BANDS_DEFAULT
+
+    def get_band_for_freq(self, freq: int) -> model.BandDefaults:
+        bands = self.get_bands_range()
 
         for idx, max_freq in enumerate(bands):
             if freq < max_freq:
