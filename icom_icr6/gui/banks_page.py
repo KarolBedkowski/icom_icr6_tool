@@ -37,10 +37,12 @@ class BanksPage(tk.Frame):
         self.__in_paste = False
         self._last_selected_bank = 0
         self._last_selected_pos = [0] * consts.NUM_BANKS
+        self._banks_stats: list[str] = []
+        self._banks = tk.StringVar(value=self._banks_stats)  # type: ignore
 
         pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
         banks = self._banks_list = tk.Listbox(
-            pw, selectmode=tk.SINGLE, width=10
+            pw, selectmode=tk.SINGLE, width=15, listvariable=self._banks
         )
 
         banks.bind("<<ListboxSelect>>", self._on_bank_select)
@@ -157,13 +159,14 @@ class BanksPage(tk.Frame):
         selected_bank = self._selected_bank
 
         banks = self._banks_list
+        rm = self._radio_memory
 
-        banks.delete(0, banks.size())
-        for bank, bname in zip(
-            self._radio_memory.banks, consts.BANK_NAMES, strict=True
-        ):
-            name = f"{bname}: {bank.name}" if bank.name else bname
-            banks.insert(tk.END, name)
+        self._banks_stats = []
+        for idx, bank in enumerate(self._radio_memory.banks):
+            active = sum(bool(c) for c in rm.get_bank_channels(idx).channels)
+            self._banks_stats.append(_bank_list_label(idx, bank.name, active))
+
+        self._banks.set(self._banks_stats)  # type: ignore
 
         if selected_bank is not None:
             banks.selection_set(selected_bank)
@@ -213,11 +216,19 @@ class BanksPage(tk.Frame):
             self.after(10, lambda: self._chan_list.selection_set([select]))
 
     def _show_stats(self) -> None:
+        selected_bank = self._selected_bank
+        assert selected_bank is not None
+
+        rm = self._radio_memory
+        bank = rm.banks[selected_bank]
         active = sum(
-            bool(r and (c := r.channel) and not c.hide_channel)
-            for r in self._chan_list.data
+            bool(c) for c in rm.get_bank_channels(selected_bank).channels
         )
         self._parent.set_status(f"Active channels in bank: {active}")  # type: ignore
+        self._banks_stats[selected_bank] = _bank_list_label(
+            selected_bank, bank.name, active
+        )
+        self._banks.set(self._banks_stats)  # type: ignore
 
     def _on_bank_update(self) -> None:
         selected_bank = self._selected_bank
@@ -539,6 +550,15 @@ class BanksPage(tk.Frame):
         self._change_manager.set_channel(*final_channels)
         self._change_manager.commit()
         self._update_chan_list()
+
+
+def _bank_list_label(idx: int, bank_name: str, active: int) -> str:
+    bname = consts.BANK_NAMES[idx]
+    return (
+        f"{bname}: {bank_name:}    ({active})"
+        if bank_name
+        else f"{bname}   ({active})"
+    )
 
 
 def validate_bank_name(name: str | None) -> bool:
