@@ -1,17 +1,11 @@
 
-v1.1.0
 
+- user notes for channels groups
 - export / import data in bank/group
 - reorder banks
-- reorder scan links
-- reorder scan edges on delete (?)
 - reports /  statistics
-
-v1.2.0:
 - monitor / control radio from gui
 
-
-asap
 
 - how to read region from radio? from serial number? 
 
