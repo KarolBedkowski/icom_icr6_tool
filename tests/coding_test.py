@@ -16,7 +16,7 @@ with suppress(ImportError):
 
     icecream.install()
 
-from . import coding
+from icom_icr6 import coding
 
 
 @pytest.mark.parametrize(

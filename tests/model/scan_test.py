@@ -7,16 +7,14 @@
 
 """ """
 
-import binascii
-
 from icom_icr6 import model
 
 
 def test_scan_edge1():
-    inp = b"e0930400004775e84f20414c4c202020"
-    inp_flags = b"7fff7f"
-    data = bytearray(binascii.unhexlify(inp))
-    data_flags = bytearray(binascii.unhexlify(inp_flags))
+    inp = "e0930400004775e84f20414c4c202020"
+    inp_flags = "7fff7f"
+    data = bytearray.fromhex(inp)
+    data_flags = bytearray.fromhex(inp_flags)
     se = model.ScanEdge.from_data(0, data, data_flags)
 
     assert se.idx == 0
@@ -36,10 +34,10 @@ def test_scan_edge1():
 
 
 def test_scan_edge2():
-    inp = b"f08e3500804a5d05202353572d574156"
-    inp_flags = b"7fff7f"
-    data = bytearray(binascii.unhexlify(inp))
-    data_flags = bytearray(binascii.unhexlify(inp_flags))
+    inp = "f08e3500804a5d05202353572d574156"
+    inp_flags = "7fff7f"
+    data = bytearray.fromhex(inp)
+    data_flags = bytearray.fromhex(inp_flags)
     se = model.ScanEdge.from_data(20, data, data_flags)
 
     assert se.idx == 20
@@ -59,10 +57,10 @@ def test_scan_edge2():
 
 
 def test_scan_edge3():
-    inp = b"0000000000000000000f202020202020"
-    inp_flags = b"ffffff"
-    data = bytearray(binascii.unhexlify(inp))
-    data_flags = bytearray(binascii.unhexlify(inp_flags))
+    inp = "0000000000000000000f202020202020"
+    inp_flags = "ffffff"
+    data = bytearray.fromhex(inp)
+    data_flags = bytearray.fromhex(inp_flags)
     se = model.ScanEdge.from_data(24, data, data_flags)
     assert se.idx == 24
     assert se.start == 0
@@ -81,10 +79,10 @@ def test_scan_edge3():
 
 
 def test_scan_link1():
-    inp = b"434220202020ffff"
-    inp_e = b"000c00fe"
-    data = bytearray(binascii.unhexlify(inp))
-    data_e = bytearray(binascii.unhexlify(inp_e))
+    inp = "434220202020ffff"
+    inp_e = "000c00fe"
+    data = bytearray.fromhex(inp)
+    data_e = bytearray.fromhex(inp_e)
     sl = model.ScanLink.from_data(1, data, data_e)
     assert sl.idx == 1
     assert sl.name == "CB    "

@@ -9,7 +9,7 @@
 
 import pytest
 
-from . import consts, radio_memory as rm
+from icom_icr6 import consts, radio_memory as rm
 
 
 @pytest.mark.parametrize(

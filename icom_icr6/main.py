@@ -9,14 +9,14 @@
 """ """
 
 import argparse
-import binascii
+import builtins
 import csv
 import logging
 import sys
 import typing as ty
 from pathlib import Path
 
-from . import expimp, io, model
+from . import consts, expimp, ic_io, model
 
 _LOG = logging.getLogger()
 
@@ -34,23 +34,38 @@ def _print_csv(
     writer.writerows(data)
 
 
+def _check_port(args: argparse.Namespace) -> tuple[str, bool]:
+    port = args.port.strip()
+    if not port and not getattr(builtins, "APP_DEV_MODE", False):
+        print("ERROR: port not selected")
+        return "", False
+
+    return port, True
+
+
 def main_clone_from_radio(args: argparse.Namespace) -> None:
     """cmd: clone_from_radio
     args: <port> <icf file>
     """
-    radio = io.Radio(args.port)
-    io.save_icf_file(args.icf_file, radio.clone_from())
-    print(f"Saved {args.icf_file}")
+    port, ok = _check_port(args)
+    if ok:
+        radio = ic_io.Radio(port)
+        ic_io.save_icf_file(args.icf_file, radio.clone_from())
+        print(f"Saved {args.icf_file}")
 
 
 def main_radio_info(args: argparse.Namespace) -> None:
     """cmd: radio_info
     args: <port>
     """
-    radio = io.Radio(args.port)
-    if model := radio.get_model():
-        print(f"Model: {model!r}")
-        print(f"Is IC-R6: {model.is_icr6()}")
+    port, ok = _check_port(args)
+    if not ok:
+        return
+
+    radio = ic_io.Radio(port)
+    if rm := radio.get_model():
+        print(f"Model: {rm!r}")
+        print(f"Is IC-R6: {rm.is_icr6()}")
     else:
         print("ERROR")
 
@@ -58,7 +73,7 @@ def main_radio_info(args: argparse.Namespace) -> None:
 def main_print_channels(args: argparse.Namespace) -> None:
     """cmd: channels
     args: <icf file> [<start channel num>] [hidden]"""
-    mem = io.load_icf_file(args.icf_file)
+    mem = ic_io.load_icf_file(args.icf_file)
 
     ch_start, ch_end = 0, 1300
     if (gr := args.group) is not None and 0 <= gr <= 12:
@@ -86,7 +101,7 @@ def main_print_channels_4test() -> None:
         print("file name required")
         return
 
-    mem = io.load_icf_file(Path(sys.argv[2]))
+    mem = ic_io.load_icf_file(Path(sys.argv[2]))
 
     hidden = False
     ch_start, ch_end = 0, 1300
@@ -104,7 +119,7 @@ def main_print_aw_channels(args: argparse.Namespace) -> None:
     """cmd: autowrite
     args: <icf file>
     """
-    mem = io.load_icf_file(args.icf_file)
+    mem = ic_io.load_icf_file(args.icf_file)
 
     print("Autowrite channels")
     if args.verbose > 2:
@@ -121,7 +136,7 @@ def main_print_banks(args: argparse.Namespace) -> None:
     """cmd: banks
     args: <icf file>
     """
-    mem = io.load_icf_file(args.icf_file)
+    mem = ic_io.load_icf_file(args.icf_file)
 
     print("Banks")
     if args.verbose > 2:
@@ -152,7 +167,7 @@ def main_print_scan_programs(args: argparse.Namespace) -> None:
     """cmd: scan
     args: <icf file>
     """
-    mem = io.load_icf_file(args.icf_file)
+    mem = ic_io.load_icf_file(args.icf_file)
 
     print("Scan links")
     if args.verbose > 2:
@@ -191,9 +206,9 @@ def main_write_mem_raw(args: argparse.Namespace) -> None:
     """cmd: icf2raw
     args: <icf file> [<raw file>]
     """
-    mem = io.load_icf_file(args.icf_file)
+    mem = ic_io.load_icf_file(args.icf_file)
     dst = args.raw_file or args.icf_file.with_suffix(".raw")
-    io.save_raw_memory(dst, mem)
+    ic_io.save_raw_memory(dst, mem)
     print(f"Saved {dst}")
 
 
@@ -202,9 +217,9 @@ def main_write_icf_mem(args: argparse.Namespace) -> None:
     args: <raw file> [<icf file>]
     """
 
-    mem = io.load_raw_memory(args.raw_file)
+    mem = ic_io.load_raw_memory(args.raw_file)
     dst = args.icf_file or args.raw_file.with_suffix(".icf")
-    io.save_icf_file(dst, mem)
+    ic_io.save_icf_file(dst, mem)
     print(f"Saved {dst}")
 
 
@@ -212,7 +227,7 @@ def main_print_settings(args: argparse.Namespace) -> None:
     """cmd: settings
     args: <icf file>
     """
-    mem = io.load_icf_file(args.icf_file)
+    mem = ic_io.load_icf_file(args.icf_file)
 
     print("Settings")
     if args.verbose > 2:
@@ -234,21 +249,34 @@ def main_print_bands(args: argparse.Namespace) -> None:
     """cmd: bands
     args: <icf file>
     """
-    mem = io.load_icf_file(args.icf_file)
+    mem = ic_io.load_icf_file(args.icf_file)
+
+    match mem.region:
+        case consts.Region.FRANCE:
+            bands = consts.BANDS_FRANCE
+        case consts.Region.JAPAN:
+            bands = consts.BANDS_JAP
+        case _:
+            bands = consts.BANDS_DEFAULT
 
     print("Bands")
     if args.verbose > 2:
-        for band in mem.bands:
-            print(band)
+        for idx, band in enumerate(mem.bands):
+            print(bands[idx] if idx < len(bands) else "----", band, sep=":   ")
     else:
-        _print_csv((b.to_record() for b in mem.bands), expimp.BANDS_FIELDS)
+        data = (
+            b.to_record()
+            | {"max_freq": bands[idx] if idx < len(bands) else ""}
+            for idx, b in enumerate(mem.bands)
+        )
+        _print_csv(data, ["max_freq", *expimp.BANDS_FIELDS])
 
 
 def main_print_dupl_freq(args: argparse.Namespace) -> None:
     """cmd: duplicated-freq
     args: <icf file>
     """
-    mem = io.load_icf_file(args.icf_file)
+    mem = ic_io.load_icf_file(args.icf_file)
 
     print("Duplicated channels by frequency")
 
@@ -284,10 +312,14 @@ def main_send_command(args: argparse.Namespace) -> None:
     """cmd: send
     args: <port> <command> <payload>
     """
-    cmd = int(args.command, 16)
-    payload = binascii.unhexlify(args.payload) if args.payload else b""
+    port, ok = _check_port(args)
+    if not ok:
+        return
 
-    r = io.Radio(args.port)
+    cmd = int(args.command, 16)
+    payload = bytes.fromhex(args.payload) if args.payload else b""
+
+    r = ic_io.Radio(port)
     print("Response: ")
     try:
         for res in r.write_read(cmd, payload):
@@ -296,7 +328,7 @@ def main_send_command(args: argparse.Namespace) -> None:
     except KeyboardInterrupt:
         pass
 
-    except io.NoDataError:
+    except ic_io.NoDataError:
         print("no more data")
 
 
@@ -331,7 +363,9 @@ def _parse_args() -> argparse.Namespace:
         type=int,
         help="show channels only in one group (0-12)",
     )
-    cmd.add_argument("-H", "--hidden", type=int, help="Show hidden channels")
+    cmd.add_argument(
+        "-H", "--hidden", help="Show hidden channels", action="store_true"
+    )
     cmd.set_defaults(func=main_print_channels)
 
     cmd = cmds.add_parser("awchannels", help="Print autowrite channels")

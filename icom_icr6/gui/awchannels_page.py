@@ -10,9 +10,11 @@ import logging
 import tkinter as tk
 import typing as ty
 
-from . import expimp, gui_awchannlist, gui_model
-from .change_manager import ChangeManeger
-from .radio_memory import RadioMemory
+from icom_icr6 import expimp
+from icom_icr6.change_manager import ChangeManeger
+from icom_icr6.radio_memory import RadioMemory
+
+from . import awchannels_list, gui_model
 
 _LOG = logging.getLogger(__name__)
 _ = ty
@@ -35,12 +37,16 @@ class AutoWriteChannelsPage(tk.Frame):
     def select(self, channel_number: int) -> None:
         self._chan_list.selection_set([channel_number])
 
+    def reset(self) -> None:
+        self._chan_list.set_region(self._change_manager.rm.region)
+        self._update_channels_list()
+
     @property
     def _radio_memory(self) -> RadioMemory:
         return self._change_manager.rm
 
     def _create_channel_list(self, frame: tk.Frame) -> None:
-        self._chan_list = gui_awchannlist.ChannelsList(frame)
+        self._chan_list = awchannels_list.ChannelsList(frame)
         self._chan_list.pack(
             expand=True, fill=tk.BOTH, side=tk.TOP, padx=12, pady=12
         )

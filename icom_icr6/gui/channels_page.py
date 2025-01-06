@@ -10,35 +10,34 @@ import typing as ty
 from contextlib import suppress
 from tkinter import messagebox, ttk
 
-from . import (
-    consts,
-    expimp,
-    fixers,
-    gui_chanlist,
-    gui_model,
-    model_support,
-)
-from .change_manager import ChangeManeger
-from .radio_memory import RadioMemory
+from icom_icr6 import consts, expimp, fixers, model_support
+from icom_icr6.change_manager import ChangeManeger
+from icom_icr6.radio_memory import RadioMemory
+
+from . import channels_list, gui_model
 
 _LOG = logging.getLogger(__name__)
 
 
 class ChannelsPage(tk.Frame):
-    _chan_list: gui_chanlist.ChannelsList
+    _chan_list: channels_list.ChannelsList
 
     def __init__(self, parent: tk.Widget, cm: ChangeManeger) -> None:
         super().__init__(parent)
         self._parent = parent
         self._change_manager = cm
-        self._last_selected_group = 0
-        self._last_selected_chan: tuple[int, ...] = ()
         self.__need_full_refresh = False
-        self.__select_after_refresh: int | None = None
+        self.__in_paste = False
+        self._last_selected_group = 0
+        self._last_selected_pos = [0] * len(gui_model.CHANNEL_RANGES)
+        self._groups_stats: list[str] = []
+        self._groups = tk.StringVar(value=self._groups_stats)  # type: ignore
+        self._update_groups_list()
 
         pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
-        self._groups_list = tk.Listbox(pw, selectmode=tk.SINGLE, width=10)
-        self._groups_list.insert(tk.END, *gui_model.CHANNEL_RANGES)
+        self._groups_list = tk.Listbox(
+            pw, selectmode=tk.SINGLE, width=10, listvariable=self._groups
+        )
         self._groups_list.bind("<<ListboxSelect>>", self.__on_group_select)
         pw.add(self._groups_list, weight=0)
 
@@ -51,27 +50,36 @@ class ChannelsPage(tk.Frame):
     def update_tab(self, channel_number: int | None = None) -> None:
         # hide canceller in global models
         self._chan_list.set_region(self._change_manager.rm.region)
+        self._update_groups_list()
 
-        if channel_number is not None:
-            group, chanpos = divmod(channel_number, 100)
-            self._last_selected_group = group
-            self.__select_after_refresh = chanpos
+        if channel_number is None:
+            channel_number = (
+                self._last_selected_group * 100
+                + self._last_selected_pos[self._last_selected_group]
+            )
 
-        self._groups_list.selection_set(self._last_selected_group)
-        self.__update_chan_list()
+        self.select(channel_number)
 
     def select(self, channel_number: int) -> None:
         group, chanpos = divmod(channel_number, 100)
 
-        if group == self._last_selected_group:
-            self._last_selected_chan = (chanpos,)
-            self._chan_list.selection_set(self._last_selected_chan)
+        current_sel_group = self._selected_group
+
+        if group == current_sel_group:
+            self._chan_list.selection_set([chanpos])
             return
 
-        self._groups_list.selection_clear(self._last_selected_group)
-        self._last_selected_group = group
-        self.__select_after_refresh = chanpos
+        if current_sel_group is not None:
+            self._groups_list.selection_clear(current_sel_group)
+
         self._groups_list.selection_set(group)
+        self.__update_chan_list(select=chanpos)
+
+    def reset(self) -> None:
+        self._chan_list.set_region(self._change_manager.rm.region)
+        self._last_selected_group = 0
+        self._last_selected_pos = [0] * len(gui_model.CHANNEL_RANGES)
+        self._groups_list.selection_set(0)
         self.__update_chan_list()
 
     @property
@@ -79,7 +87,7 @@ class ChannelsPage(tk.Frame):
         return self._change_manager.rm
 
     def _create_channel_list(self, frame: tk.Frame) -> None:
-        self._chan_list = gui_chanlist.ChannelsList(frame)
+        self._chan_list = channels_list.ChannelsList(frame)
         self._chan_list.on_record_update = self.__on_channel_update
         self._chan_list.on_record_selected = self.__on_channel_select
         self._chan_list.on_channel_bank_validate = self.__on_channel_bank_set
@@ -107,11 +115,15 @@ class ChannelsPage(tk.Frame):
         bframe.pack(side=tk.BOTTOM, fill=tk.X)
 
     def __on_group_select(self, _event: tk.Event) -> None:  # type: ignore
+        sel_group = self._selected_group
+        if sel_group is None:
+            return
+
         self._chan_list.reset(scroll_top=True)
-        self.__update_chan_list()
+        self.__update_chan_list(select=self._last_selected_pos[sel_group])
 
     def __on_channel_update(
-        self, action: str, rows: ty.Collection[gui_chanlist.Row]
+        self, action: str, rows: ty.Collection[channels_list.Row]
     ) -> None:
         match action:
             case "delete":
@@ -124,7 +136,7 @@ class ChannelsPage(tk.Frame):
                 self.__do_move_channels(rows)
 
     def __do_delete_channels(
-        self, rows: ty.Collection[gui_chanlist.Row]
+        self, rows: ty.Collection[channels_list.Row]
     ) -> None:
         if not messagebox.askyesno(
             "Delete channel",
@@ -146,25 +158,32 @@ class ChannelsPage(tk.Frame):
         self.__update_chan_list()
 
     def __do_update_channels(
-        self, rows: ty.Collection[gui_chanlist.Row]
+        self, rows: ty.Collection[channels_list.Row]
     ) -> None:
         channels = []
-        for rec in rows:
-            _LOG.debug("__do_update_channels: %r", rec)
+        for idx, rec in enumerate(rows):
+            _LOG.debug("__do_update_channels: [%d] %r", idx, rec)
             rec.updated = False
             chan = rec.channel
 
-            if rec.new_freq:
-                chan = chan.clone()
-                band = self._change_manager.rm.get_band_for_freq(rec.new_freq)
-                chan.load_defaults_from_band(band)
-                chan.freq = rec.new_freq
-                chan.hide_channel = False
+            if rec.new_values:
+                freq = rec.new_values.get("freq")
+                if freq:
+                    assert isinstance(freq, int)
+                    band = self._change_manager.rm.get_band_for_freq(freq)
+                    chan.load_defaults_from_band(band)
+
+                chan.from_record(rec.new_values)
+                chan.hide_channel = freq == 0
                 self.__need_full_refresh = True
 
             channels.append(chan)
 
         self.__need_full_refresh |= self._change_manager.set_channel(*channels)
+
+        if self.__in_paste:
+            return
+
         self._change_manager.commit()
         if self.__need_full_refresh:
             self.__update_chan_list()
@@ -178,8 +197,21 @@ class ChannelsPage(tk.Frame):
 
         return None
 
+    def _update_groups_list(self) -> None:
+        self._groups_stats = groups = []
+        for group in range(13):
+            active = sum(
+                1
+                for c in self._change_manager.rm.get_active_channels_in_group(
+                    group
+                )
+            )
+            groups.append(f"{group:>2}  ({active})")
+
+        self._groups.set(groups)  # type: ignore
+
     def __do_move_channels(
-        self, rows: ty.Collection[gui_chanlist.Row]
+        self, rows: ty.Collection[channels_list.Row]
     ) -> None:
         sel_group = self._selected_group
         if sel_group is None:
@@ -198,21 +230,28 @@ class ChannelsPage(tk.Frame):
         self._change_manager.commit()
         self.__update_chan_list()
 
-    def __on_channel_select(self, rows: list[gui_chanlist.Row]) -> None:
+    def __on_channel_select(self, rows: list[channels_list.Row]) -> None:
         btn_state = "normal" if len(rows) > 1 else "disabled"
         self._btn_sort["state"] = btn_state
         self._btn_fill["state"] = btn_state
+
+        num = rows[0].channel.number
+        self._last_selected_group, pos = divmod(num, 100)
+        self._last_selected_pos[self._last_selected_group] = pos
 
         if _LOG.isEnabledFor(logging.DEBUG):
             for rec in rows:
                 _LOG.debug("chan selected: %r", rec.channel)
 
-    def __update_chan_list(self, _event: tk.Event | None = None) -> None:  # type: ignore
+    def __update_chan_list(
+        self,
+        _event: tk.Event | None = None,  # type: ignore
+        *,
+        select: int | None = None,
+    ) -> None:
         sel_group = self._selected_group
         if sel_group is None:
             return
-
-        self._last_selected_group = sel_group
 
         range_start = sel_group * 100
         self._chan_list.set_data(
@@ -221,11 +260,11 @@ class ChannelsPage(tk.Frame):
 
         self._show_stats()
         self.__need_full_refresh = False
+        self._last_selected_group = sel_group
 
-        if self.__select_after_refresh is not None:
-            sel = self.__select_after_refresh
-            self.after(100, lambda: self._chan_list.selection_set([sel]))
-            self.__select_after_refresh = None
+        if select is not None:
+            self.update_idletasks()
+            self.after(10, lambda: self._chan_list.selection_set([select]))
 
     def __on_channel_copy(self, _event: tk.Event) -> None:  # type: ignore
         selected = self._chan_list.sheet.get_currently_selected()
@@ -252,32 +291,42 @@ class ChannelsPage(tk.Frame):
         if not sel:
             return
 
+        self.__in_paste = True
+
         clip = gui_model.Clipboard.instance()
         data = ty.cast(str, clip.get())
         try:
             # try import whole channels
-            self.__on_channel_paste_channels(sel, data)
-        except ValueError:
-            # try import as plain data
-            self.__on_channel_paste_simple(data)
-        except Exception:
+            if not self.__on_channel_paste_channels(sel, data):
+                # try import as plain data
+                self.__on_channel_paste_simple(data)
+
+        except Exception as err:
             _LOG.exception("__on_channel_paste error")
+            messagebox.showerror(
+                "Paste data error", f"Clipboard content can't be pasted: {err}"
+            )
+
         else:
             self._change_manager.commit()
             self.__update_chan_list()
 
+        self.__in_paste = False
+
     def __on_channel_paste_channels(
         self, sel: tuple[int, ...], data: str
-    ) -> None:
+    ) -> bool:
+        """Try paste data in csv format. Return True on success."""
+        if (sel_group := self._selected_group) is not None:
+            range_start = sel_group * 100
+        else:
+            return False
+
         try:
             rows = list(expimp.import_channels_str(data))
         except ValueError:
-            raise
-        except Exception:
-            _LOG.exception("import from clipboard error")
-            raise
-
-        range_start = self._last_selected_group * 100
+            # data in invalid format
+            return False
 
         # special case - when in clipboard is one record and selected  many-
         # duplicate
@@ -296,19 +345,13 @@ class ChannelsPage(tk.Frame):
                 if chan_num % 100 == 99:  # noqa: PLR2004
                     break
 
+        return True
+
     def __on_channel_paste_simple(self, data: str) -> None:
-        try:
-            rows = expimp.import_str_as_table(data)
-        except ValueError:
-            raise
-        except Exception:
-            _LOG.exception("simple import from clipboard error")
-            raise
-
-        if not rows:
-            return
-
-        self._chan_list.paste(rows)
+        """Paste simple data into tksheet.
+        Raise on invalid data."""
+        if rows := expimp.import_str_as_table(data):
+            self._chan_list.paste(rows)
 
     def __paste_channel(self, row: dict[str, object], chan_num: int) -> bool:
         _LOG.debug("__paste_channel chan_num=%d, row=%r", chan_num, row)
@@ -335,11 +378,22 @@ class ChannelsPage(tk.Frame):
         return True
 
     def _show_stats(self) -> None:
-        active = sum(
-            bool(r and (c := r.channel) and not c.hide_channel)
-            for r in self._chan_list.data
+        group = self._selected_group
+        assert group is not None
+        rm = self._change_manager.rm
+
+        active = sum(1 for c in rm.get_active_channels_in_group(group))
+        in_banks = sum(
+            c.bank != consts.BANK_NOT_SET
+            for c in rm.get_active_channels_in_group(group)
         )
-        self._parent.set_status(f"Active channels: {active}")  # type: ignore
+        self._parent.set_status(  # type: ignore
+            f"Active channels: {active}; in banks: {in_banks}"
+        )
+
+        # update group list stats
+        self._groups_stats[group] = f"{group:>2}  ({active})"
+        self._groups.set(self._groups_stats)  # type: ignore
 
     def __on_channel_bank_set(
         self,

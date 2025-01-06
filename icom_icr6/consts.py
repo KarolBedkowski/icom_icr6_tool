@@ -174,7 +174,7 @@ CANCELLER_MAX_FREQ: ty.Final = 3000
 
 SETT_FUNC_DIAL_STEP: ty.Final = ["100kHz", "1MHz", "10MHz"]
 SETT_DIAL_FUNCTION: ty.Final = ["Tuning", "Volume"]
-SETT_BEEP_LEVEL: ty.Final = [str(x) for x in range(40)] + ["Volume"]
+SETT_BEEP_LEVEL: ty.Final = ["Volume", *map(str, range(40))]
 SETT_BACKLIGHT: ty.Final = ["Off", "On", "Auto 1", "Auto 2"]
 SETT_MEM_DISPLAY_TYPE: ty.Final = [
     "Frequency",

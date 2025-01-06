@@ -10,14 +10,16 @@ import typing as ty
 
 from tksheet import EventDataDict, Span, functions
 
-from . import consts, fixers, gui_genericlist, model
+from icom_icr6 import consts, fixers, model
+
+from . import genericlist
 
 _LOG = logging.getLogger(__name__)
 _BANKS = ["", *consts.BANK_NAMES]
 _SKIPS: ty.Final = ["", "S", "P"]
 
 
-class Row(gui_genericlist.BaseRow):
+class Row(genericlist.BaseRow):
     COLUMNS = (
         ("channel", "Num", "int"),
         ("freq", "Frequency", "freq"),
@@ -42,9 +44,9 @@ class Row(gui_genericlist.BaseRow):
 
     def __init__(self, rownum: int, channel: model.Channel) -> None:
         self.channel = channel
-        self.new_freq = 0
+        # temporary values for hidden channels; its overwrite defaults
+        self.new_values: dict[str, object] | None = None
         super().__init__(rownum, self._from_channel(channel))
-        self.errors: tuple[str, ...] = ()
 
     def __repr__(self) -> str:
         return (
@@ -53,15 +55,10 @@ class Row(gui_genericlist.BaseRow):
         )
 
     def __setitem__(self, idx: int, val: object, /) -> None:  # type: ignore
-        if val == self.data[idx]:
+        if val is None or val == self.data[idx]:
             return
 
-        chan = self.channel
         col = self.COLUMNS[idx][0]
-
-        if (not chan.freq or chan.hide_channel) and idx != 1:
-            return
-
         match col:
             case "number":
                 return
@@ -70,8 +67,12 @@ class Row(gui_genericlist.BaseRow):
                 self._update_freq(val)
                 return
 
-        data = chan.to_record()
-        current_val = data[col]
+        if self.channel.hide_channel:
+            # when channels is hidden - store new values temporary
+            self._store_new_value(col, val)
+            return
+
+        current_val = self.channel.to_record().get(col)
         if current_val == val or (current_val == "" and val is None):
             return
 
@@ -93,6 +94,14 @@ class Row(gui_genericlist.BaseRow):
 
         return self.channel
 
+    def _store_new_value(self, col: str, val: object) -> None:
+        self._make_clone()
+
+        if self.new_values is None:
+            self.new_values = {col: val}
+        else:
+            self.new_values[col] = val
+
     def _from_channel(self, channel: model.Channel) -> list[object]:
         if channel is None:
             return [""] * 19
@@ -113,10 +122,8 @@ class Row(gui_genericlist.BaseRow):
         except (ValueError, TypeError):
             return
 
-        chan = self.channel
-
-        if (not chan.freq or chan.hide_channel) and freq:
-            self.new_freq = freq
+        if self.channel.hide_channel:
+            self._store_new_value("freq", freq)
             return
 
         chan = self._make_clone()
@@ -142,8 +149,8 @@ class BankPosValidator(ty.Protocol):
     ) -> int | None: ...
 
 
-class ChannelsList(gui_genericlist.GenericList[Row, model.Channel]):
-    _ROW_CLASS: type[gui_genericlist.BaseRow] = Row
+class ChannelsList(genericlist.GenericList[Row, model.Channel]):
+    _ROW_CLASS: type[genericlist.BaseRow] = Row
 
     def __init__(self, parent: tk.Widget) -> None:
         super().__init__(parent)
@@ -166,9 +173,7 @@ class ChannelsList(gui_genericlist.GenericList[Row, model.Channel]):
         else:
             self.sheet.show_columns(canc_columns)
 
-    def _configure_col(
-        self, column: gui_genericlist.Column, span: Span
-    ) -> None:
+    def _configure_col(self, column: genericlist.Column, span: Span) -> None:
         _colname, _c, values = column
         if values == "bool" or isinstance(values, (list, tuple)):
             # do not create checkbox and dropdown for columns; create
@@ -202,14 +207,14 @@ class ChannelsList(gui_genericlist.GenericList[Row, model.Channel]):
                     return None
 
             case "freq":
-                val = gui_genericlist.to_freq(value)
+                val = genericlist.to_freq(value)
                 value = fixers.fix_frequency(val)
 
             case "name":
                 value = fixers.fix_name(value)
 
             case "offset":
-                val = gui_genericlist.to_freq(value)
+                val = genericlist.to_freq(value)
                 value = (
                     fixers.fix_offset(chan.freq, off) if (off := val) else 0
                 )

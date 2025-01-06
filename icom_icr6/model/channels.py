@@ -6,7 +6,6 @@
 
 from __future__ import annotations
 
-import binascii
 import copy
 import logging
 import typing as ty
@@ -56,9 +55,7 @@ class ChannelFlags:
             skip=(data[0] & 0b01100000) >> 5,
             bank=data[0] & 0b00011111,
             bank_pos=data[1],
-            debug_info={"raw": binascii.hexlify(data)}
-            if _support.DEBUG
-            else None,
+            debug_info={"raw": data.hex(" ", -8)} if _support.DEBUG else None,
         )
 
     def to_data(self, cflags: MutableMemory) -> None:
@@ -198,10 +195,8 @@ class Channel:
                     data[7] & 0b11000000,  # 0 for valid channels
                     data[10] & 0b01111000,  # always 0
                 ],
-                "raw": binascii.hexlify(bytes(data)),
-                "raw_flags": binascii.hexlify(bytes(cflags))
-                if cflags
-                else None,
+                "raw": data.hex(" ", -8),
+                "raw_flags": cflags.hex(" ", -8) if cflags else None,
                 "freq": freq,
                 "offset": offset,
                 "flags": (data[2] & 0b11110000) >> 4,
@@ -318,6 +313,9 @@ class Channel:
         cflags[1] = self.bank_pos
 
     def validate(self) -> None:
+        if self.hide_channel or self.freq < consts.MIN_FREQUENCY:
+            return
+
         if not validators.validate_frequency(self.freq):
             raise ValidateError("freq", self.freq)
 
@@ -442,29 +440,11 @@ class Channel:
         if (bp := data.get("bank_pos")) is not None and bp != "":
             self.bank_pos = int(bp)  # type: ignore
 
-    def load_defaults(self, freq: int | None = None) -> None:
-        if freq is None:
-            freq = self.freq
-
-        self.name = ""
-        self.mode = consts.default_mode_for_freq(freq) if freq else 0
+    def load_defaults_from_band(self, band: BandDefaults) -> None:
+        # self.name = ""
+        self.mode = band.mode
         self.af_filter = False
         self.attenuator = False
-        self.tuning_step = consts.default_tuning_step_for_freq(freq)
-        self.duplex = 0
-        self.offset = 0
-        self.tone_mode = 0
-        self.tsql_freq = 0
-        self.dtcs = 0
-        self.polarity = 0
-        self.vsc = False
-        self.skip = 0
-
-    def load_defaults_from_band(self, band: BandDefaults) -> None:
-        self.name = ""
-        self.mode = band.mode
-        self.af_filter = band.af_filter
-        self.attenuator = band.attenuator
         self.tuning_step = band.tuning_step
         self.duplex = band.duplex
         self.offset = band.offset
@@ -472,7 +452,7 @@ class Channel:
         self.tsql_freq = band.tsql_freq
         self.dtcs = band.dtcs
         self.polarity = band.polarity
-        self.vsc = band.vsc
+        self.vsc = False
         self.skip = 0
         self.canceller = band.canceller
         self.canceller_freq = band.canceller_freq
@@ -527,10 +507,8 @@ class Bank:
     ) -> Bank:
         return Bank(
             idx,
-            name=bytes(data[0:6]).decode() if data[0] else "",
-            debug_info={"raw": binascii.hexlify(data)}
-            if _support.DEBUG
-            else None,
+            name=bytes(data[0:6]).decode().rstrip() if data[0] else "",
+            debug_info={"raw": data.hex(" ", -8)} if _support.DEBUG else None,
         )
 
     def to_data(self, data: MutableMemory) -> None:
@@ -553,9 +531,6 @@ class BankLinks:
 
     def clone(self) -> BankLinks:
         return BankLinks(self.banks)
-
-    def bits(self) -> ty.Iterable[bool]:
-        return (bool(self.banks & (1 << i)) for i in range(consts.NUM_BANKS))
 
     @classmethod
     def from_data(

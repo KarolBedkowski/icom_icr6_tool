@@ -1,21 +1,32 @@
-Icom IC-R6 Manager  1.1
+Icom IC-R6 Manager  1.2
 ========================
 
 Simple TK application for manage Icom IC-R6 scanner memory.
 
 Features:
-- load and save ICF file
-- clone data from and to radio
-- edit channels, banks, scan links / edges; reordering, ctrl-c/ctrl-v operations.
-- display autowrite channels
-- change settings
-- export data in csv format
+
+- Load and save ICF file
+- Clone data from and to radio
+- Edit channels, banks, scan links / edges; reordering, ctrl-c/ctrl-v
+  operations.
+- Display autowrite channels
+- Change settings
+- Export data in csv format
+- Find channels by frequency, name; find duplicated channels.
 
 Additional tools are available in included cli tool (icom_icr6_cli).
 
 
 Missing:
+
 - detect radio version; there is some workarounds.
+
+
+Cloning to / from radio sometimes ends with error (OutOfSync, Checksum error).
+This problem (in my case) are related to home-made cable and repeat operation
+usually help.
+Clone to radio sometimes require restart device to use new settings.
+
 
 WARNING
 -------

@@ -9,10 +9,12 @@ import tkinter as tk
 import typing as ty
 from tkinter import messagebox, ttk
 
-from . import consts, expimp, gui_model, gui_scanlinkslist, model, validators
-from .change_manager import ChangeManeger
-from .gui_widgets import new_entry
-from .radio_memory import RadioMemory
+from icom_icr6 import consts, expimp, model, validators
+from icom_icr6.change_manager import ChangeManeger
+from icom_icr6.radio_memory import RadioMemory
+
+from . import gui_model, scanlinks_list
+from .widgets import new_entry
 
 _LOG = logging.getLogger(__name__)
 
@@ -45,6 +47,12 @@ class ScanLinksPage(tk.Frame):
         self.__update_scan_links_list()
         self.__update_scan_edges()
         self._scan_links_list.selection_set(self._last_selected_sl)
+        self.__on_select_scan_link()
+
+    def reset(self) -> None:
+        self.__update_scan_links_list()
+        self.__update_scan_edges()
+        self._scan_links_list.selection_set(0)
         self.__on_select_scan_link()
 
     @property
@@ -88,7 +96,7 @@ class ScanLinksPage(tk.Frame):
         frame.pack(side=tk.BOTTOM, fill=tk.X)
 
     def _create_scan_edges_list(self, parent: tk.Frame) -> None:
-        self._scan_links_edges = gui_scanlinkslist.ScanLnksList(parent)
+        self._scan_links_edges = scanlinks_list.ScanLnksList(parent)
         self._scan_links_edges.pack(
             side=tk.TOP, expand=True, fill=tk.BOTH, pady=6
         )
@@ -119,8 +127,8 @@ class ScanLinksPage(tk.Frame):
 
         sl = self._radio_memory.scan_links[selected_se]
 
-        data: list[gui_scanlinkslist.ScanLink] = [
-            gui_scanlinkslist.ScanLink(
+        data: list[scanlinks_list.ScanLink] = [
+            scanlinks_list.ScanLink(
                 self._radio_memory.scan_edges[idx], sl[idx]
             )
             for idx in range(consts.NUM_SCAN_EDGES)
@@ -172,7 +180,7 @@ class ScanLinksPage(tk.Frame):
         self._scan_links_edges.set_data_links([val] * consts.NUM_SCAN_EDGES)
 
     def __on_scan_edge_updated(
-        self, action: str, rows: ty.Collection[gui_scanlinkslist.Row]
+        self, action: str, rows: ty.Collection[scanlinks_list.Row]
     ) -> None:
         match action:
             case "delete":
@@ -186,7 +194,7 @@ class ScanLinksPage(tk.Frame):
                 self.__do_move_scan_edge(rows)
 
     def __do_delete_scan_edge(
-        self, rows: ty.Collection[gui_scanlinkslist.Row]
+        self, rows: ty.Collection[scanlinks_list.Row]
     ) -> None:
         se: model.ScanEdge | None
         if not messagebox.askyesno(
@@ -211,7 +219,7 @@ class ScanLinksPage(tk.Frame):
         self.__update_scan_edges()
 
     def __do_update_scan_edge(
-        self, rows: ty.Collection[gui_scanlinkslist.Row]
+        self, rows: ty.Collection[scanlinks_list.Row]
     ) -> None:
         sel_sl = self._scan_links_list.curselection()  # type: ignore
         if not sel_sl:
@@ -236,7 +244,7 @@ class ScanLinksPage(tk.Frame):
         self._change_manager.set_scan_link(sl)
 
     def __do_move_scan_edge(
-        self, rows: ty.Collection[gui_scanlinkslist.Row]
+        self, rows: ty.Collection[scanlinks_list.Row]
     ) -> None:
         changes: dict[int, int] = {}
         for rec in rows:

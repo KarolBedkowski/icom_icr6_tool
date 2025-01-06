@@ -1,6 +1,44 @@
 Changelog
 =========
 
+v1.2 2025-01-05
+---------------
+
+Features
+~~~~~~~~
+
+- Improve find dialog; merge find dialogs into one; show bank names in find
+  results
+- Keep selection channels per bank/group
+- Bands cli command print max frequency for each band
+- Show number of channels in group list
+- Show number of channels in banks list
+
+Bug Fixes
+~~~~~~~~~
+
+- Fix wrong values order in key beep dropdown
+- Add small delay before send clone end to prevent errors
+- Fix -H argument for channels command
+- Do not load af, att, vcs from bands defaults
+- Do not set name on load defaults from band
+- Fix paste into channels list in channels tab
+- Fix pasting channels in banks page
+- Fix refresh lists after load file / clone from radio
+- Loading bands; af & polarity was swapped
+- Entering hidden channel number without freq set freq to 50MHz
+- Strip bank name
+- Fix labels layout in banks/channels groups
+- Do not validate hidden channels and scan edges
+
+Documentation
+~~~~~~~~~~~~~
+
+- Update icf.ksy
+- Add wxHexEdit tags file for memory dump
+
+
+
 v1.1 2025-01-01
 ---------------
 

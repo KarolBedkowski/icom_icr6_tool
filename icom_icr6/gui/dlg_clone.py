@@ -4,6 +4,7 @@
 
 """ """
 
+import builtins
 import logging
 import queue
 import threading
@@ -13,8 +14,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from tkinter import simpledialog, ttk
 
-from . import config, consts, io, model
-from .radio_memory import RadioMemory
+from icom_icr6 import config, consts, ic_io, model
+from icom_icr6.radio_memory import RadioMemory
 
 _LOG = logging.getLogger(__name__)
 
@@ -105,10 +106,9 @@ class _CloneDialog(simpledialog.Dialog):
             default=tk.ACTIVE,
         )
         w.pack(side=tk.LEFT, padx=5, pady=5)
-        self._btn_cancel = w = ttk.Button(
-            box, text="Cancel", width=10, command=self.cancel
+        ttk.Button(box, text="Cancel", width=10, command=self.cancel).pack(
+            side=tk.LEFT, padx=5, pady=5
         )
-        w.pack(side=tk.LEFT, padx=5, pady=5)
 
         self.bind("<Return>", self._on_ok)
         self.bind("<Escape>", self.cancel)
@@ -177,6 +177,14 @@ class _CloneDialog(simpledialog.Dialog):
 
         self.after(250, self._monitor_bg_task)
 
+    def _check_port(self) -> tuple[str, bool]:
+        port = self._var_port.get().strip()
+        if not port and not getattr(builtins, "APP_DEV_MODE", False):
+            self._var_progress.set("ERROR: port not selected")
+            return "", False
+
+        return port, True
+
 
 class CloneFromRadioDialog(_CloneDialog):
     def __init__(self, parent: tk.Widget) -> None:
@@ -187,9 +195,13 @@ class CloneFromRadioDialog(_CloneDialog):
         if self._working:
             return
 
+        port, ok = self._check_port()
+        if not ok:
+            return
+
         self._start_working()
 
-        config.CONFIG.last_port = port = self._var_port.get()
+        config.CONFIG.last_port = port
         config.CONFIG.hispeed = hispeed = bool(self._var_hispeed.get())
 
         # start bg task
@@ -204,11 +216,11 @@ class CloneFromRadioDialog(_CloneDialog):
 
 class _CloneFromTask(_CloneTask):
     def run(self) -> None:
-        radio = io.Radio(self.port, hispeed=self.hispeed)
+        radio = ic_io.Radio(self.port, hispeed=self.hispeed)
         try:
             radio_memory = radio.clone_from(self._progress_cb)
 
-        except io.AbortError:
+        except ic_io.AbortError:
             self.queue.put(_Result(status="abort"))
 
         except Exception as err:
@@ -229,9 +241,13 @@ class CloneToRadioDialog(_CloneDialog):
         if self._working:
             return
 
+        port, ok = self._check_port()
+        if not ok:
+            return
+
         self._start_working()
 
-        config.CONFIG.last_port = port = self._var_port.get()
+        config.CONFIG.last_port = port
         config.CONFIG.hispeed = hispeed = bool(self._var_hispeed.get())
 
         # start bg task
@@ -258,11 +274,11 @@ class _CloneToTask(_CloneTask):
         self._radio_memory = radio_memory
 
     def run(self) -> None:
-        radio = io.Radio(self.port, hispeed=self.hispeed)
+        radio = ic_io.Radio(self.port, hispeed=self.hispeed)
         try:
             radio.clone_to(self._radio_memory, self._progress_cb)
 
-        except io.AbortError:
+        except ic_io.AbortError:
             self.queue.put(_Result(status="abort"))
 
         except Exception as err:
@@ -279,11 +295,15 @@ class RadioInfoDialog(_CloneDialog):
         super().__init__(parent, "Radio info")
 
     def _on_ok(self, _event: tk.Event | None = None) -> None:  # type: ignore
-        radio = io.Radio(self._var_port.get())
+        port, ok = self._check_port()
+        if not ok:
+            return
+
+        radio = ic_io.Radio(port)
         try:
             self.result = radio.get_model()
 
-        except io.AbortError:
+        except ic_io.AbortError:
             self.cancel()
 
         except Exception as err:

@@ -6,7 +6,6 @@
 
 from __future__ import annotations
 
-import binascii
 import copy
 import logging
 import typing as ty
@@ -73,8 +72,8 @@ class ScanLink:
             name=bytes(data[0:6]).decode() if data[0] else "",
             edges=edges,
             debug_info={
-                "raw": binascii.hexlify(data),
-                "raw_edata": binascii.hexlify(edata),
+                "raw": data.hex(" ", -8),
+                "raw_edata": edata.hex(" ", -8),
             }
             if _support.DEBUG
             else None,
@@ -153,8 +152,8 @@ class ScanEdge:
 
         debug_info = (
             {
-                "raw": binascii.hexlify(data),
-                "raw_flags": binascii.hexlify(data_flags),
+                "raw": data.hex(" ", -8),
+                "raw_flags": data_flags.hex(" ", -8),
                 "start_flags_freq": (data[9] >> 2) & 0b11,
                 "end_flags_freq": data[9] & 0b11,
             }
@@ -204,6 +203,9 @@ class ScanEdge:
             data_flags[0] = data_flags[2] = 0x7F
 
     def validate(self) -> None:
+        if self.start < consts.MIN_FREQUENCY:
+            return
+
         if self.idx < 0 or self.idx >= consts.NUM_SCAN_EDGES:
             raise ValidateError("idx", self.idx)
 

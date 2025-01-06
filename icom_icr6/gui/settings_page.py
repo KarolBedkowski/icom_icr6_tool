@@ -8,10 +8,12 @@ import logging
 import tkinter as tk
 from tkinter import ttk
 
-from . import consts, gui_model, validators
-from .change_manager import ChangeManeger
-from .gui_widgets import new_checkbox, new_combo, new_entry
-from .radio_memory import RadioMemory
+from icom_icr6 import consts, validators
+from icom_icr6.change_manager import ChangeManeger
+from icom_icr6.radio_memory import RadioMemory
+
+from . import gui_model
+from .widgets import new_checkbox, new_combo, new_entry
 
 _LOG = logging.getLogger(__name__)
 
@@ -28,6 +30,9 @@ class SettingsPage(tk.Frame):
 
     def update_tab(self) -> None:
         self.__update()
+
+    def reset(self) -> None:
+        pass
 
     @property
     def _radio_memory(self) -> RadioMemory:

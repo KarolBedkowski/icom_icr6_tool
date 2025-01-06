@@ -6,7 +6,6 @@
 
 from __future__ import annotations
 
-import binascii
 import copy
 import typing as ty
 from dataclasses import dataclass
@@ -58,7 +57,7 @@ class RadioSettings:
     ) -> RadioSettings:
         debug_info = (
             {
-                "raw": binascii.hexlify(data),
+                "raw": data.hex(" ", -8),
                 "priority_scan_type": data[14] & 0b111,
                 "scanning_band": data[47],
                 "scanning_bank": data[50],
@@ -159,10 +158,13 @@ class BandDefaults:
     canceller_freq: int
     duplex: int
     tone_mode: int
+    # not used?
     vsc: bool
     canceller: int
     polarity: int
+    # not used?
     af_filter: bool
+    # not used?
     attenuator: bool
 
     debug_info: dict[str, object] | None
@@ -180,7 +182,7 @@ class BandDefaults:
 
         debug_info = (
             {
-                "raw": binascii.hexlify(data),
+                "raw": data.hex(" ", -8),
                 "unknown6": data[11],
             }
             if _support.DEBUG
@@ -200,8 +202,8 @@ class BandDefaults:
             tone_mode=data[12] & 0b1111,
             vsc=bool(data[13] & 0b01000000),
             canceller=(data[13] & 0b00110000) >> 4,
-            polarity=(data[13] & 0b00000100) >> 2,
-            af_filter=bool(data[13] & 0b00000010),
+            polarity=(data[13] & 0b00000010) >> 1,
+            af_filter=bool(data[13] & 0b00000100),
             attenuator=bool(data[13] & 0b0000001),
             debug_info=debug_info,
         )

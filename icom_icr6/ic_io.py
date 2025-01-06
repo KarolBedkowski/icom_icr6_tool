@@ -4,7 +4,6 @@
 
 """ """
 
-import binascii
 import itertools
 import logging
 import time
@@ -73,7 +72,7 @@ class Frame:
             "), ",
             f"cmd={self.cmd:02x}, ",
             "payload=",
-            binascii.hexlify(self.payload).decode(),
+            self.payload.hex(),
             ")",
         ]
 
@@ -122,17 +121,17 @@ class StreamLogger:
         self._log.close()
 
     def write(self, data: bytes) -> None:
-        self._log.write(f"<{binascii.hexlify(data)!r}\n")
+        self._log.write(f"<{data.hex()}\n")
         self._impl.write(data)
 
     def read(self, length: int) -> bytes:
         data = self._impl.read(length)
-        self._log.write(f">{binascii.hexlify(data)!r}\n")
+        self._log.write(f">{data.hex()}\n")
         return data
 
     def read_frame(self) -> bytes:
         data = self._impl.read_frame()
-        self._log.write(f">{binascii.hexlify(data)!r}\n")
+        self._log.write(f">{data.hex()}\n")
         return data
 
     def switch_to_hispeed(self) -> None:
@@ -231,7 +230,6 @@ def calc_checksum(data: bytes | list[int]) -> int:
 class Radio:
     def __init__(self, port: str = "", *, hispeed: bool = False) -> None:
         self._port = port
-        self._logger = None
         self._hispeed = hispeed
         self.addr_radio = ADDR_RADIO
 
@@ -251,7 +249,7 @@ class Radio:
 
     def _write(self, s: Serial, payload: bytes) -> None:
         if _LOG.isEnabledFor(logging.DEBUG):
-            _LOG.debug("write: %s", binascii.hexlify(payload))
+            _LOG.debug("write: %s", payload.hex())
 
         s.write(payload)
 
@@ -269,7 +267,7 @@ class Radio:
         data = s.read_frame()
 
         if _LOG.isEnabledFor(logging.DEBUG):
-            _LOG.debug("read: %s", binascii.hexlify(data))
+            _LOG.debug("read: %s", data.hex())
 
         if not data:
             _LOG.error("no data")
@@ -370,7 +368,7 @@ class Radio:
                         idx,
                         my_checksum,
                         checksum,
-                        binascii.hexlify(rawdata),
+                        rawdata.hex(),
                     )
                     raise ChecksumError
 
@@ -432,12 +430,11 @@ class Radio:
         cb: ty.Callable[[int], bool] | None = None,
     ) -> bool:
         self._check_radio()
-        mv = memoryview(mem.mem)
 
         time.sleep(1)
         prev_send_frame: Frame | None = None
 
-        with self._open_serial("clone_to") as s:
+        with memoryview(mem.mem) as mv, self._open_serial("clone_to") as s:
             # clone in
             self._start_clone(s, CMD_CLONE_IN)
 
@@ -449,7 +446,7 @@ class Radio:
                 _LOG.debug("process addr: %d", addr)
 
                 chunk = [(addr >> 8), addr & 0xFF, 32, *mv[addr : addr + 32]]
-                # encode paload
+                # encode payload
                 payload = "".join(f"{d:02X}" for d in chunk)
                 # add checksum
                 payload += f"{calc_checksum(chunk):02X}"
@@ -484,6 +481,8 @@ class Radio:
 
                 prev_send_frame = frame
 
+            time.sleep(0.5)
+
             return self._clone_to_send_end(s)
 
     def _send_abort(self, s: Serial) -> None:
@@ -506,6 +505,8 @@ class Radio:
                 if result_frame.cmd == CMD_OK:
                     # clone ok
                     break
+
+            time.sleep(0.1)
 
         if not result_frame:
             raise NoDataError
@@ -561,7 +562,7 @@ def _update_from_icf_file(mv: memoryview, line: str) -> None:
     size = int(line[4:6], 16)
     data_raw = line[6:]
     assert size * 2 == len(data_raw)
-    data = binascii.unhexlify(data_raw)
+    data = bytes.fromhex(data_raw)
     mv[addr : addr + size] = data
 
 
@@ -569,9 +570,8 @@ def load_icf_file(file: Path) -> RadioMemory:
     """Load icf file as RadioMemory."""
     _LOG.info("loading %s", file)
     mem = RadioMemory()
-    mv = memoryview(mem.mem)
 
-    with file.open("rt") as inp:
+    with memoryview(mem.mem) as mv, file.open("rt") as inp:
         try:
             # check header == model in hex
             if next(inp).strip() != "32500001":
@@ -618,12 +618,12 @@ def load_raw_memory(file: Path) -> RadioMemory:
 def _dump_memory(mem: bytearray, step: int = 16) -> ty.Iterator[str]:
     """Dump data in icf file format."""
 
-    mv = memoryview(mem)
-    for idx in range(0, 0x6E60, step):
-        data = mv[idx : idx + step]
-        data_hex = binascii.hexlify(bytes(data)).decode()
-        res = f"{idx:04x}{step:02x}{data_hex}"
-        yield res.upper()
+    with memoryview(mem) as mv:
+        for idx in range(0, 0x6E60, step):
+            data = mv[idx : idx + step]
+            data_hex = data.hex().upper()
+            res = f"{idx:04x}{step:02x}{data_hex}"
+            yield res.upper()
 
 
 def save_icf_file(file: Path, mem: RadioMemory) -> None:
