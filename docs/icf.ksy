@@ -1,5 +1,5 @@
 meta:
-  id: icr6
+  id: icr6mem
   title: icom ic-r6 memory map
   endian: be
   bit-endian: be
