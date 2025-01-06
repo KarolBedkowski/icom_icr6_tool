@@ -683,7 +683,7 @@ types:
         type: b6
 
   band:
-    # this is mostly guess
+    # this is mostly guess; base 0x6b00
     seq:
       - id: freq
         type: u4le
@@ -737,9 +737,9 @@ types:
       - id: unknown_b13_2
         type: b1
         doc: unused?
-      - id: polarity
-        type: b1
       - id: af
+        type: b1
+      - id: polarity
         type: b1
       - id: attenuator
         type: b1

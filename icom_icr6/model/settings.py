@@ -202,8 +202,8 @@ class BandDefaults:
             tone_mode=data[12] & 0b1111,
             vsc=bool(data[13] & 0b01000000),
             canceller=(data[13] & 0b00110000) >> 4,
-            polarity=(data[13] & 0b00000100) >> 2,
-            af_filter=bool(data[13] & 0b00000010),
+            polarity=(data[13] & 0b00000010) >> 1,
+            af_filter=bool(data[13] & 0b00000100),
             attenuator=bool(data[13] & 0b0000001),
             debug_info=debug_info,
         )
