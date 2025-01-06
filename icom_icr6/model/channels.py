@@ -313,6 +313,9 @@ class Channel:
         cflags[1] = self.bank_pos
 
     def validate(self) -> None:
+        if self.hide_channel or self.freq < consts.MIN_FREQUENCY:
+            return
+
         if not validators.validate_frequency(self.freq):
             raise ValidateError("freq", self.freq)
 

@@ -203,6 +203,9 @@ class ScanEdge:
             data_flags[0] = data_flags[2] = 0x7F
 
     def validate(self) -> None:
+        if self.start < consts.MIN_FREQUENCY:
+            return
+
         if self.idx < 0 or self.idx >= consts.NUM_SCAN_EDGES:
             raise ValidateError("idx", self.idx)
 
