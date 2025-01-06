@@ -166,21 +166,20 @@ types:
       # @1
       - id: bank_pos
         type: u1
-        doc: position channel in bank
-        valid:
-          min: 0
-          max: 99
+        doc: |
+          position channel in bank; typical 0-99; but when bank
+          is not set maybe 255
 
   scan_edge:
     seq:
       # 0
       - id: start
         type: u4le
-        doc: freq * 3
+        doc: freq * 3; hidden when not in acceptable range
       # 4
       - id: end
         type: u4le
-        doc: freq * 3
+        doc: freq * 3; hidden when not in acceptable range
 
       # 8
       - id: mode
