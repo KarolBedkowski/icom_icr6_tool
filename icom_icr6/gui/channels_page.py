@@ -30,10 +30,14 @@ class ChannelsPage(tk.Frame):
         self.__in_paste = False
         self._last_selected_group = 0
         self._last_selected_pos = [0] * len(gui_model.CHANNEL_RANGES)
+        self._groups_stats: list[str] = []
+        self._groups = tk.StringVar(value=self._groups_stats)  # type: ignore
+        self._update_groups_list()
 
         pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
-        self._groups_list = tk.Listbox(pw, selectmode=tk.SINGLE, width=10)
-        self._groups_list.insert(tk.END, *gui_model.CHANNEL_RANGES)
+        self._groups_list = tk.Listbox(
+            pw, selectmode=tk.SINGLE, width=10, listvariable=self._groups
+        )
         self._groups_list.bind("<<ListboxSelect>>", self.__on_group_select)
         pw.add(self._groups_list, weight=0)
 
@@ -46,6 +50,7 @@ class ChannelsPage(tk.Frame):
     def update_tab(self, channel_number: int | None = None) -> None:
         # hide canceller in global models
         self._chan_list.set_region(self._change_manager.rm.region)
+        self._update_groups_list()
 
         if channel_number is None:
             channel_number = (
@@ -191,6 +196,19 @@ class ChannelsPage(tk.Frame):
             return sel[0]  # type: ignore
 
         return None
+
+    def _update_groups_list(self) -> None:
+        self._groups_stats = groups = []
+        for group in range(13):
+            active = sum(
+                1
+                for c in self._change_manager.rm.get_active_channels_in_group(
+                    group
+                )
+            )
+            groups.append(f"{group:>2}   ({active})")
+
+        self._groups.set(groups)  # type: ignore
 
     def __do_move_channels(
         self, rows: ty.Collection[channels_list.Row]
@@ -360,11 +378,22 @@ class ChannelsPage(tk.Frame):
         return True
 
     def _show_stats(self) -> None:
-        active = sum(
-            bool(r and (c := r.channel) and not c.hide_channel)
-            for r in self._chan_list.data
+        group = self._selected_group
+        assert group is not None
+        rm = self._change_manager.rm
+
+        active = sum(1 for c in rm.get_active_channels_in_group(group))
+        in_banks = sum(
+            c.bank != consts.BANK_NOT_SET
+            for c in rm.get_active_channels_in_group(group)
         )
-        self._parent.set_status(f"Active channels: {active}")  # type: ignore
+        self._parent.set_status(  # type: ignore
+            f"Active channels: {active}; in banks: {in_banks}"
+        )
+
+        # update group list stats
+        self._groups_stats[group] = f"{group:>2}   ({active})"
+        self._groups.set(self._groups_stats)  # type: ignore
 
     def __on_channel_bank_set(
         self,

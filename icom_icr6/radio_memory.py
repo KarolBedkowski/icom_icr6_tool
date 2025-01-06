@@ -151,6 +151,14 @@ class RadioMemory:
             if not chan.hide_channel:
                 yield chan
 
+    def get_active_channels_in_group(
+        self, group: int
+    ) -> ty.Iterable[model.Channel]:
+        start = group * 100
+        for chan in self.channels[start : start + 100]:
+            if not chan.hide_channel:
+                yield chan
+
     def get_bank_channels(self, bank_idx: int) -> model.BankChannels:
         """this return only first channel on bank position."""
         _LOG.debug("get_bank_channels %d", bank_idx)
