@@ -335,9 +335,12 @@ class BanksPage(tk.Frame):
 
             chan.bank = selected_bank
             chan.bank_pos = rec.rownum
-
             # if new channel - make it visible
-            if chan.hide_channel and chan.freq:
+            if chan.hide_channel:
+                # when hidden channel has no frequency; set 50MHz
+                if not chan.freq:
+                    chan.freq = 50_000_000
+
                 chan.freq = fixers.fix_frequency(chan.freq)
                 band = self._change_manager.rm.get_band_for_freq(chan.freq)
                 chan.load_defaults_from_band(band)
