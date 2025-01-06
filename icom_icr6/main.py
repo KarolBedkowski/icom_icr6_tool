@@ -16,7 +16,7 @@ import sys
 import typing as ty
 from pathlib import Path
 
-from . import expimp, ic_io, model
+from . import consts, expimp, ic_io, model
 
 _LOG = logging.getLogger()
 
@@ -251,12 +251,25 @@ def main_print_bands(args: argparse.Namespace) -> None:
     """
     mem = ic_io.load_icf_file(args.icf_file)
 
+    match mem.region:
+        case consts.Region.FRANCE:
+            bands = consts.BANDS_FRANCE
+        case consts.Region.JAPAN:
+            bands = consts.BANDS_JAP
+        case _:
+            bands = consts.BANDS_DEFAULT
+
     print("Bands")
     if args.verbose > 2:
-        for band in mem.bands:
-            print(band)
+        for idx, band in enumerate(mem.bands):
+            print(bands[idx] if idx < len(bands) else "----", band, sep=":   ")
     else:
-        _print_csv((b.to_record() for b in mem.bands), expimp.BANDS_FIELDS)
+        data = (
+            b.to_record()
+            | {"max_freq": bands[idx] if idx < len(bands) else ""}
+            for idx, b in enumerate(mem.bands)
+        )
+        _print_csv(data, ["max_freq", *expimp.BANDS_FIELDS])
 
 
 def main_print_dupl_freq(args: argparse.Namespace) -> None:
