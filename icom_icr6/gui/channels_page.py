@@ -206,7 +206,7 @@ class ChannelsPage(tk.Frame):
                     group
                 )
             )
-            groups.append(f"{group:>2}   ({active})")
+            groups.append(f"{group:>2}  ({active})")
 
         self._groups.set(groups)  # type: ignore
 
@@ -392,7 +392,7 @@ class ChannelsPage(tk.Frame):
         )
 
         # update group list stats
-        self._groups_stats[group] = f"{group:>2}   ({active})"
+        self._groups_stats[group] = f"{group:>2}  ({active})"
         self._groups.set(self._groups_stats)  # type: ignore
 
     def __on_channel_bank_set(

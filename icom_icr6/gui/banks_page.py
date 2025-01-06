@@ -558,9 +558,9 @@ class BanksPage(tk.Frame):
 def _bank_list_label(idx: int, bank_name: str, active: int) -> str:
     bname = consts.BANK_NAMES[idx]
     return (
-        f"{bname}: {bank_name:}    ({active})"
+        f"{bname}:  {bank_name:}  ({active})"
         if bank_name
-        else f"{bname}   ({active})"
+        else f"{bname}  ({active})"
     )
 
 
