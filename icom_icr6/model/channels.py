@@ -504,7 +504,7 @@ class Bank:
     ) -> Bank:
         return Bank(
             idx,
-            name=bytes(data[0:6]).decode() if data[0] else "",
+            name=bytes(data[0:6]).decode().rstrip() if data[0] else "",
             debug_info={"raw": data.hex(" ", -8)} if _support.DEBUG else None,
         )
 

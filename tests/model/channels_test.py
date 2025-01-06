@@ -145,7 +145,7 @@ def test_bank():
     data = bytearray.fromhex(inp)
     b = model.Bank.from_data(0, data)
     assert b.idx == 0
-    assert b.name == "CB    "
+    assert b.name == "CB"
 
     o_data = data[:]
     b.to_data(o_data)
@@ -155,7 +155,7 @@ def test_bank():
     data = bytearray.fromhex(inp)
     b = model.Bank.from_data(2, data)
     assert b.idx == 2
-    assert b.name == "HAM   "
+    assert b.name == "HAM"
 
     o_data = data[:]
     b.to_data(o_data)
