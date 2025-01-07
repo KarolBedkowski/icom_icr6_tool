@@ -81,6 +81,7 @@ class ChannelsPage(tk.Frame):
         self._last_selected_pos = [0] * len(gui_model.CHANNEL_RANGES)
         self._groups_list.selection_set(0)
         self.__update_chan_list()
+        self._update_groups_list()
 
     @property
     def _radio_memory(self) -> RadioMemory:
