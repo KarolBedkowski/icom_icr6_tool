@@ -1,6 +1,20 @@
 Changelog
 =========
 
+
+v1.2.1 2025-01-07
+-----------------
+
+Bug Fixes
+~~~~~~~~~
+
+- Fix missing update channels groups stats on load file/clone
+- Clear name on unhide channel
+- Fix entering freq in scan edges
+- Fix select/deselect all scan edges in scan links tab
+
+
+
 v1.2 2025-01-05
 ---------------
 
@@ -57,3 +71,5 @@ Features
 ~~~~~~~~
 
 - Dialog and cli command: looking for channel duplicates.
+
+# vim: ft=rst

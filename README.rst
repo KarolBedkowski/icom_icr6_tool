@@ -1,4 +1,4 @@
-Icom IC-R6 Manager  1.2
+Icom IC-R6 Manager  1.x
 ========================
 
 Simple TK application for manage Icom IC-R6 scanner memory.
