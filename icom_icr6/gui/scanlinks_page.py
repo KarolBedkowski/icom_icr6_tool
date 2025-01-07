@@ -179,6 +179,15 @@ class ScanLinksPage(tk.Frame):
 
         self._scan_links_edges.set_data_links([val] * consts.NUM_SCAN_EDGES)
 
+        sl = self._radio_memory.scan_links[sel_sl[0]].clone()
+        for idx in range(consts.NUM_SCAN_EDGES):
+            sl[idx] = val
+
+        self._change_manager.set_scan_link(sl)
+        self._change_manager.commit()
+
+        self.__update_scan_edges()
+
     def __on_scan_edge_updated(
         self, action: str, rows: ty.Collection[scanlinks_list.Row]
     ) -> None:
@@ -240,8 +249,8 @@ class ScanLinksPage(tk.Frame):
             sl[se.idx] = rec.selected
             rec.updated = False
 
-        self._change_manager.commit()
         self._change_manager.set_scan_link(sl)
+        self._change_manager.commit()
 
     def __do_move_scan_edge(
         self, rows: ty.Collection[scanlinks_list.Row]
