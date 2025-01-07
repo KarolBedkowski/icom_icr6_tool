@@ -190,6 +190,7 @@ class ChangeManeger:
         self._undo_manager.push("scan_edge", current_se, se)
 
         assert current_se is not se
+        se.updated = True
         self.rm.scan_edges[se.idx] = se
 
     def set_bank(self, bank: model.Bank) -> None:
