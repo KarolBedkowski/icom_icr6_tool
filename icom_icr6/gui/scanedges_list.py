@@ -76,7 +76,9 @@ class Row(genericlist.BaseRow):
         if se.start:
             se.unhide()
 
-        if se.start > se.end:
+        if not se.end:
+            se.end = se.start
+        elif se.start > se.end:
             se.start, se.end = se.end, se.start
 
         self.data = self._from_scanedge(se)
@@ -87,7 +89,9 @@ class Row(genericlist.BaseRow):
         if se.end:
             se.unhide()
 
-        if se.start > se.end:
+        if not se.start:
+            se.start = se.end
+        elif se.start > se.end:
             se.start, se.end = se.end, se.start
 
         self.data = self._from_scanedge(se)
