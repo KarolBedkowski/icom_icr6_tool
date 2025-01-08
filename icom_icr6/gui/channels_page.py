@@ -58,14 +58,14 @@ class ChannelsPage(tk.Frame):
                 + self._last_selected_pos[self._last_selected_group]
             )
 
-        self.select(channel_number)
+        self.select(channel_number, force=True)
 
-    def select(self, channel_number: int) -> None:
+    def select(self, channel_number: int, *, force: bool = False) -> None:
         group, chanpos = divmod(channel_number, 100)
 
         current_sel_group = self._selected_group
 
-        if group == current_sel_group:
+        if group == current_sel_group and not force:
             self._chan_list.selection_set([chanpos])
             return
 

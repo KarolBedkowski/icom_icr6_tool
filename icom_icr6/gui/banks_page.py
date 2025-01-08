@@ -72,10 +72,16 @@ class BanksPage(tk.Frame):
         if bank_pos is None:
             bank_pos = self._last_selected_pos[bank]
 
-        self.select(bank, bank_pos)
+        self.select(bank, bank_pos, force=True)
 
-    def select(self, bank: int, bank_pos: int | None = None) -> None:
-        if bank == self._last_selected_bank and bank_pos is not None:
+    def select(
+        self, bank: int, bank_pos: int | None = None, *, force: bool = False
+    ) -> None:
+        if (
+            bank == self._last_selected_bank
+            and bank_pos is not None
+            and not force
+        ):
             self._chan_list.selection_set([bank_pos])
             return
 
