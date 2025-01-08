@@ -44,6 +44,7 @@ class ScanEdgesPage(tk.Frame):
             expand=True, fill=tk.BOTH, side=tk.TOP, padx=12, pady=12
         )
 
+        self._scanedges_list.on_record_selected = self.__on_se_select
         self._scanedges_list.on_record_update = self.__on_scan_edge_updated
         self._scanedges_list.bind("<Delete>", self.__on_channel_delete)
         self._scanedges_list.sheet.bind(
@@ -53,16 +54,10 @@ class ScanEdgesPage(tk.Frame):
             "<Control-v>", self.__on_scan_edge_paste
         )
 
-    # def __on_channel_select(self, _event: tk.Event) -> None:  # type: ignore
-    #     sel = self._scanedges_list.selection()
-    #     if not sel:
-    #         return
-
-    #     self._last_selected_se = sel[0]
-
-    #     se_num = int(sel[0])
-    #     se = self._radio_memory.get_scan_edge(se_num)
-    #     _LOG.debug("scan_edge: %r", se)
+    def __on_se_select(self, rows: list[scanedges_list.Row]) -> None:
+        if _LOG.isEnabledFor(logging.DEBUG):
+            for rec in rows:
+                _LOG.debug("se selected: %r", rec.se)
 
     def __on_scan_edge_updated(
         self, action: str, rows: ty.Collection[scanedges_list.Row]
