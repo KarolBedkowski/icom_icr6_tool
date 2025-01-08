@@ -9,7 +9,7 @@ import tkinter as tk
 import typing as ty
 from tkinter import messagebox, ttk
 
-from icom_icr6 import consts, expimp, model, validators
+from icom_icr6 import consts, expimp, fixers, model, validators
 from icom_icr6.change_manager import ChangeManeger
 from icom_icr6.radio_memory import RadioMemory
 
@@ -25,6 +25,7 @@ class ScanLinksPage(tk.Frame):
 
         self._change_manager = cm
         self._sl_name = tk.StringVar()
+        self._sl_name.trace("w", self._on_sl_name_changed)  # type: ignore
         self._last_selected_sl = 0
 
         pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
@@ -62,7 +63,7 @@ class ScanLinksPage(tk.Frame):
     def _create_fields(self, frame: tk.Frame) -> None:
         fields = tk.Frame(frame)
         validator = self.register(validate_name)
-        self._entry_sl_name = new_entry(
+        new_entry(
             fields,
             0,
             0,
@@ -70,28 +71,17 @@ class ScanLinksPage(tk.Frame):
             self._sl_name,
             validator=validator,
         )
-        self._entry_sl_name["state"] = "disabled"
-
-        self._btn_update = ttk.Button(
-            fields,
-            text="Update",
-            command=self.__on_update_sl,
-            state="disabled",
-        )
-        self._btn_update.grid(row=0, column=3, sticky=tk.E)
 
         fields.pack(side=tk.TOP, fill=tk.X)
 
     def _create_buttons(self, parent: tk.Frame) -> None:
         frame = tk.Frame(parent)
 
-        self._btn_deselect = ttk.Button(
+        ttk.Button(
             frame,
             text="Select/Deselect all",
             command=self.__on_de_select,
-            state="disabled",
-        )
-        self._btn_deselect.pack(side=tk.LEFT)
+        ).pack(side=tk.LEFT)
 
         frame.pack(side=tk.BOTTOM, fill=tk.X)
 
@@ -110,7 +100,7 @@ class ScanLinksPage(tk.Frame):
         )
 
     def __update_scan_links_list(self) -> None:
-        sel_sl = self._scan_links_list.curselection()  # type: ignore
+        sel_sl = self._last_selected_sl
 
         sls = self._scan_links_list
         sls.delete(0, sls.size())
@@ -118,14 +108,12 @@ class ScanLinksPage(tk.Frame):
             name = f"{idx}: {sl.name}" if sl.name else str(idx)
             sls.insert(tk.END, name)
 
-        if sel_sl:
-            self._scan_links_list.selection_set(sel_sl[0])
+        self._scan_links_list.selection_set(sel_sl)
 
     def __update_scan_edges(self) -> None:
-        sel_sl = self._scan_links_list.curselection()  # type: ignore
-        selected_se = sel_sl[0] if sel_sl else 0
+        sel_sl = self._last_selected_sl
 
-        sl = self._radio_memory.scan_links[selected_se]
+        sl = self._radio_memory.scan_links[sel_sl]
 
         data: list[scanlinks_list.ScanLink] = [
             scanlinks_list.ScanLink(
@@ -137,41 +125,37 @@ class ScanLinksPage(tk.Frame):
         self._scan_links_edges.set_data(data)
 
     def __on_select_scan_link(self, event: tk.Event | None = None) -> None:  # type: ignore
+        sel_sl = self._scan_links_list.curselection()  # type: ignore
         if event:
             self._scan_links_edges.reset(scroll_top=True)
 
-        sel_sl = self._scan_links_list.curselection()  # type: ignore
         if not sel_sl:
-            self.__disable_widgets()
             return
 
-        self._last_selected_sl = sel_sl
+        self._last_selected_sl = sel_sl[0]
         sl = self._radio_memory.scan_links[sel_sl[0]]
         self._sl_name.set(sl.name.rstrip())
 
         self._scan_links_edges.set_data_links(list(sl.links()))
 
-        self._btn_deselect["state"] = "normal"
-        self._btn_update["state"] = "normal"
-        self._entry_sl_name["state"] = "normal"
-
-    def __on_update_sl(self) -> None:
-        sel_sl = self._scan_links_list.curselection()  # type: ignore
-        if not sel_sl:
-            self.__disable_widgets()
+    def _on_sl_name_changed(self, _var: str, _idx: str, _op: str) -> None:
+        sl = self._radio_memory.scan_links[self._last_selected_sl]
+        name = self._sl_name.get()
+        fixed_name = fixers.fix_name(name)
+        if sl.name == fixed_name:
             return
 
-        sl = self._radio_memory.scan_links[sel_sl[0]].clone()
-        sl.name = self._sl_name.get()
-        self._change_manager.set_scan_link(sl)
+        if name != fixed_name:
+            self._sl_name.set(fixed_name)
 
+        sl = sl.clone()
+        sl.name = fixed_name
+        self._change_manager.set_scan_link(sl)
         self._change_manager.commit()
         self.__update_scan_links_list()
 
     def __on_de_select(self) -> None:
-        sel_sl = self._scan_links_list.curselection()  # type: ignore
-        if not sel_sl:
-            return
+        sel_sl = self._last_selected_sl
 
         val = True
         if all(row.selected for row in self._scan_links_edges.sheet.data):
@@ -179,7 +163,7 @@ class ScanLinksPage(tk.Frame):
 
         self._scan_links_edges.set_data_links([val] * consts.NUM_SCAN_EDGES)
 
-        sl = self._radio_memory.scan_links[sel_sl[0]].clone()
+        sl = self._radio_memory.scan_links[sel_sl].clone()
         for idx in range(consts.NUM_SCAN_EDGES):
             sl[idx] = val
 
@@ -193,7 +177,6 @@ class ScanLinksPage(tk.Frame):
     ) -> None:
         match action:
             case "delete":
-                # TODO: implement
                 self.__do_delete_scan_edge(rows)
 
             case "update":
@@ -230,11 +213,8 @@ class ScanLinksPage(tk.Frame):
     def __do_update_scan_edge(
         self, rows: ty.Collection[scanlinks_list.Row]
     ) -> None:
-        sel_sl = self._scan_links_list.curselection()  # type: ignore
-        if not sel_sl:
-            return
-
-        sl = self._radio_memory.scan_links[sel_sl[0]].clone()
+        sel_sl = self._last_selected_sl
+        sl = self._radio_memory.scan_links[sel_sl].clone()
 
         for rec in rows:
             _LOG.debug(
@@ -364,12 +344,6 @@ class ScanLinksPage(tk.Frame):
         self._change_manager.set_scan_edge(se)
         self._change_manager.commit()
         return True
-
-    def __disable_widgets(self) -> None:
-        self._btn_deselect["state"] = "disabled"
-        self._btn_update["state"] = "disabled"
-        self._entry_sl_name["state"] = "disabled"
-        self._sl_name.set("")
 
 
 def validate_name(name: str | None) -> bool:
