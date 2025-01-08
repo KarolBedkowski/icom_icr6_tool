@@ -261,8 +261,16 @@ class App(tk.Frame):
             messagebox.showerror("Save file error - Invalid data", str(err))
             return
 
-        ic_io.save_icf_file(self._last_file, self._radio_memory)
+        try:
+            ic_io.save_icf_file(self._last_file, self._radio_memory)
+        except Exception as err:
+            _LOG.exception("_on_menu_file_save_as error")
+            messagebox.showerror("Save file error", str(err))
+            return
+
+        self._change_manager.reset_changes_cnt()
         self.set_status(f"File {self._last_file} saved")
+        self._update_window_title()
 
     def _on_menu_file_save_as(self, _event: tk.Event | None = None) -> None:  # type: ignore
         try:
@@ -287,6 +295,7 @@ class App(tk.Frame):
                 messagebox.showerror("Save file error", str(err))
                 return
 
+            self._change_manager.reset_changes_cnt()
             self._set_loaded_filename(Path(fname))
             self.set_status(f"File {fname} saved")
 
@@ -419,6 +428,7 @@ class App(tk.Frame):
         self.__menu_edit.entryconfigure(
             "Redo", state="normal" if has_redo else tk.DISABLED
         )
+        self._update_window_title()
 
     def _on_find_object_select(self, kind: str, index: object) -> None:
         """Object clicked in find dialog."""
@@ -476,7 +486,14 @@ class App(tk.Frame):
             self._fill_menu_last_files()
 
         self._last_file = fname
+        self._update_window_title()
+
+    def _update_window_title(self) -> None:
+        fname = self._last_file
         title = f" [{fname.name}]" if fname else ""
+        if self._change_manager.changed:
+            title += " [+]"
+
         self.master.title(f"ICOM IC-R6 Tool{title}")  # type: ignore
 
     def _update_tab_content(self) -> None:

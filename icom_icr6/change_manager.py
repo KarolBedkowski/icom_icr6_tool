@@ -37,12 +37,14 @@ class _UndoManager:
         # temporary queue for actions; after "commit" push to _undo_queue
         self._tmp_queue: list[UndoItem] = []
         self._on_change: _OnChangeCallback | None = on_change
+        self.changes_cnt: int = 0
 
     def clear(self) -> None:
         self._undo_queue.clear()
         self._redo_queue.clear()
         self._tmp_queue.clear()
         self._signal_changes()
+        self.changes_cnt = 0
 
     def push(self, kind: str, old_item: object, new_item: object) -> None:
         """Add change to temp queue."""
@@ -76,6 +78,7 @@ class _UndoManager:
 
         # push new action clear redo
         self._redo_queue.clear()
+        self.changes_cnt += 1
         self._signal_changes()
 
     def abort(self) -> None:
@@ -90,6 +93,7 @@ class _UndoManager:
             return None
 
         self._redo_queue.append(item)
+        self.changes_cnt -= 1
         self._signal_changes()
         return item
 
@@ -104,6 +108,7 @@ class _UndoManager:
         if len(self._undo_queue) > _MAX_UNDO_QUEUE_LEN:
             self._undo_queue.pop(0)
 
+        self.changes_cnt += 1
         self._signal_changes()
         return item
 
@@ -122,8 +127,15 @@ class ChangeManeger:
         self._undo_manager = _UndoManager(on_change=self._on_undo_change)
         self._on_undo_change(0, 0)
 
+    @property
+    def changed(self) -> bool:
+        return self._undo_manager.changes_cnt > 0
+
     def reset(self) -> None:
         self._undo_manager.clear()
+
+    def reset_changes_cnt(self) -> None:
+        self._undo_manager.changes_cnt = 0
 
     def commit(self) -> None:
         """Commit changes in undo queue."""
