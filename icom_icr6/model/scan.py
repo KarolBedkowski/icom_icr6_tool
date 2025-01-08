@@ -121,6 +121,8 @@ class ScanEdge:
 
     debug_info: dict[str, object] | None = None
     updated: bool = False
+    # hidden, but edited (displayed)
+    edited: bool = False
 
     def clone(self) -> ScanEdge:
         return copy.deepcopy(self)
@@ -132,11 +134,13 @@ class ScanEdge:
         self.tuning_step = consts.STEPS.index("-")
         self.mode = consts.MODES_SCAN_EDGES.index("-")
         self.hidden = True
+        self.edited = False
 
     def unhide(self) -> None:
         self.end = self.end or self.start or 1_000_000
         self.start = self.start or self.end or 1_000_000
         self.hidden = False
+        self.edited = False
 
     @classmethod
     def from_data(

@@ -11,7 +11,7 @@ from tksheet import EventDataDict
 
 from icom_icr6 import consts, fixers, model
 
-from . import genericlist
+from . import genericlist, scanedges_list
 
 _LOG = logging.getLogger(__name__)
 
@@ -21,7 +21,7 @@ class ScanLink(ty.NamedTuple):
     selected: bool
 
 
-class Row(genericlist.BaseRow):
+class Row(scanedges_list.Row):
     COLUMNS = (
         ("idx", "Num", "int"),
         ("selected", "Selected", "bool"),
@@ -34,12 +34,11 @@ class Row(genericlist.BaseRow):
     )
 
     def __init__(self, rownum: int, sl: ScanLink) -> None:
-        self.se = sl.scan_edge
         self.selected = sl.selected
-        super().__init__(rownum, self._from_scanedge(sl.scan_edge))
+        super().__init__(rownum, sl.scan_edge)
 
     def __setitem__(self, idx: int, val: object, /) -> None:  # type: ignore
-        if val == self.data[idx]:
+        if val is None or val == self.data[idx]:
             return
 
         col = self.COLUMNS[idx][0]
@@ -50,19 +49,6 @@ class Row(genericlist.BaseRow):
             case "selected":
                 self.selected = bool(val)
                 self.data[1] = val
-
-            case "name":
-                if val:
-                    se = self._make_clone()
-                    se.unhide()
-
-                self._update_se(idx, col, val)
-
-            case "start":  # freq
-                self._update_start(val)
-
-            case "end":  # freq
-                self._update_end(val)
 
             case _:
                 self._update_se(idx, col, val)
@@ -76,53 +62,11 @@ class Row(genericlist.BaseRow):
         return self.se
 
     def _from_scanedge(self, se: model.ScanEdge) -> list[object]:
-        if se.hidden:
-            return [se.idx, self.selected, "", "", "", "", "", ""]
+        if se.hidden and not se.edited:
+            return [se.idx, self.selected, None, None, None, None, None, None]
 
         data = se.to_record()
         return [se.idx, self.selected, *(data[c[0]] for c in self.COLUMNS[2:])]
-
-    def _update_start(self, value: object) -> None:
-        se = self.se
-        se = self._make_clone()
-        se.start = value or 0  # type: ignore
-        if se.start:
-            se.unhide()
-
-        if not se.end:
-            se.end = se.start
-        elif se.start > se.end:
-            se.start, se.end = se.end, se.start
-
-        self.data = self._from_scanedge(se)
-
-    def _update_end(self, value: object) -> None:
-        se = self._make_clone()
-        se.end = value or 0  # type: ignore
-        if se.end:
-            se.unhide()
-
-        if not se.start:
-            se.start = se.end
-        elif se.start > se.end:
-            se.start, se.end = se.end, se.start
-
-        self.data = self._from_scanedge(se)
-
-    def _update_se(self, idx: int, col: str, value: object) -> None:
-        se = self.se
-        if se.hidden or se.to_record()[col] == value:
-            return
-
-        se = self._make_clone()
-        try:
-            se.from_record({col: value})
-        except Exception:
-            _LOG.exception(
-                "update scanedge from record error: %r=%r", col, value
-            )
-        else:
-            super().__setitem__(idx, value)
 
 
 class ScanLnksList(genericlist.GenericList[Row, ScanLink]):

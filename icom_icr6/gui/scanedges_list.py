@@ -5,6 +5,7 @@
 """ """
 
 import logging
+import typing as ty
 
 from tksheet import EventDataDict
 
@@ -16,7 +17,7 @@ _LOG = logging.getLogger(__name__)
 
 
 class Row(genericlist.BaseRow):
-    COLUMNS = (
+    COLUMNS: ty.ClassVar[ty.Sequence[genericlist.Column]] = (
         ("idx", "Num", "int"),
         ("name", "Name", "str"),
         ("start", "Start", "freq"),
@@ -31,26 +32,13 @@ class Row(genericlist.BaseRow):
         super().__init__(rownum, self._from_scanedge(se))
 
     def __setitem__(self, idx: int, val: object, /) -> None:  # type: ignore
-        if val == self.data[idx]:
+        if val is None or val == self.data[idx]:
             return
 
         col = self.COLUMNS[idx][0]
         match col:
             case "idx":
                 return
-
-            case "name":
-                if val:
-                    se = self._make_clone()
-                    se.unhide()
-
-                self._update_se(idx, col, val)
-
-            case "start":  # freq
-                self._update_start(val)
-
-            case "end":  # freq
-                self._update_end(val)
 
             case _:
                 self._update_se(idx, col, val)
@@ -64,41 +52,14 @@ class Row(genericlist.BaseRow):
         return self.se
 
     def _from_scanedge(self, se: model.ScanEdge) -> list[object]:
-        if se.hidden:
-            return [se.idx, "", "", "", "", "", ""]
+        if not se.hidden or se.edited:
+            return self._extracts_cols(se.to_record())
 
-        return self._extracts_cols(se.to_record())
-
-    def _update_start(self, value: object) -> None:
-        se = self.se
-        se = self._make_clone()
-        se.start = value or 0  # type: ignore
-        if se.start:
-            se.unhide()
-
-        if not se.end:
-            se.end = se.start
-        elif se.start > se.end:
-            se.start, se.end = se.end, se.start
-
-        self.data = self._from_scanedge(se)
-
-    def _update_end(self, value: object) -> None:
-        se = self._make_clone()
-        se.end = value or 0  # type: ignore
-        if se.end:
-            se.unhide()
-
-        if not se.start:
-            se.start = se.end
-        elif se.start > se.end:
-            se.start, se.end = se.end, se.start
-
-        self.data = self._from_scanedge(se)
+        return [se.idx, None, None, None, None, None, None]
 
     def _update_se(self, idx: int, col: str, value: object) -> None:
         se = self.se
-        if se.hidden or se.to_record()[col] == value:
+        if se.to_record()[col] == value:
             return
 
         se = self._make_clone()
@@ -110,6 +71,16 @@ class Row(genericlist.BaseRow):
             )
         else:
             super().__setitem__(idx, value)
+
+        if se.hidden:
+            if se.start and se.end:
+                se.unhide()
+            else:
+                se.edited = True
+
+        if se.start and se.end and se.start > se.end:
+            se.start, se.end = se.end, se.start
+            self.data = self._from_scanedge(se)
 
 
 class ScanEdgesList(genericlist.GenericList[Row, model.ScanEdge]):
