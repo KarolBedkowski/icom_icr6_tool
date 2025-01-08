@@ -32,7 +32,9 @@ class BanksPage(tk.Frame):
         self.columnconfigure(0, weight=1)
 
         self._bank_name = tk.StringVar()
+        self._bank_name.trace("w", self._on_bank_name_changed)  # type: ignore
         self._bank_link = gui_model.BoolVar()
+        self._bank_link.trace("w", self._on_bank_link_changed)  # type: ignore
         self._change_manager = cm
         self.__in_paste = False
         self._last_selected_bank = 0
@@ -79,9 +81,7 @@ class BanksPage(tk.Frame):
             self._chan_list.selection_set([bank_pos])
             return
 
-        if selected_bank is not None:
-            self._banks_list.selection_clear(selected_bank)
-
+        self._banks_list.selection_clear(selected_bank)
         self._banks_list.selection_set(bank)
         self._update_chan_list(select=bank_pos)
 
@@ -98,13 +98,13 @@ class BanksPage(tk.Frame):
         return self._change_manager.rm
 
     @property
-    def _selected_bank(self) -> int | None:
+    def _selected_bank(self) -> int:
         """selected bank"""
 
         if sel_bank := self._banks_list.curselection():  # type: ignore
             return int(sel_bank[0])
 
-        return None
+        return 0
 
     def _create_bank_fields(self, frame: tk.Frame) -> None:
         fields = tk.Frame(frame)
@@ -120,10 +120,6 @@ class BanksPage(tk.Frame):
         self._field_bank_link = new_checkbox(
             fields, 0, 2, "Bank link", self._bank_link
         )
-        self._btn_update = ttk.Button(
-            fields, text="Update", command=self._on_bank_update
-        )
-        self._btn_update.grid(row=0, column=3, sticky=tk.E, padx=6)
 
         fields.pack(side=tk.TOP, fill=tk.X)
 
@@ -149,9 +145,6 @@ class BanksPage(tk.Frame):
 
     def _on_bank_select(self, _event: tk.Event) -> None:  # type: ignore
         selected_bank = self._selected_bank
-        if selected_bank is None:
-            return
-
         self._chan_list.reset(scroll_top=True)
         self._update_chan_list(select=self._last_selected_pos[selected_bank])
 
@@ -173,7 +166,6 @@ class BanksPage(tk.Frame):
         else:
             self._field_bank_name["state"] = "disabled"
             self._field_bank_link["state"] = "disabled"
-            self._btn_update["state"] = "disabled"
             self._chan_list.set_data([])
             self._bank_name.set("")
 
@@ -184,8 +176,6 @@ class BanksPage(tk.Frame):
         select: int | None = None,
     ) -> None:
         selected_bank = self._selected_bank
-        if selected_bank is None:
-            return
 
         self._chan_list.set_bank(selected_bank)
         self._last_selected_bank = selected_bank
@@ -208,7 +198,6 @@ class BanksPage(tk.Frame):
 
         self._field_bank_name["state"] = "normal"
         self._field_bank_link["state"] = "normal"
-        self._btn_update["state"] = "normal"
         self._show_stats()
 
         if select is not None:
@@ -217,7 +206,6 @@ class BanksPage(tk.Frame):
 
     def _show_stats(self) -> None:
         selected_bank = self._selected_bank
-        assert selected_bank is not None
 
         rm = self._radio_memory
         bank = rm.banks[selected_bank]
@@ -230,21 +218,33 @@ class BanksPage(tk.Frame):
         )
         self._banks.set(self._banks_stats)  # type: ignore
 
-    def _on_bank_update(self) -> None:
-        selected_bank = self._selected_bank
-        if selected_bank is None:
+    def _on_bank_name_changed(self, _var: str, _idx: str, _op: str) -> None:
+        bank = self._radio_memory.banks[self._selected_bank]
+        name = self._bank_name.get()
+        fixed_name = fixers.fix_name(name)
+        if bank.name == fixed_name:
             return
 
-        bank = self._radio_memory.banks[selected_bank].clone()
-        bank.name = self._bank_name.get().strip()[:6]
+        if fixed_name != name:
+            self._bank_name.set(fixed_name)
+
+        bank = bank.clone()
+        bank.name = name
         self._change_manager.set_bank(bank)
-
-        bl = self._radio_memory.bank_links.clone()
-        bl[selected_bank] = self._bank_link.get_raw()
-        self._change_manager.set_bank_links(bl)
-
         self._change_manager.commit()
         self._update_banks_list()
+
+    def _on_bank_link_changed(self, _var: str, _idx: str, _op: str) -> None:
+        bank = self._selected_bank
+        new_val = self._bank_link.get_raw()
+        bl = self._radio_memory.bank_links
+        if new_val == bl[bank]:
+            return
+
+        bl = bl.clone()
+        bl[bank] = new_val
+        self._change_manager.set_bank_links(bl)
+        self._change_manager.commit()
 
     def _on_channel_select(self, rows: list[banks_channelslist.BLRow]) -> None:
         self._btn_sort["state"] = "normal" if len(rows) > 1 else "disabled"
