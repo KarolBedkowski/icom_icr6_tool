@@ -16,7 +16,7 @@ import sys
 import typing as ty
 from pathlib import Path
 
-from . import consts, expimp, ic_io, model, radio_memory
+from . import consts, expimp, ic_io, model, reports
 
 _LOG = logging.getLogger()
 
@@ -331,12 +331,13 @@ def main_send_command(args: argparse.Namespace) -> None:
     except ic_io.NoDataError:
         print("no more data")
 
+
 def main_print_sheet(args: argparse.Namespace) -> None:
     """cmd: duplicated-freq
     args: <icf file>
     """
     mem = ic_io.load_icf_file(args.icf_file)
-    for line in radio_memory.generate_sheet(mem):
+    for line in reports.generate_sheet(mem):
         print(line)
 
 

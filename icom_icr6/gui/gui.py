@@ -11,7 +11,7 @@ import typing as ty
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
-from icom_icr6 import VERSION, config, expimp, ic_io
+from icom_icr6 import VERSION, config, expimp, ic_io, reports
 from icom_icr6.change_manager import ChangeManeger
 from icom_icr6.radio_memory import RadioMemory
 
@@ -184,6 +184,7 @@ class App(tk.Frame):
             label="Autowrrite channels...",
             command=lambda: self._on_menu_export("awchannels"),
         )
+        menu.add_command(label="Sheet...", command=self._on_menu_export_sheet)
         return menu
 
     def _create_nb_channels(self) -> tk.Widget:
@@ -382,6 +383,29 @@ class App(tk.Frame):
                 case "awchannels":
                     channels = self._radio_memory.awchannels
                     expimp.export_awchannels_file(channels, dstfile)
+
+        except Exception as err:
+            messagebox.showerror("Export error", str(err))
+            return
+
+    def _on_menu_export_sheet(self) -> None:
+        fname = filedialog.asksaveasfilename(
+            parent=self,
+            filetypes=[("TXT file", ".txt"), ("All files", "*.*")],
+            initialdir=str(self._last_file.parent) if self._last_file else ".",
+            initialfile="sheet.txt",
+            defaultextension=".txt",
+        )
+        if not fname:
+            return
+
+        dstfile = Path(fname)
+
+        try:
+            with dstfile.open(mode="wt") as ofile:
+                for line in reports.generate_sheet(self._radio_memory):
+                    ofile.write(line)
+                    ofile.write("\n")
 
         except Exception as err:
             messagebox.showerror("Export error", str(err))
