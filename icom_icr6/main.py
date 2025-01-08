@@ -16,7 +16,7 @@ import sys
 import typing as ty
 from pathlib import Path
 
-from . import consts, expimp, ic_io, model
+from . import consts, expimp, ic_io, model, reports
 
 _LOG = logging.getLogger()
 
@@ -332,6 +332,15 @@ def main_send_command(args: argparse.Namespace) -> None:
         print("no more data")
 
 
+def main_print_sheet(args: argparse.Namespace) -> None:
+    """cmd: duplicated-freq
+    args: <icf file>
+    """
+    mem = ic_io.load_icf_file(args.icf_file)
+    for line in reports.generate_sheet(mem):
+        print(line)
+
+
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -421,6 +430,10 @@ def _parse_args() -> argparse.Namespace:
         "payload", help="Payload to send in hex string", nargs="?"
     )
     cmd.set_defaults(func=main_send_command)
+
+    cmd = cmds.add_parser("sheet", help="Print summary information")
+    cmd.add_argument("icf_file", type=Path, help="Input ICF file")
+    cmd.set_defaults(func=main_print_sheet)
 
     return parser.parse_args()
 
