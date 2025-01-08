@@ -75,13 +75,11 @@ class BanksPage(tk.Frame):
         self.select(bank, bank_pos)
 
     def select(self, bank: int, bank_pos: int | None = None) -> None:
-        selected_bank = self._selected_bank
-
-        if bank == selected_bank and bank_pos is not None:
+        if bank == self._last_selected_bank and bank_pos is not None:
             self._chan_list.selection_set([bank_pos])
             return
 
-        self._banks_list.selection_clear(selected_bank)
+        self._banks_list.selection_clear(self._last_selected_bank)
         self._banks_list.selection_set(bank)
         self._update_chan_list(select=bank_pos)
 
@@ -96,15 +94,6 @@ class BanksPage(tk.Frame):
     @property
     def _radio_memory(self) -> RadioMemory:
         return self._change_manager.rm
-
-    @property
-    def _selected_bank(self) -> int:
-        """selected bank"""
-
-        if sel_bank := self._banks_list.curselection():  # type: ignore
-            return int(sel_bank[0])
-
-        return 0
 
     def _create_bank_fields(self, frame: tk.Frame) -> None:
         fields = tk.Frame(frame)
@@ -144,13 +133,17 @@ class BanksPage(tk.Frame):
         bframe.pack(side=tk.BOTTOM, fill=tk.X)
 
     def _on_bank_select(self, _event: tk.Event) -> None:  # type: ignore
-        selected_bank = self._selected_bank
+        if sel_bank := self._banks_list.curselection():  # type: ignore
+            self._last_selected_bank = int(sel_bank[0])
+        else:
+            self._last_selected_bank = 0
+
         self._chan_list.reset(scroll_top=True)
-        self._update_chan_list(select=self._last_selected_pos[selected_bank])
+        self._update_chan_list(
+            select=self._last_selected_pos[self._last_selected_bank]
+        )
 
     def _update_banks_list(self) -> None:
-        selected_bank = self._selected_bank
-
         banks = self._banks_list
         rm = self._radio_memory
 
@@ -161,13 +154,7 @@ class BanksPage(tk.Frame):
 
         self._banks.set(self._banks_stats)  # type: ignore
 
-        if selected_bank is not None:
-            banks.selection_set(selected_bank)
-        else:
-            self._field_bank_name["state"] = "disabled"
-            self._field_bank_link["state"] = "disabled"
-            self._chan_list.set_data([])
-            self._bank_name.set("")
+        banks.selection_set(self._last_selected_bank)
 
     def _update_chan_list(
         self,
@@ -175,7 +162,7 @@ class BanksPage(tk.Frame):
         *,
         select: int | None = None,
     ) -> None:
-        selected_bank = self._selected_bank
+        selected_bank = self._last_selected_bank
 
         self._chan_list.set_bank(selected_bank)
         self._last_selected_bank = selected_bank
@@ -205,7 +192,7 @@ class BanksPage(tk.Frame):
             self.after(10, lambda: self._chan_list.selection_set([select]))
 
     def _show_stats(self) -> None:
-        selected_bank = self._selected_bank
+        selected_bank = self._last_selected_bank
 
         rm = self._radio_memory
         bank = rm.banks[selected_bank]
@@ -219,7 +206,7 @@ class BanksPage(tk.Frame):
         self._banks.set(self._banks_stats)  # type: ignore
 
     def _on_bank_name_changed(self, _var: str, _idx: str, _op: str) -> None:
-        bank = self._radio_memory.banks[self._selected_bank]
+        bank = self._radio_memory.banks[self._last_selected_bank]
         name = self._bank_name.get()
         fixed_name = fixers.fix_name(name)
         if bank.name == fixed_name:
@@ -235,7 +222,7 @@ class BanksPage(tk.Frame):
         self._update_banks_list()
 
     def _on_bank_link_changed(self, _var: str, _idx: str, _op: str) -> None:
-        bank = self._selected_bank
+        bank = self._last_selected_bank
         new_val = self._bank_link.get_raw()
         bl = self._radio_memory.bank_links
         if new_val == bl[bank]:
@@ -248,9 +235,7 @@ class BanksPage(tk.Frame):
 
     def _on_channel_select(self, rows: list[banks_channelslist.BLRow]) -> None:
         self._btn_sort["state"] = "normal" if len(rows) > 1 else "disabled"
-
-        if (bank := self._selected_bank) is not None:
-            self._last_selected_pos[bank] = rows[0].rownum
+        self._last_selected_pos[self._last_selected_bank] = rows[0].rownum
 
         if _LOG.isEnabledFor(logging.DEBUG):
             for rec in rows:
@@ -297,9 +282,7 @@ class BanksPage(tk.Frame):
     ) -> None:
         chan: model.Channel | None
 
-        selected_bank = self._selected_bank
-        if selected_bank is None:
-            return
+        selected_bank = self._last_selected_bank
 
         # modified channels
         channels = []
@@ -396,10 +379,6 @@ class BanksPage(tk.Frame):
             gui_model.Clipboard.instance().put(res)
 
     def _on_channel_paste(self, _event: tk.Event) -> None:  # type: ignore
-        selected_bank = self._selected_bank
-        if selected_bank is None:
-            return
-
         sel = self._chan_list.selection()
         if not sel:
             return
@@ -410,7 +389,9 @@ class BanksPage(tk.Frame):
         data = ty.cast(str, clip.get())
         try:
             # try import whole channels
-            if not self._on_channel_paste_channels(selected_bank, sel, data):
+            if not self._on_channel_paste_channels(
+                self._last_selected_bank, sel, data
+            ):
                 # try import as plain data
                 self._on_channel_paste_simple(data)
 
