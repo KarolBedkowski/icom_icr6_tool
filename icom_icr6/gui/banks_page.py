@@ -296,13 +296,15 @@ class BanksPage(tk.Frame):
                     channels.append(old_chan)
 
                 # add chan to bank
-                chan = self._radio_memory.channels[rec.new_channel]
+                chan = self._radio_memory.channels[rec.new_channel].clone()
 
             elif rec.new_values:  # empty pos, entered freq
                 chan = self._radio_memory.find_first_hidden_channel()
                 if not chan:
                     # TODO: error? is this possible?
                     continue
+
+                chan = chan.clone()
 
                 if freq := rec.new_values.get("freq"):
                     assert isinstance(freq, int)
