@@ -75,6 +75,7 @@ class App(tk.Frame):
             self._set_loaded_filename(None)
 
         self.bind("<Destroy>", self.__on_destroy)
+        master.protocol("WM_DELETE_WINDOW", self.__on_closing)
 
     def set_status(self, msg: str) -> None:
         """Set status panel content."""
@@ -462,6 +463,10 @@ class App(tk.Frame):
 
     ##  window callbacks
 
+    def __on_closing(self) -> None:
+        if messagebox.askokcancel("Quit", "Do you want to quit?"):
+            self.master.destroy()
+
     def __on_destroy(self, _event: tk.Event) -> None:  # type: ignore
         """Save window geometry."""
         config.CONFIG.main_window_geometry = self.master.geometry()  # type: ignore
@@ -575,7 +580,6 @@ def start_gui(cfg_file: Path | None, icf_file: Path | None) -> None:
     myapp = App(root, icf_file)
     root.geometry(config.CONFIG.main_window_geometry)
     root.wait_visibility()
-    root.grab_set()
     root.lift()
 
     myapp.mainloop()
