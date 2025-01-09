@@ -85,7 +85,7 @@ def to_freq(o: object, **_kwargs: object) -> int:
 
 class GenericList(tk.Frame, ty.Generic[T, RT]):
     _ROW_CLASS: type[BaseRow] = None  # type: ignore
-    _ALTERNATE_COLOR = "#E5EFFA"
+    _ALTERNATE_COLOR = "#F5F5FF"
 
     def __init__(self, parent: tk.Widget) -> None:
         super().__init__(parent)
