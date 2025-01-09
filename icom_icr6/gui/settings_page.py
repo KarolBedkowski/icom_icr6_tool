@@ -24,6 +24,7 @@ class SettingsPage(tk.Frame):
 
         super().__init__(parent)
 
+        self._disable_updates = False
         self._change_manager = cm
         self._create_vars()
         self._create_fields()
@@ -74,6 +75,10 @@ class SettingsPage(tk.Frame):
 
         self._var_comment = tk.StringVar()
 
+        for key, var in self.__dict__.items():
+            if key.startswith("_var_"):
+                var.trace("w", self._on_set_changed)
+
     def _create_fields(self) -> None:
         frame = tk.Frame(self)
         frame.columnconfigure(0, weight=1)
@@ -119,13 +124,13 @@ class SettingsPage(tk.Frame):
 
         frame.pack(fill=tk.X, side=tk.TOP, padx=12, pady=12)
 
-        frame_btns = tk.Frame(self)
-        frame_btns.columnconfigure(0, weight=1)
-        ttk.Button(
-            frame_btns, text="Save settings", command=self.__on_update
-        ).grid(row=0, column=0, sticky=tk.E + tk.N)
+    #        frame_btns = tk.Frame(self)
+    #        frame_btns.columnconfigure(0, weight=1)
+    #        ttk.Button(
+    #            frame_btns, text="Save settings", command=self.__on_update
+    #        ).grid(row=0, column=0, sticky=tk.E + tk.N)
 
-        frame_btns.pack(side=tk.TOP, fill=tk.X, padx=12, pady=12)
+    #        frame_btns.pack(side=tk.TOP, fill=tk.X, padx=12, pady=12)
 
     def _create_set_mode(self, parent: tk.Frame) -> tk.Widget:
         frame = ttk.LabelFrame(parent, text="Set/Mode")
@@ -353,6 +358,7 @@ class SettingsPage(tk.Frame):
         frame.pack(side=tk.TOP, expand=False, fill=tk.BOTH, padx=12, pady=12)
 
     def __update(self) -> None:
+        self._disable_updates = True
         sett = self._radio_memory.settings
 
         self._var_func_dial_step.set_raw(sett.func_dial_step)
@@ -391,8 +397,12 @@ class SettingsPage(tk.Frame):
             self._wx_frame = None
 
         self._var_comment.set(self._radio_memory.comment)
+        self._disable_updates = False
 
-    def __on_update(self) -> None:
+    def _on_set_changed(self, _var: str, _idx: str, _op: str) -> None:
+        if self._disable_updates:
+            return
+
         sett = self._radio_memory.settings.clone()
 
         sett.func_dial_step = self._var_func_dial_step.get_raw()
@@ -428,11 +438,18 @@ class SettingsPage(tk.Frame):
             sett.wx_alert = self._var_wx_alert.get_raw()
             sett.wx_channel = self._var_wx_channel.get_raw()
 
-        self._change_manager.set_settings(sett)
-        self._change_manager.set_comment(self._var_comment.get())
-        self._change_manager.commit()
+        changed = False
+        if sett != self._radio_memory.settings:
+            self._change_manager.set_settings(sett)
+            changed = True
 
-        self.__update()
+        if (cmt := self._var_comment.get()) != self._radio_memory.comment:
+            self._change_manager.set_comment(cmt)
+            changed = True
+
+        if changed:
+            self._change_manager.commit()
+            self.__update()
 
 
 def validate_comment(comment: str) -> bool:
