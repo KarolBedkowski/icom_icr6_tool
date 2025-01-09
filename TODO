@@ -1,12 +1,10 @@
 
-- show when file is modified
-- prompt for exit
-
 - user notes for channels groups
 - export / import data in bank/group
 - reorder banks
 - reports /  statistics
 - monitor / control radio from gui
+- load default settings button
 
 
 - how to read region from radio? from serial number? 
