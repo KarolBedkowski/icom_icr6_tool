@@ -93,6 +93,7 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
             self,
             data=[],
             default_column_width=40,
+            auto_resize_columns=30,
             alternate_color=self._ALTERNATE_COLOR,
             max_undos=0,
         )
