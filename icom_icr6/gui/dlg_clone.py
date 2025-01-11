@@ -60,20 +60,21 @@ class _CloneDialog(simpledialog.Dialog):
         self._var_progress = tk.StringVar()
         self._var_hispeed = tk.IntVar()
 
-        tk.Label(master, text="Port: ").grid(
-            row=0, column=0, sticky=tk.N + tk.W + tk.S, padx=6, pady=6
-        )
+        frame = tk.Frame(master)
+        ttk.Label(frame, text="Port: ").pack(side=tk.LEFT, padx=6, pady=6)
         ttys = [
             str(p) for p in Path("/dev/").iterdir() if p.name.startswith("tty")
         ]
 
         self._var_port.set(config.CONFIG.last_port)
         ttk.Combobox(
-            master,
+            frame,
             values=ttys,
             exportselection=False,
             textvariable=self._var_port,
-        ).grid(row=0, column=1, sticky=tk.N + tk.W + tk.E, padx=6, pady=6)
+        ).pack(side=tk.LEFT, expand=True, padx=6, pady=6)
+
+        frame.pack(side=tk.TOP, fill=tk.X)
 
         ttk.Checkbutton(
             master,
@@ -81,18 +82,11 @@ class _CloneDialog(simpledialog.Dialog):
             onvalue=1,
             offvalue=0,
             variable=self._var_hispeed,
-        ).grid(
-            row=1,
-            column=0,
-            sticky=tk.N + tk.W + tk.E,
-            padx=6,
-            pady=6,
-            columnspan=2,
-        )
+        ).pack(side=tk.TOP, fill=tk.X)
         self._var_hispeed.set(1 if config.CONFIG.hispeed else 0)
 
-        tk.Label(master, text="", textvariable=self._var_progress).grid(
-            row=2, column=0, columnspan=2, sticky=tk.N + tk.W, padx=6, pady=6
+        tk.Message(master, aspect=500, textvariable=self._var_progress).pack(
+            side=tk.TOP, fill=tk.BOTH, expand=True, padx=6, pady=6
         )
 
     def buttonbox(self) -> None:
