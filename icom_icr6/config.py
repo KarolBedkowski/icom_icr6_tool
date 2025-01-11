@@ -25,6 +25,7 @@ class Config:
     main_window_geometry: str = "1024x768"
 
     find_window_geometry: str = "600x300"
+    reports_window_geometry: str = "800x600"
 
     def push_last_file(self, file: str) -> None:
         if not file:
@@ -65,6 +66,10 @@ def load(file: Path) -> Config:
     CONFIG.find_window_geometry = (
         cfg.get("find_wnd", "geometry", fallback="")
         or CONFIG.find_window_geometry
+    )
+    CONFIG.reports_window_geometry = (
+        cfg.get("reports_wnd", "geometry", fallback="")
+        or CONFIG.reports_window_geometry
     )
 
     _LOG.debug("config %r", CONFIG)

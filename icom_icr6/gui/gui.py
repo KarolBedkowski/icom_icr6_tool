@@ -21,11 +21,11 @@ from . import (
     channels_page,
     dlg_clone,
     dlg_find,
+    dlg_reports,
     gui_model,
     scanedges_page,
     scanlinks_page,
     settings_page,
-    stats_page,
 )
 
 _LOG = logging.getLogger(__name__)
@@ -61,7 +61,6 @@ class App(tk.Frame):
         self._ntb.add(self._create_nb_scan_links(), text="Scan Link")
         self._ntb.add(self._create_nb_awchannels(), text="Autowrite channels")
         self._ntb.add(self._create_nb_settings(), text="Settings")
-        self._ntb.add(self._create_nb_stats(), text="Statistics")
         self._ntb.bind("<<NotebookTabChanged>>", self.__on_nb_page_changed)
 
         self._ntb.pack(fill="both", expand=True)
@@ -152,13 +151,22 @@ class App(tk.Frame):
             accelerator="Ctrl+Y",
         )
         master.bind_all("<Control-y>", self._on_menu_redo)
+
         edit_menu.add_separator()
+
         edit_menu.add_command(
             label="Find...",
             command=self._on_menu_find,
             accelerator="Ctrl+F",
         )
         master.bind_all("<Control-f>", self._on_menu_find)
+
+        edit_menu.add_separator()
+
+        edit_menu.add_command(
+            label="Reports...", command=self._on_menu_reports
+        )
+
         menu_bar.add_cascade(label="Edit", menu=edit_menu)
 
         radio_menu = tk.Menu(menu_bar, tearoff=False)
@@ -223,10 +231,6 @@ class App(tk.Frame):
             self, self._change_manager
         )
         return self._nb_settings
-
-    def _create_nb_stats(self) -> tk.Widget:
-        self._nb_stats = stats_page.StatsPage(self, self._change_manager)
-        return self._nb_stats
 
     # menu callbacks
 
@@ -321,6 +325,9 @@ class App(tk.Frame):
         dlg_find.FindDialog(
             self, self._radio_memory, self._on_find_object_select
         )
+
+    def _on_menu_reports(self, _event: tk.Event | None = None) -> None:  # type: ignore
+        dlg_reports.ReportsDialog(self, self._radio_memory)
 
     def __on_nb_page_changed(self, _event: tk.Event) -> None:  # type: ignore
         self.set_status("")
@@ -518,7 +525,6 @@ class App(tk.Frame):
             self._nb_scan_links,
             self._nb_aw_channels,
             self._nb_settings,
-            self._nb_stats,
         )
         pages[selected_tab].update_tab()
 
@@ -530,7 +536,6 @@ class App(tk.Frame):
             self._nb_scan_links,
             self._nb_aw_channels,
             self._nb_settings,
-            self._nb_stats,
         )
 
         for page in pages:
