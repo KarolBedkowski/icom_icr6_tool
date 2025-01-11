@@ -10,7 +10,7 @@ import typing as ty
 
 from tksheet import EventDataDict, Span, functions
 
-from icom_icr6 import consts, fixers, model
+from icom_icr6 import consts, fixers, model, radio_memory
 
 from . import genericlist
 
@@ -155,6 +155,7 @@ class ChannelsList(genericlist.GenericList[Row, model.Channel]):
     def __init__(self, parent: tk.Widget) -> None:
         super().__init__(parent)
         self.region = consts.Region.GLOBAL
+        self.radio_memory: radio_memory.RadioMemory | None = None
 
         self.on_channel_bank_validate: BankPosValidator | None = None
 
@@ -231,7 +232,7 @@ class ChannelsList(genericlist.GenericList[Row, model.Channel]):
                 if chan.bank != value and self.on_channel_bank_validate:
                     # change bank,
                     bank_pos = self.on_channel_bank_validate(  # pylint:disable=not-callable
-                        value,
+                        value[0] if value else "",
                         chan.number,
                         0,
                         try_set_free_slot=True,
@@ -298,6 +299,16 @@ class ChannelsList(genericlist.GenericList[Row, model.Channel]):
                     ),
                     set_value=data_row[idx],
                 )
+
+            elif colname == "bank" and self.radio_memory:
+                # use full bank names
+                names = [bank.full_name for bank in self.radio_memory.banks]
+                sel = (
+                    names[chan.bank]
+                    if chan.bank != consts.BANK_NOT_SET
+                    else ""
+                )
+                span.dropdown(names, set_value=sel)
 
             elif isinstance(values, (list, tuple)):
                 span.dropdown(values, set_value=data_row[idx])

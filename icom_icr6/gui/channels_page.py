@@ -43,6 +43,7 @@ class ChannelsPage(tk.Frame):
 
         frame = tk.Frame(pw)
         self._create_channel_list(frame)
+        self._chan_list.radio_memory = cm.rm
         pw.add(frame, weight=1)
 
         pw.pack(expand=True, fill=tk.BOTH, side=tk.TOP, padx=12, pady=12)

@@ -433,8 +433,10 @@ class Channel:
             self.polarity = get_index_or_default(consts.POLARITY, p)
 
         if (bank := data.get("bank")) is not None:
+            # detect bank from first letter of `bank` field.
+            assert isinstance(bank, str)
             self.bank = get_index_or_default(
-                consts.BANK_NAMES, bank, consts.BANK_NOT_SET
+                consts.BANK_NAMES, bank[0].upper(), consts.BANK_NOT_SET
             )
 
         if (bp := data.get("bank_pos")) is not None and bp != "":
@@ -500,6 +502,13 @@ class Bank:
 
     def clone(self) -> Bank:
         return copy.deepcopy(self)
+
+    @property
+    def full_name(self) -> str:
+        if self.name:
+            return f"{consts.BANK_NAMES[self.idx]}: {self.name}"
+
+        return consts.BANK_NAMES[self.idx]
 
     @classmethod
     def from_data(
