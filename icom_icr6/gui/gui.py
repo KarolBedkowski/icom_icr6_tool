@@ -21,6 +21,7 @@ from . import (
     channels_page,
     dlg_clone,
     dlg_find,
+    dlg_reports,
     gui_model,
     scanedges_page,
     scanlinks_page,
@@ -150,13 +151,22 @@ class App(tk.Frame):
             accelerator="Ctrl+Y",
         )
         master.bind_all("<Control-y>", self._on_menu_redo)
+
         edit_menu.add_separator()
+
         edit_menu.add_command(
             label="Find...",
             command=self._on_menu_find,
             accelerator="Ctrl+F",
         )
         master.bind_all("<Control-f>", self._on_menu_find)
+
+        edit_menu.add_separator()
+
+        edit_menu.add_command(
+            label="Reports...", command=self._on_menu_reports
+        )
+
         menu_bar.add_cascade(label="Edit", menu=edit_menu)
 
         radio_menu = tk.Menu(menu_bar, tearoff=False)
@@ -315,6 +325,9 @@ class App(tk.Frame):
         dlg_find.FindDialog(
             self, self._radio_memory, self._on_find_object_select
         )
+
+    def _on_menu_reports(self, _event: tk.Event | None = None) -> None:  # type: ignore
+        dlg_reports.ReportsDialog(self, self._radio_memory)
 
     def __on_nb_page_changed(self, _event: tk.Event) -> None:  # type: ignore
         self.set_status("")

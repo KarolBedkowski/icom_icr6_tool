@@ -333,11 +333,14 @@ def main_send_command(args: argparse.Namespace) -> None:
 
 
 def main_print_sheet(args: argparse.Namespace) -> None:
-    """cmd: duplicated-freq
-    args: <icf file>
-    """
     mem = ic_io.load_icf_file(args.icf_file)
     for line in reports.generate_sheet(mem):
+        print(line)
+
+
+def main_print_stats(args: argparse.Namespace) -> None:
+    mem = ic_io.load_icf_file(args.icf_file)
+    for line in reports.generate_stats(mem):
         print(line)
 
 
@@ -434,6 +437,10 @@ def _parse_args() -> argparse.Namespace:
     cmd = cmds.add_parser("sheet", help="Print summary information")
     cmd.add_argument("icf_file", type=Path, help="Input ICF file")
     cmd.set_defaults(func=main_print_sheet)
+
+    cmd = cmds.add_parser("stats", help="Print statistics")
+    cmd.add_argument("icf_file", type=Path, help="Input ICF file")
+    cmd.set_defaults(func=main_print_stats)
 
     return parser.parse_args()
 
