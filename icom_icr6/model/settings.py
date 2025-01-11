@@ -145,6 +145,36 @@ class RadioSettings:
             if key not in ("debug_info", "updated"):
                 yield key, val
 
+    def reset(self) -> None:
+        self.af_filer_am = False
+        self.af_filer_fm = False
+        self.af_filer_wfm = False
+        self.am_ant = 0
+        self.auto_power_off = 0
+        self.backlight = 2
+        self.beep_level = 0
+        self.charging_type = 1
+        self.civ_address = 126
+        self.civ_baud_rate = 5
+        self.civ_transceive = True
+        self.dial_function = 0
+        self.dial_speed_up = True
+        self.fm_ant = 0
+        self.func_dial_step = 1
+        self.key_beep = True
+        self.key_lock = 0
+        self.lcd_contrast = 1
+        self.mem_display_type = 0
+        self.monitor = 0
+        self.pause_timer = 4
+        self.power_save = True
+        self.program_skip_scan = True
+        self.resume_timer = 2
+        self.set_expand = False
+        self.stop_beep = False
+        self.wx_alert = False
+        self.wx_channel = 0
+
 
 @dataclass
 class BandDefaults:

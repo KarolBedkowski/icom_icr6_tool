@@ -6,7 +6,7 @@
 
 import logging
 import tkinter as tk
-from tkinter import ttk
+from tkinter import messagebox, ttk
 
 from icom_icr6 import consts, validators
 from icom_icr6.change_manager import ChangeManeger
@@ -124,13 +124,15 @@ class SettingsPage(tk.Frame):
 
         frame.pack(fill=tk.X, side=tk.TOP, padx=12, pady=12)
 
-    #        frame_btns = tk.Frame(self)
-    #        frame_btns.columnconfigure(0, weight=1)
-    #        ttk.Button(
-    #            frame_btns, text="Save settings", command=self.__on_update
-    #        ).grid(row=0, column=0, sticky=tk.E + tk.N)
+        frame_btns = tk.Frame(self)
+        frame_btns.columnconfigure(0, weight=1)
+        ttk.Button(
+            frame_btns,
+            text="Load default settings",
+            command=self.__on_load_defaults,
+        ).grid(row=0, column=0, sticky=tk.E + tk.N)
 
-    #        frame_btns.pack(side=tk.TOP, fill=tk.X, padx=12, pady=12)
+        frame_btns.pack(side=tk.TOP, fill=tk.X, padx=12, pady=12)
 
     def _create_set_mode(self, parent: tk.Frame) -> tk.Widget:
         frame = ttk.LabelFrame(parent, text="Set/Mode")
@@ -450,6 +452,18 @@ class SettingsPage(tk.Frame):
         if changed:
             self._change_manager.commit()
             self.__update()
+
+    def __on_load_defaults(self) -> None:
+        if not messagebox.askokcancel(
+            "Settings", "Reset all settings to default values?"
+        ):
+            return
+
+        sett = self._radio_memory.settings.clone()
+        sett.reset()
+        self._change_manager.set_settings(sett)
+        self._change_manager.commit()
+        self.__update()
 
 
 def validate_comment(comment: str) -> bool:
