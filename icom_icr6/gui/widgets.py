@@ -23,7 +23,7 @@ def new_entry(  # noqa: PLR0913
     var: tk.Variable,
     validator: str | None = None,
 ) -> ttk.Entry:
-    tk.Label(parent, text=label).grid(
+    ttk.Label(parent, text=label).grid(
         row=row, column=col, sticky=tk.N + tk.W + tk.S, padx=6, pady=6
     )
     entry = ttk.Entry(parent, textvariable=var)
@@ -51,7 +51,7 @@ def new_combo(  # noqa: PLR0913
     *,
     colspan: int = 1,
 ) -> ttk.Combobox:
-    tk.Label(parent, text=label).grid(
+    ttk.Label(parent, text=label).grid(
         row=row, column=col, sticky=tk.N + tk.W, padx=6, pady=6
     )
     combo = ttk.Combobox(

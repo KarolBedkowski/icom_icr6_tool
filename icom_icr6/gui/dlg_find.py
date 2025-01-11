@@ -228,7 +228,7 @@ class FindDialog(tk.Toplevel):
         frame_body.pack(side=tk.TOP, fill=tk.BOTH, padx=12, pady=12)
 
         frame_status = tk.Frame(self)
-        tk.Label(frame_status, textvariable=self._status).pack(side=tk.LEFT)
+        ttk.Label(frame_status, textvariable=self._status).pack(side=tk.LEFT)
         frame_status.pack(side=tk.BOTTOM, fill=tk.X, padx=12, pady=12)
 
         frame_tree, self.result_tree = self._create_result_tree()
