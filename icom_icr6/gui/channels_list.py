@@ -309,6 +309,7 @@ class ChannelsList(genericlist.GenericList[Row, model.Channel]):
                     else ""
                 )
                 span.dropdown(names, set_value=sel)
+                span.align("W")
 
             elif isinstance(values, (list, tuple)):
                 span.dropdown(values, set_value=data_row[idx])
