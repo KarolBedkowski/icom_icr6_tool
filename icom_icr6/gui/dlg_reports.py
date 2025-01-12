@@ -16,6 +16,8 @@ from tkinter import filedialog, messagebox, ttk
 
 from icom_icr6 import config, reports
 
+from . import gui_model
+
 if ty.TYPE_CHECKING:
     from icom_icr6.radio_memory import RadioMemory
 
@@ -75,6 +77,11 @@ class ReportsDialog(tk.Toplevel):
             text="Save...",
             command=self._on_save_report,
         ).pack(side=tk.RIGHT, padx=6, pady=6)
+        ttk.Button(
+            frame_top,
+            text="Copy",
+            command=self._on_copy_report,
+        ).pack(side=tk.RIGHT, padx=6, pady=6)
 
         frame_top.pack(side=tk.TOP, fill=tk.X, pady=6)
 
@@ -128,3 +135,9 @@ class ReportsDialog(tk.Toplevel):
             except Exception as err:
                 _LOG.exception("save report error")
                 messagebox.showerror("Save file error", str(err))
+
+    def _on_copy_report(self) -> None:
+        data = self._result.get("1.0", tk.END)
+        if data:
+            cb = gui_model.Clipboard.instance()
+            cb.put(data)
