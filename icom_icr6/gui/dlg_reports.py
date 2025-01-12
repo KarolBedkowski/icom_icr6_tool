@@ -130,8 +130,9 @@ class ReportsDialog(tk.Toplevel):
         if fname:
             data = self._result.get("1.0", tk.END)
             try:
-                with Path(fname).open("wt") as ofile:
+                with Path(fname).open("wt", encoding="UTF-8") as ofile:
                     ofile.write(data)
+
             except Exception as err:
                 _LOG.exception("save report error")
                 messagebox.showerror("Save file error", str(err))

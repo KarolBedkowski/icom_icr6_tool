@@ -425,7 +425,7 @@ class App(tk.Frame):
         dstfile = Path(fname)
 
         try:
-            with dstfile.open(mode="wt") as ofile:
+            with dstfile.open(mode="wt", encoding="UTF-8") as ofile:
                 for line in reports.generate_sheet(self._radio_memory):
                     ofile.write(line)
                     ofile.write("\n")
