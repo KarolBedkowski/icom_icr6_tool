@@ -435,8 +435,9 @@ class Channel:
         if (bank := data.get("bank")) is not None:
             # detect bank from first letter of `bank` field.
             assert isinstance(bank, str)
+            bank = bank[0].upper() if bank else ""
             self.bank = get_index_or_default(
-                consts.BANK_NAMES, bank[0].upper(), consts.BANK_NOT_SET
+                consts.BANK_NAMES, bank, consts.BANK_NOT_SET
             )
 
         if (bp := data.get("bank_pos")) is not None and bp != "":
