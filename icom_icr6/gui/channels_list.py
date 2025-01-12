@@ -208,8 +208,7 @@ class ChannelsList(genericlist.GenericList[Row, model.Channel]):
                     return None
 
             case "freq":
-                val = genericlist.to_freq(value)
-                value = fixers.fix_frequency(val)
+                value = fixers.fix_frequency(genericlist.to_freq(value))
 
             case "name":
                 value = fixers.fix_name(value)
@@ -246,19 +245,23 @@ class ChannelsList(genericlist.GenericList[Row, model.Channel]):
                     row[16] = bank_pos
 
             case "bank_pos":
-                if value != "" and value is not None:
-                    value = max(min(int(value), 99), 0)
-                    if self.on_channel_bank_validate:
-                        value = (
-                            self.on_channel_bank_validate(  # pylint:disable=not-callable
-                                chan.bank, chan.number, value
-                            )
-                            if self.on_channel_bank_validate
-                            else value
-                        )
+                value = self._validate_bank_pos(value, chan)
 
         _LOG.debug("_on_validate_edits: result value=%r", value)
         return value
+
+    def _validate_bank_pos(self, value: object, chan: model.Channel) -> object:
+        if value == "" or value is None:
+            return value
+
+        pos = max(min(int(value), 99), 0)  # type: ignore
+
+        if self.on_channel_bank_validate:
+            pos = self.on_channel_bank_validate(  # pylint:disable=not-callable
+                chan.bank, chan.number, pos
+            )
+
+        return pos
 
     def update_row_state(self, row: int) -> None:
         """Set state of other cells in row (readony)."""
