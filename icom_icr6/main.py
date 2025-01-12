@@ -344,18 +344,9 @@ def main_print_stats(args: argparse.Namespace) -> None:
         print(line)
 
 
-def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "-v",
-        "--verbose",
-        action="count",
-        help="increase log level",
-        default=0,
-    )
-
-    cmds = parser.add_subparsers(required=True)
-
+def _parse_args_radio_commands(
+    cmds: argparse._SubParsersAction[argparse.ArgumentParser],
+) -> None:
     cmd = cmds.add_parser(
         "clone_from_radio", help="Clone memory from radio into ICF file"
     )
@@ -367,6 +358,18 @@ def _parse_args() -> argparse.Namespace:
     cmd.add_argument("port", help="USB/TTY/COM port")
     cmd.set_defaults(func=main_radio_info)
 
+    cmd = cmds.add_parser("send", help="Send command to radio")
+    cmd.add_argument("port", help="USB/TTY/COM port")
+    cmd.add_argument("command", help="Command to send (1 byte in hex)")
+    cmd.add_argument(
+        "payload", help="Payload to send in hex string", nargs="?"
+    )
+    cmd.set_defaults(func=main_send_command)
+
+
+def _parse_args_print_commands(
+    cmds: argparse._SubParsersAction[argparse.ArgumentParser],
+) -> None:
     cmd = cmds.add_parser("channels", help="Print channels")
     cmd.add_argument("icf_file", type=Path, help="Input ICF file")
     cmd.add_argument(
@@ -392,20 +395,6 @@ def _parse_args() -> argparse.Namespace:
     cmd.add_argument("icf_file", type=Path, help="Input ICF file")
     cmd.set_defaults(func=main_print_scan_programs)
 
-    cmd = cmds.add_parser(
-        "icf2raw", help="Convert ICF file to raw memory file"
-    )
-    cmd.add_argument("icf_file", type=Path, help="Input ICF file")
-    cmd.add_argument("raw_file", type=Path, nargs="?", help="output raw file")
-    cmd.set_defaults(func=main_write_mem_raw)
-
-    cmd = cmds.add_parser(
-        "raw2icf", help="Convert raw memory file into ICF file"
-    )
-    cmd.add_argument("raw_file", type=Path, help="Input raw file")
-    cmd.add_argument("icf_file", type=Path, nargs="?", help="output ICF file")
-    cmd.set_defaults(func=main_write_icf_mem)
-
     cmd = cmds.add_parser("settings", help="Print radio settings")
     cmd.add_argument("icf_file", type=Path, help="Input ICF file")
     cmd.set_defaults(func=main_print_settings)
@@ -426,14 +415,28 @@ def _parse_args() -> argparse.Namespace:
     )
     cmd.set_defaults(func=main_print_dupl_freq)
 
-    cmd = cmds.add_parser("send", help="Send command to radio")
-    cmd.add_argument("port", help="USB/TTY/COM port")
-    cmd.add_argument("command", help="Command to send (1 byte in hex)")
-    cmd.add_argument(
-        "payload", help="Payload to send in hex string", nargs="?"
-    )
-    cmd.set_defaults(func=main_send_command)
 
+def _parse_args_convert_commands(
+    cmds: argparse._SubParsersAction[argparse.ArgumentParser],
+) -> None:
+    cmd = cmds.add_parser(
+        "icf2raw", help="Convert ICF file to raw memory file"
+    )
+    cmd.add_argument("icf_file", type=Path, help="Input ICF file")
+    cmd.add_argument("raw_file", type=Path, nargs="?", help="output raw file")
+    cmd.set_defaults(func=main_write_mem_raw)
+
+    cmd = cmds.add_parser(
+        "raw2icf", help="Convert raw memory file into ICF file"
+    )
+    cmd.add_argument("raw_file", type=Path, help="Input raw file")
+    cmd.add_argument("icf_file", type=Path, nargs="?", help="output ICF file")
+    cmd.set_defaults(func=main_write_icf_mem)
+
+
+def _parse_args_reports_commands(
+    cmds: argparse._SubParsersAction[argparse.ArgumentParser],
+) -> None:
     cmd = cmds.add_parser("sheet", help="Print summary information")
     cmd.add_argument("icf_file", type=Path, help="Input ICF file")
     cmd.set_defaults(func=main_print_sheet)
@@ -441,6 +444,24 @@ def _parse_args() -> argparse.Namespace:
     cmd = cmds.add_parser("stats", help="Print statistics")
     cmd.add_argument("icf_file", type=Path, help="Input ICF file")
     cmd.set_defaults(func=main_print_stats)
+
+
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="count",
+        help="increase log level",
+        default=0,
+    )
+
+    cmds = parser.add_subparsers(required=True)
+
+    _parse_args_radio_commands(cmds)
+    _parse_args_print_commands(cmds)
+    _parse_args_convert_commands(cmds)
+    _parse_args_reports_commands(cmds)
 
     return parser.parse_args()
 
