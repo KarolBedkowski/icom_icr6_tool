@@ -108,6 +108,7 @@ class ReportsDialog(tk.Toplevel):
         self.destroy()
 
     def _on_generate_report(self, _event: tk.Event | None = None) -> None:  # type: ignore
+        self._result["state"] = "normal"
         self._result.delete("1.0", tk.END)
         data = ""
 
@@ -118,6 +119,7 @@ class ReportsDialog(tk.Toplevel):
                 data = "\n".join(reports.generate_sheet(self._radio_memory))
 
         self._result.insert(tk.END, data)
+        self._result["state"] = "disabled"
 
     def _on_save_report(self) -> None:
         report = self._sel_report.get().lower()
