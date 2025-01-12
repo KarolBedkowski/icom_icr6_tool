@@ -110,6 +110,9 @@ class ScanEdgesList(genericlist.GenericList[Row, model.ScanEdge]):
             case "name":
                 value = fixers.fix_name(value)
 
+            case "mode":
+                value = value.upper()
+
         _LOG.debug("_on_validate_edits: result value=%r", value)
         return value
 

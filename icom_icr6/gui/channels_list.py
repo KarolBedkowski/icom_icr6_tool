@@ -214,6 +214,9 @@ class ChannelsList(genericlist.GenericList[Row, model.Channel]):
             case "name":
                 value = fixers.fix_name(value)
 
+            case "mode":
+                value = value.upper()
+
             case "offset":
                 val = genericlist.to_freq(value)
                 value = (
