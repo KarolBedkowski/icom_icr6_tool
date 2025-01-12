@@ -1,6 +1,46 @@
 Changelog
 =========
 
+v1.3.0 2025-01-12
+-----------------
+
+Bug Fixes
+~~~~~~~~~
+
+- Fix save chanes in scan edges
+- Improve editing scan edges, esp. editing incomplete se
+- Fix editing new channels by banks page
+- Force update channels list after undo/redo
+- Make color for alternate rows brighter
+- Set min col width
+- Align left bank column
+- Fix layout of clone dialogs
+- Uppercase values before import channels, scanedges
+- Fix update channels with empty bank
+- Fix pasting mode - convert it to uppercase
+- Set encoding for saving files (reports, sheet)
+
+Features
+~~~~~~~~
+
+- Update bank name/link without press button
+- Edit scanlink name in place
+- New `sheet` command - print summary about channels, banks, etc.
+- Show mark on title when file was changed and not saved
+- Confirm before close window
+- Save changes in settings without press button
+- Show full name of bank in channels list
+- Add load default settings button
+- Add `stats` command
+- Reports - generate and display dialog with stats and sheet
+
+Refactor
+~~~~~~~~
+
+- Simplify selection keep in banks tab
+- Clean ChannelsList._on_validate_edits
+
+
 
 v1.2.1 2025-01-07
 -----------------
