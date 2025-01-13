@@ -77,15 +77,21 @@ class BanksPage(tk.Frame):
     def select(
         self, bank: int, bank_pos: int | None = None, *, force: bool = False
     ) -> None:
+        sel_bank = self._banks_list.curselection()
+
+        self._last_selected_bank = bank
+        if bank_pos is not None:
+            self._last_selected_pos[bank] = bank_pos
+
         if (
-            bank == self._last_selected_bank
+            (sel_bank and bank == sel_bank[0])
             and bank_pos is not None
             and not force
         ):
             self._chan_list.selection_set([bank_pos])
             return
 
-        self._banks_list.selection_clear(self._last_selected_bank)
+        self._banks_list.selection_clear(0, consts.NUM_BANKS)
         self._banks_list.selection_set(bank)
         self._update_chan_list(select=bank_pos)
 

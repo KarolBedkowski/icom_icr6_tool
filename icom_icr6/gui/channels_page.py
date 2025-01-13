@@ -66,13 +66,14 @@ class ChannelsPage(tk.Frame):
 
         current_sel_group = self._selected_group
 
+        self._last_selected_pos[group] = chanpos
+        self._last_selected_group = group
+
         if group == current_sel_group and not force:
             self._chan_list.selection_set([chanpos])
             return
 
-        if current_sel_group is not None:
-            self._groups_list.selection_clear(current_sel_group)
-
+        self._groups_list.selection_clear(0, 13)
         self._groups_list.selection_set(group)
         self.__update_chan_list(select=chanpos)
 
@@ -121,6 +122,7 @@ class ChannelsPage(tk.Frame):
         if sel_group is None:
             return
 
+        self._last_selected_group = sel_group
         self._chan_list.reset(scroll_top=True)
         self.__update_chan_list(select=self._last_selected_pos[sel_group])
 
@@ -251,10 +253,7 @@ class ChannelsPage(tk.Frame):
         *,
         select: int | None = None,
     ) -> None:
-        sel_group = self._selected_group
-        if sel_group is None:
-            return
-
+        sel_group = self._last_selected_group
         range_start = sel_group * 100
         self._chan_list.set_data(
             self._radio_memory.channels[range_start : range_start + 100]
@@ -262,7 +261,6 @@ class ChannelsPage(tk.Frame):
 
         self._show_stats()
         self.__need_full_refresh = False
-        self._last_selected_group = sel_group
 
         if select is not None:
             self.update_idletasks()
@@ -380,8 +378,7 @@ class ChannelsPage(tk.Frame):
         return True
 
     def _show_stats(self) -> None:
-        group = self._selected_group
-        assert group is not None
+        group = self._last_selected_group
         rm = self._change_manager.rm
 
         active = sum(1 for c in rm.get_active_channels_in_group(group))
