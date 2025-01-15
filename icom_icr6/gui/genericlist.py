@@ -53,7 +53,7 @@ class RecordActionCallback(ty.Protocol[T_contra]):
         self,
         action: str,
         rows: ty.Collection[T_contra],
-    ) -> None: ...
+    ) -> bool: ...
 
 
 T = ty.TypeVar("T", bound=BaseRow)
@@ -563,33 +563,38 @@ class GenericList2(tk.Frame, ty.Generic[RT]):
         # _LOG.debug("_on_sheet_modified: %r", event)
 
         data: set[Row[RT]] = set()
+        action = "update"
 
         if event.eventname == "move_rows":
             if not event.moved.rows:
                 return
 
+            action = "move"
             minrow = min(map(min, event.moved.rows.data.items()))
             maxrow = max(map(max, event.moved.rows.data.items()))
 
             for rownum in range(minrow, maxrow + 1):
                 row = self.sheet.data[rownum].map_changes(self.COLUMNS)
                 row.rownum = rownum
-                self.update_row_state(rownum)
                 data.add(row)
 
-            if data and self.on_record_update:
-                self.on_record_update("move", data)  # pylint:disable=not-callable
+        else:
+            data = {
+                self.sheet.data[r].map_changes(self.COLUMNS)
+                for r, _c in event.cells.table
+            }
 
+        if not data:
             return
 
-        for r, _c in event.cells.table:
-            row = self.sheet.data[r].map_changes(self.COLUMNS)
-            _LOG.debug("_on_sheet_modified: row=%d, data=%r", r, row)
-            self.update_row_state(r)
-            data.add(row)
+        if self.on_record_update and not self.on_record_update(action, data):  # pylint:disable=not-callable
+            return
 
-        if data and self.on_record_update:
-            self.on_record_update("update", data)  # pylint:disable=not-callable
+        # update back data
+        for row in data:
+            rownum = row.rownum
+            self.sheet.data[rownum] = self._row_from_data(rownum, row.obj)
+            self.update_row_state(rownum)
 
     def __on_validate_edits(self, event: EventDataDict) -> object:
         _LOG.debug("__on_validate_edits: %r", event)
@@ -717,6 +722,8 @@ class GenericList2(tk.Frame, ty.Generic[RT]):
         if not selected:
             return
 
+        action = "delete"
+
         if selected.type_ == "rows":
             box = selected.box
             data = [
@@ -724,26 +731,24 @@ class GenericList2(tk.Frame, ty.Generic[RT]):
                 for r in range(box.from_r, box.upto_r)
             ]
 
-            if data and self.on_record_update:
-                self.on_record_update("delete", data)  # pylint:disable=not-callable
-
-            for row in range(box.from_r, box.upto_r):
-                self.update_row_state(row)
-
         elif selected.type_ == "cells":
             box = self.adjust_box(selected.box)
             self.sheet[box].clear()
+            action = "update"
 
             data = [
                 self.sheet.data[r].map_changes(self.COLUMNS)
                 for r in range(box.from_r, box.upto_r)
             ]
 
-            if data and self.on_record_update:
-                self.on_record_update("update", data)  # pylint:disable=not-callable
+        if self.on_record_update and not self.on_record_update(action, data):  # pylint:disable=not-callable
+            return
 
-            for r in range(box.from_r, box.upto_r):
-                self.update_row_state(r)
+        # update back data
+        for row in data:
+            rownum = row.rownum
+            self.sheet.data[rownum] = self._row_from_data(rownum, row.obj)
+            self.update_row_state(rownum)
 
     def update_row_state(self, row: int) -> None:
         """Set state of other cells in row (readony)."""

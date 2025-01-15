@@ -128,16 +128,19 @@ class ChannelsPage(tk.Frame):
 
     def __on_channel_update(
         self, action: str, rows: ty.Collection[channels_list.RowType]
-    ) -> None:
+    ) -> bool:
         match action:
             case "delete":
                 self.__do_delete_channels(rows)
 
             case "update":
-                self.__do_update_channels(rows)
+                return self.__do_update_channels(rows)
 
             case "move":
                 self.__do_move_channels(rows)
+                return False
+
+        return True
 
     def __do_delete_channels(
         self, rows: ty.Collection[channels_list.RowType]
@@ -153,7 +156,7 @@ class ChannelsPage(tk.Frame):
         for rec in rows:
             _LOG.debug("__do_delete_channels: %r", rec)
             if chan := rec.obj:
-                chan = chan.clone()
+                chan = rec.obj = chan.clone()
                 chan.delete()
                 channels.append(chan)
 
@@ -163,7 +166,7 @@ class ChannelsPage(tk.Frame):
 
     def __do_update_channels(
         self, rows: ty.Collection[channels_list.RowType]
-    ) -> None:
+    ) -> bool:
         channels = []
         for idx, rec in enumerate(rows):
             _LOG.debug("__do_update_channels: [%d] %r", idx, rec)
@@ -173,28 +176,31 @@ class ChannelsPage(tk.Frame):
             chan = rec.obj
             assert chan is not None
 
-            chan = chan.clone()
+            chan = rec.obj = chan.clone()
             if chan.hide_channel and (freq := rec.changes.get("freq")):
                 assert isinstance(freq, int)
                 band = self._change_manager.rm.get_band_for_freq(freq)
                 chan.load_defaults_from_band(band)
+                chan.tuning_step = fixers.fix_tuning_step(
+                    chan.freq, chan.tuning_step
+                )
 
             chan.from_record(rec.changes)
             chan.hide_channel = chan.freq == 0
-            self.__need_full_refresh = True
-
             channels.append(chan)
 
         self.__need_full_refresh |= self._change_manager.set_channel(*channels)
 
         if self.__in_paste:
-            return
+            return False
 
         self._change_manager.commit()
         if self.__need_full_refresh:
             self.__update_chan_list()
         else:
             self._show_stats()
+
+        return not self.__need_full_refresh
 
     @property
     def _selected_group(self) -> int | None:
