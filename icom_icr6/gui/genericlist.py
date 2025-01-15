@@ -212,6 +212,9 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
 
         for r, _c in event.cells.table:
             row = self.sheet.data[r]
+            if not row.changes:
+                continue
+
             _LOG.debug("_on_sheet_modified: row=%d, data=%r", r, row)
             self.update_row_state(r)
             data.add(row)
@@ -360,6 +363,381 @@ class GenericList(tk.Frame, ty.Generic[T, RT]):
             self.sheet[box].clear()
 
             data = [self.sheet.data[r] for r in range(box.from_r, box.upto_r)]
+
+            if data and self.on_record_update:
+                self.on_record_update("update", data)  # pylint:disable=not-callable
+
+            for r in range(box.from_r, box.upto_r):
+                self.update_row_state(r)
+
+    def update_row_state(self, row: int) -> None:
+        """Set state of other cells in row (readony)."""
+
+    def _set_cell_ro(self, row: int, colname: str, readonly: object) -> None:
+        col = self.colmap.get(colname)
+        if not col:
+            return
+
+        ro = bool(readonly)
+
+        self.sheet.highlight_cells(
+            row,
+            column=col,
+            fg="#d0d0d0" if ro else "black",
+            bg=self._ALTERNATE_COLOR if row & 1 else None,
+        )
+        functions.set_readonly(
+            self.sheet.MT.cell_options, (row, col), readonly=ro
+        )
+
+    def _on_begin_col_move(self, _event: EventDataDict) -> None:
+        # prevent moving columns
+        raise ValueError
+
+    def adjust_box(self, box: Box_nt) -> Box_nt:
+        """fix box to match hidden columns."""
+        return Box_nt(
+            box.from_r,
+            self.sheet.data_c(box.from_c),
+            box.upto_r,
+            self.sheet.data_c(box.upto_c - 1) + 1,
+        )
+
+
+# ----------------------------
+
+
+@ty.runtime_checkable
+class RecordSelectedCallback2(ty.Protocol[RT]):
+    def __call__(
+        self,
+        rows: list[RT],
+    ) -> None: ...
+
+
+class Row(UserList[object], ty.Generic[RT]):
+    def __init__(
+        self,
+        data: ty.Iterable[object],
+        rownnum: int = 0,
+        obj: RT | None = None,
+    ) -> None:
+        super().__init__(data)
+        self.rownum: int = rownnum
+        self.obj: RT | None = obj
+        # map col id -> new value
+        self._changes: dict[int, object] | None = None
+        # map col name -> new value by map_changes func
+        self.changes: dict[str, object] | None = None
+
+    def __setitem__(self, idx: int, val: object, /) -> None:  # type: ignore
+        if val is None or val == self.data[idx]:
+            return
+
+        if self._changes is None:
+            self._changes = {idx: val}
+        else:
+            self._changes[idx] = val
+
+        super().__setitem__(idx, val)
+
+    def __hash__(self) -> int:
+        return hash(
+            self.__class__.__name__ + str(self.data[0] if self.data else None)
+        )
+
+    def map_changes(self, cols: ty.Sequence[Column]) -> ty.Self:
+        if self._changes:
+            self.changes = {cols[c][0]: v for c, v in self._changes.items()}
+
+        return self
+
+
+class GenericList2(tk.Frame, ty.Generic[RT]):
+    _ALTERNATE_COLOR = "#F5F5FF"
+    COLUMNS: ty.ClassVar[ty.Sequence[Column]] = ()
+
+    def __init__(self, parent: tk.Widget) -> None:
+        super().__init__(parent)
+        self.sheet = Sheet(
+            self,
+            data=[],
+            default_column_width=40,
+            auto_resize_columns=30,
+            alternate_color=self._ALTERNATE_COLOR,
+            max_undos=0,
+        )
+        self.sheet.pack(expand=True, fill=tk.BOTH, side=tk.TOP)
+
+        self.sheet.enable_bindings("all")
+        self.sheet.edit_validation(self.__on_validate_edits)
+        self.sheet.bind("<<SheetModified>>", self._on_sheet_modified)
+        self.sheet.bind("<<SheetSelect>>", self._on_sheet_select)
+        self.sheet.bind("<Delete>", self._on_delete_key)
+        # disable column moving
+        self.sheet.extra_bindings(
+            "begin_move_columns", self._on_begin_col_move
+        )
+        # disable popup menu
+        self.sheet.disable_bindings("right_click_popup_menu", "undo")
+
+        self.colmap = {
+            name: idx for idx, (name, *_) in enumerate(self.COLUMNS)
+        }
+        self._configure_sheet()
+
+        self.on_record_update: RecordActionCallback[Row[RT]] | None = None
+        self.on_record_selected: RecordSelectedCallback2[Row[RT]] | None = None
+
+    def reset(self, *, scroll_top: bool = False) -> None:
+        self.sheet.deselect_any(rows=None, columns=None)
+        if scroll_top:
+            self.sheet.see(row=0, column=0)
+
+    @property
+    def data(self) -> ty.Iterable[T | None]:
+        yield from self.sheet.data
+
+    def set_data(self, data: ty.Iterable[RT]) -> None:
+        _LOG.debug("set_data")
+        self.sheet.set_sheet_data(
+            list(starmap(self._row_from_data, enumerate(data)))
+        )
+        self.sheet.set_all_column_widths()
+
+        for row in range(len(self.sheet.data)):
+            self.update_row_state(row)
+
+    def _row_from_data(self, idx: int, obj: RT) -> Row[RT]:
+        raise NotImplementedError
+
+    def selection(self) -> tuple[int, ...]:
+        """Get selected rows."""
+        return self.sheet.get_selected_rows(  # type: ignore
+            get_cells_as_rows=True, return_tuple=True
+        )
+
+    def selection_set(self, sel: ty.Iterable[int]) -> None:
+        """Set selection on `sel` rows"""
+        for r in sel:
+            self.sheet.select_row(r)
+            self.sheet.see(row=r, column=0)
+
+    def _configure_sheet(self) -> None:
+        self.sheet.headers([c[1] for c in self.COLUMNS])
+
+        for idx, column in enumerate(self.COLUMNS):
+            span = self.sheet[num2alpha(idx)]
+            self._configure_col(column, span)
+
+        self.sheet.row_index(0)
+        self.sheet.hide_columns(0)
+
+    def _configure_col(self, column: Column, span: Span) -> None:
+        colname, _c, values = column
+        if values == "str":
+            return
+
+        if values == "int":
+            span.format(int_formatter(invalid_value="")).align("right")
+
+        elif values == "bool":
+            span.checkbox().align("center")
+
+        elif values == "freq":
+            span.format(
+                int_formatter(
+                    format_function=to_freq,
+                    to_str_function=format_freq,
+                    invalid_value="",
+                )
+            ).align("right")
+
+        elif isinstance(values, (list, tuple)):
+            span.dropdown(values=values).align("center")
+
+        else:
+            _LOG.error("unknown column: %s", colname)
+
+    def _on_sheet_modified(self, event: EventDataDict) -> None:
+        # _LOG.debug("_on_sheet_modified: %r", event)
+
+        data: set[Row[RT]] = set()
+
+        if event.eventname == "move_rows":
+            if not event.moved.rows:
+                return
+
+            minrow = min(map(min, event.moved.rows.data.items()))
+            maxrow = max(map(max, event.moved.rows.data.items()))
+
+            for rownum in range(minrow, maxrow + 1):
+                row = self.sheet.data[rownum].map_changes(self.COLUMNS)
+                row.rownum = rownum
+                self.update_row_state(rownum)
+                data.add(row)
+
+            if data and self.on_record_update:
+                self.on_record_update("move", data)  # pylint:disable=not-callable
+
+            return
+
+        for r, _c in event.cells.table:
+            row = self.sheet.data[r].map_changes(self.COLUMNS)
+            _LOG.debug("_on_sheet_modified: row=%d, data=%r", r, row)
+            self.update_row_state(r)
+            data.add(row)
+
+        if data and self.on_record_update:
+            self.on_record_update("update", data)  # pylint:disable=not-callable
+
+    def __on_validate_edits(self, event: EventDataDict) -> object:
+        _LOG.debug("__on_validate_edits: %r", event)
+
+        if event.eventname not in ("end_edit_table", "edit_table"):
+            return None
+
+        try:
+            return self._on_validate_edits(event)
+        except ValueError:
+            _LOG.exception("_on_validate_edits: %r", event)
+            return None
+
+    def _on_validate_edits(self, event: EventDataDict) -> object:
+        return event.value
+
+    def _on_sheet_select(self, event: EventDataDict) -> None:
+        # _LOG.debug("_on_sheet_select: %r", event)
+        if not event.selected:
+            return
+
+        sel_box = event.selected.box
+
+        if self.on_record_selected:
+            rows = [
+                self.sheet.data[r]
+                for r in range(sel_box.from_r, sel_box.upto_r)
+            ]
+            self.on_record_selected(rows)  # pylint:disable=not-callable
+
+    def selected_rows(self) -> ty.Sequence[int]:
+        return self.sheet.get_selected_rows(  # type: ignore
+            get_cells_as_rows=True, return_tuple=True
+        )
+
+    def selected_columns(self) -> ty.Sequence[int]:
+        """get columns index include hidden ones"""
+        return list(
+            map(
+                self.sheet.data_c,
+                self.sheet.get_selected_columns(
+                    get_cells_as_columns=True, return_tuple=True
+                ),
+            )
+        )
+
+    def visible_cols(self) -> list[int]:
+        return self.sheet.MT.displayed_columns  # type: ignore
+
+    def selected_rows_data(self) -> list[Row[RT]]:
+        return [
+            self.sheet.data[r]
+            for r in sorted(
+                self.sheet.get_selected_rows(get_cells_as_rows=True)
+            )
+        ]
+
+    def selected_data(self) -> list[list[object]] | None:
+        res = None
+
+        currently_selected = self.sheet.get_currently_selected()
+        if currently_selected and currently_selected.type_ == "cells":
+            box = currently_selected.box
+            res = self.sheet.get_data(
+                box.from_r,
+                self.sheet.data_c(box.from_c),
+                box.upto_r,
+                self.sheet.data_c(box.upto_c - 1) + 1,
+            )
+
+            # always return list of list
+            if box.from_c == box.upto_c - 1:
+                # one col
+                if box.from_r == box.upto_r - 1:
+                    # one row
+                    res = [[res]]
+                else:
+                    res = [[c] for c in res]
+
+            elif box.from_r == box.upto_r - 1:
+                # one row
+                res = [res]
+
+        return res
+
+    def paste(self, data: list[list[str]]) -> None:
+        _LOG.debug("paste: %r", data)
+        currently_selected = self.sheet.get_currently_selected()
+        if not currently_selected:
+            return
+
+        box = currently_selected.box
+        csel_col = currently_selected.column
+        column = self.sheet.data_c(currently_selected.column)
+        end_row = max(len(data) + box.from_r, box.upto_r)
+        cdata = cycle(data)
+
+        for row in range(box.from_r, end_row):
+            row_data = next(cdata)
+            # validate
+            ev = EventDataDict()
+            ev.row = row
+            res_data = []
+            for col, value in enumerate(row_data, csel_col):
+                ev.column = col
+                ev.value = value
+                try:
+                    res_data.append(self._on_validate_edits(ev))
+                except ValueError:
+                    _LOG.exception("_on_validate_edits: %r", ev)
+                    res_data.append(None)
+
+            self.sheet.span((row, column), emit_event=True).data = res_data
+
+    def set_data_rows(
+        self, col: int, rows: ty.Iterable[tuple[int, list[object]]]
+    ) -> None:
+        sheet = self.sheet
+        for row, data in rows:
+            sheet.span((row, col), emit_event=True).data = data
+
+    def _on_delete_key(self, event: tk.Event) -> None:  # type: ignore
+        _LOG.debug("_on_delete_key: event=%r", event)
+        selected = self.sheet.get_currently_selected()
+        if not selected:
+            return
+
+        if selected.type_ == "rows":
+            box = selected.box
+            data = [
+                self.sheet.data[r].map_changes(self.COLUMNS)
+                for r in range(box.from_r, box.upto_r)
+            ]
+
+            if data and self.on_record_update:
+                self.on_record_update("delete", data)  # pylint:disable=not-callable
+
+            for row in range(box.from_r, box.upto_r):
+                self.update_row_state(row)
+
+        elif selected.type_ == "cells":
+            box = self.adjust_box(selected.box)
+            self.sheet[box].clear()
+
+            data = [
+                self.sheet.data[r].map_changes(self.COLUMNS)
+                for r in range(box.from_r, box.upto_r)
+            ]
 
             if data and self.on_record_update:
                 self.on_record_update("update", data)  # pylint:disable=not-callable

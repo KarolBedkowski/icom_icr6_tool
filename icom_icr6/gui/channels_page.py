@@ -20,7 +20,7 @@ _LOG = logging.getLogger(__name__)
 
 
 class ChannelsPage(tk.Frame):
-    _chan_list: channels_list.ChannelsList
+    _chan_list: channels_list.ChannelsList2
 
     def __init__(self, parent: tk.Widget, cm: ChangeManeger) -> None:
         super().__init__(parent)
@@ -90,7 +90,7 @@ class ChannelsPage(tk.Frame):
         return self._change_manager.rm
 
     def _create_channel_list(self, frame: tk.Frame) -> None:
-        self._chan_list = channels_list.ChannelsList(frame)
+        self._chan_list = channels_list.ChannelsList2(frame)
         self._chan_list.on_record_update = self.__on_channel_update
         self._chan_list.on_record_selected = self.__on_channel_select
         self._chan_list.on_channel_bank_validate = self.__on_channel_bank_set
@@ -127,7 +127,7 @@ class ChannelsPage(tk.Frame):
         self.__update_chan_list(select=self._last_selected_pos[sel_group])
 
     def __on_channel_update(
-        self, action: str, rows: ty.Collection[channels_list.Row]
+        self, action: str, rows: ty.Collection[channels_list.RowType]
     ) -> None:
         match action:
             case "delete":
@@ -140,7 +140,7 @@ class ChannelsPage(tk.Frame):
                 self.__do_move_channels(rows)
 
     def __do_delete_channels(
-        self, rows: ty.Collection[channels_list.Row]
+        self, rows: ty.Collection[channels_list.RowType]
     ) -> None:
         if not messagebox.askyesno(
             "Delete channel",
@@ -152,7 +152,7 @@ class ChannelsPage(tk.Frame):
         channels = []
         for rec in rows:
             _LOG.debug("__do_delete_channels: %r", rec)
-            if chan := rec.channel:
+            if chan := rec.obj:
                 chan = chan.clone()
                 chan.delete()
                 channels.append(chan)
@@ -162,24 +162,26 @@ class ChannelsPage(tk.Frame):
         self.__update_chan_list()
 
     def __do_update_channels(
-        self, rows: ty.Collection[channels_list.Row]
+        self, rows: ty.Collection[channels_list.RowType]
     ) -> None:
         channels = []
         for idx, rec in enumerate(rows):
             _LOG.debug("__do_update_channels: [%d] %r", idx, rec)
-            rec.updated = False
-            chan = rec.channel
+            if not rec.changes:
+                continue
 
-            if rec.new_values:
-                freq = rec.new_values.get("freq")
-                if freq:
-                    assert isinstance(freq, int)
-                    band = self._change_manager.rm.get_band_for_freq(freq)
-                    chan.load_defaults_from_band(band)
+            chan = rec.obj
+            assert chan is not None
 
-                chan.from_record(rec.new_values)
-                chan.hide_channel = freq == 0
-                self.__need_full_refresh = True
+            chan = chan.clone()
+            if chan.hide_channel and (freq := rec.changes.get("freq")):
+                assert isinstance(freq, int)
+                band = self._change_manager.rm.get_band_for_freq(freq)
+                chan.load_defaults_from_band(band)
+
+            chan.from_record(rec.changes)
+            chan.hide_channel = chan.freq == 0
+            self.__need_full_refresh = True
 
             channels.append(chan)
 
@@ -215,7 +217,7 @@ class ChannelsPage(tk.Frame):
         self._groups.set(groups)  # type: ignore
 
     def __do_move_channels(
-        self, rows: ty.Collection[channels_list.Row]
+        self, rows: ty.Collection[channels_list.RowType]
     ) -> None:
         sel_group = self._selected_group
         if sel_group is None:
@@ -225,27 +227,31 @@ class ChannelsPage(tk.Frame):
         channels = []
 
         for rec in rows:
+            assert rec.obj
             channum = range_start + rec.rownum
             _LOG.debug("__do_move_channels: %r -> %d", rec, channum)
-            rec.channel.number = channum
-            channels.append(rec.channel)
+            chan = rec.obj.clone()
+            chan.number = channum
+            channels.append(chan)
 
         self._change_manager.set_channel(*channels)
         self._change_manager.commit()
         self.__update_chan_list()
 
-    def __on_channel_select(self, rows: list[channels_list.Row]) -> None:
+    def __on_channel_select(self, rows: list[channels_list.RowType]) -> None:
         btn_state = "normal" if len(rows) > 1 else "disabled"
         self._btn_sort["state"] = btn_state
         self._btn_fill["state"] = btn_state
 
-        num = rows[0].channel.number
+        chan = rows[0].obj
+        assert chan is not None
+        num = chan.number
         self._last_selected_group, pos = divmod(num, 100)
         self._last_selected_pos[self._last_selected_group] = pos
 
         if _LOG.isEnabledFor(logging.DEBUG):
             for rec in rows:
-                _LOG.debug("chan selected: %r", rec.channel)
+                _LOG.debug("chan selected: %r", rec.obj)
 
     def __update_chan_list(
         self,
@@ -275,7 +281,7 @@ class ChannelsPage(tk.Frame):
 
         if selected.type_ == "rows":
             if rows := self._chan_list.selected_rows_data():
-                channels = (chan for row in rows if (chan := row.channel))
+                channels = (chan for row in rows if (chan := row.obj))
                 res = expimp.export_channel_str(channels)
 
         elif selected.type_ == "cells" and (
@@ -476,7 +482,7 @@ class ChannelsPage(tk.Frame):
         if len(rows) <= 1:
             return
 
-        channels = [chan.clone() for row in rows if (chan := row.channel)]
+        channels = [chan.clone() for row in rows if (chan := row.obj)]
         channels_ids = [chan.number for chan in channels]
 
         model_support.sort_channels(channels, field)
