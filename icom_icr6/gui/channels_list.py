@@ -343,7 +343,7 @@ class ChannelsList(genericlist.GenericList[Row, model.Channel]):
         self._set_cell_ro(row, "canceller freq", chan.canceller != 1)
 
 
-class ChannelsList2(genericlist.GenericList2[model.Channel]):
+class ChannelsList2(genericlist.GenericList2[model.Channel | None]):
     COLUMNS = (
         ("channel", "Num", "int"),
         ("freq", "Frequency", "freq"),
@@ -366,19 +366,21 @@ class ChannelsList2(genericlist.GenericList2[model.Channel]):
         ("canceller freq", "Canceller freq", "int"),
     )
 
-    def __init__(self, parent: tk.Widget) -> None:
+    def __init__(
+        self, parent: tk.Widget, rm: radio_memory.RadioMemory
+    ) -> None:
         super().__init__(parent)
         self.region = consts.Region.GLOBAL
-        self.radio_memory: radio_memory.RadioMemory | None = None
+        self.radio_memory = rm
 
         self.on_channel_bank_validate: BankPosValidator | None = None
 
     def _row_from_data(
-        self, idx: int, obj: model.Channel
-    ) -> genericlist.Row[model.Channel]:
-        assert self.radio_memory
-
-        if obj.hide_channel:
+        self, idx: int, obj: model.Channel | None
+    ) -> genericlist.Row[model.Channel | None]:
+        if not obj:
+            cols = [idx, *([""] * 18)]
+        elif obj.hide_channel:
             cols = [obj.number, *([""] * 18)]
         else:
             data = obj.to_record()
@@ -421,7 +423,6 @@ class ChannelsList2(genericlist.GenericList2[model.Channel]):
         column = self.COLUMNS[self.sheet.data_c(event.column)]
         row: genericlist.Row[model.Channel] = self.sheet.data[event.row]
         chan = row.obj
-        assert chan is not None
 
         value = event.value
 
@@ -448,7 +449,7 @@ class ChannelsList2(genericlist.GenericList2[model.Channel]):
             case "mode":
                 value = value.upper()
 
-            case "offset":
+            case "offset" if chan:
                 val = genericlist.to_freq(value)
                 value = (
                     fixers.fix_offset(chan.freq, off) if (off := val) else 0
@@ -462,7 +463,7 @@ class ChannelsList2(genericlist.GenericList2[model.Channel]):
                     consts.CANCELLER_MIN_FREQ,
                 )
 
-            case "bank":
+            case "bank" if chan:
                 value = value.strip()
                 if chan.bank != value and self.on_channel_bank_validate:
                     # change bank,
@@ -476,10 +477,9 @@ class ChannelsList2(genericlist.GenericList2[model.Channel]):
                         return None
 
                     row[16] = bank_pos
-                    if self.radio_memory:
-                        value = self.radio_memory.get_bank_fullname(value)
+                    value = self.radio_memory.get_bank_fullname(value)
 
-            case "bank_pos":
+            case "bank_pos" if chan:
                 value = self._validate_bank_pos(value, chan)
 
         _LOG.debug("_on_validate_edits: result value=%r", value)
@@ -502,7 +502,6 @@ class ChannelsList2(genericlist.GenericList2[model.Channel]):
         """Set state of other cells in row (readony)."""
         data_row: genericlist.Row[model.Channel] = self.sheet.data[row]
         chan = data_row.obj
-        assert chan is not None
 
         row_is_readonly = not chan or not chan.freq or chan.hide_channel
         for c in range(2, len(self.COLUMNS)):
@@ -512,10 +511,12 @@ class ChannelsList2(genericlist.GenericList2[model.Channel]):
 
         if row_is_readonly:
             # remove all checkboxes, dropdown when row is empty
-            for col, _ in enumerate(self.COLUMNS):
+            for col in range(len(self.COLUMNS)):
                 self.sheet.span(row, col).del_dropdown().del_checkbox().clear()
 
             return
+
+        assert chan is not None
 
         # create dropdown, checkboxes
         for idx, (colname, _, values) in enumerate(self.COLUMNS):
@@ -542,7 +543,7 @@ class ChannelsList2(genericlist.GenericList2[model.Channel]):
                     set_value=data_row[idx],
                 )
 
-            elif colname == "bank" and self.radio_memory:
+            elif colname == "bank":
                 # use full bank names
                 names = [bank.full_name for bank in self.radio_memory.banks]
                 sel = (

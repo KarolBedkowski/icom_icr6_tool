@@ -90,7 +90,9 @@ class ChannelsPage(tk.Frame):
         return self._change_manager.rm
 
     def _create_channel_list(self, frame: tk.Frame) -> None:
-        self._chan_list = channels_list.ChannelsList2(frame)
+        self._chan_list = channels_list.ChannelsList2(
+            frame, self._change_manager.rm
+        )
         self._chan_list.on_record_update = self.__on_channel_update
         self._chan_list.on_record_selected = self.__on_channel_select
         self._chan_list.on_channel_bank_validate = self.__on_channel_bank_set
@@ -128,19 +130,16 @@ class ChannelsPage(tk.Frame):
 
     def __on_channel_update(
         self, action: str, rows: ty.Collection[channels_list.RowType]
-    ) -> bool:
+    ) -> None:
         match action:
             case "delete":
                 self.__do_delete_channels(rows)
 
             case "update":
-                return self.__do_update_channels(rows)
+                self.__do_update_channels(rows)
 
             case "move":
                 self.__do_move_channels(rows)
-                return False
-
-        return True
 
     def __do_delete_channels(
         self, rows: ty.Collection[channels_list.RowType]
@@ -156,7 +155,7 @@ class ChannelsPage(tk.Frame):
         for rec in rows:
             _LOG.debug("__do_delete_channels: %r", rec)
             if chan := rec.obj:
-                chan = rec.obj = chan.clone()
+                chan = chan.clone()
                 chan.delete()
                 channels.append(chan)
 
@@ -164,9 +163,12 @@ class ChannelsPage(tk.Frame):
         self._change_manager.commit()
         self.__update_chan_list()
 
+        for chan in channels:
+            self._chan_list.update_data(chan.number % 100, chan)
+
     def __do_update_channels(
         self, rows: ty.Collection[channels_list.RowType]
-    ) -> bool:
+    ) -> None:
         channels = []
         for idx, rec in enumerate(rows):
             _LOG.debug("__do_update_channels: [%d] %r", idx, rec)
@@ -176,7 +178,7 @@ class ChannelsPage(tk.Frame):
             chan = rec.obj
             assert chan is not None
 
-            chan = rec.obj = chan.clone()
+            chan = chan.clone()
             if chan.hide_channel and (freq := rec.changes.get("freq")):
                 assert isinstance(freq, int)
                 band = self._change_manager.rm.get_band_for_freq(freq)
@@ -192,15 +194,16 @@ class ChannelsPage(tk.Frame):
         self.__need_full_refresh |= self._change_manager.set_channel(*channels)
 
         if self.__in_paste:
-            return False
+            return
 
         self._change_manager.commit()
         if self.__need_full_refresh:
             self.__update_chan_list()
         else:
-            self._show_stats()
+            for chan in channels:
+                self._chan_list.update_data(chan.number % 100, chan)
 
-        return not self.__need_full_refresh
+            self._show_stats()
 
     @property
     def _selected_group(self) -> int | None:

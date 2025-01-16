@@ -12,7 +12,7 @@ from contextlib import suppress
 
 from tksheet import functions
 
-from icom_icr6 import consts, model
+from icom_icr6 import consts, model, radio_memory
 
 from . import channels_list, genericlist
 
@@ -147,23 +147,44 @@ class BLRow(genericlist.BaseRow):
         ]
 
 
-class ChannelsList(channels_list.ChannelsList):
-    _ROW_CLASS = BLRow
+class ChannelsList(channels_list.ChannelsList2):
+    COLUMNS = (
+        ("bank_pos", "Pos", "int"),
+        ("channel", "Channel", "int"),
+        ("freq", "Frequency", "freq"),
+        ("mode", "Mode", consts.MODES),
+        ("name", "Name", "str"),
+        ("af", "AF", "bool"),
+        ("att", "ATT", "bool"),  # 5
+        ("ts", "Tuning Step", consts.STEPS),
+        ("dup", "DUP", consts.DUPLEX_DIRS),
+        ("offset", "Offset", "freq"),
+        ("skip", "Skip", _SKIPS),
+        ("vsc", "VSC", "bool"),  # 10
+        ("tone_mode", "Tone", consts.TONE_MODES),
+        ("tsql_freq", "TSQL", consts.CTCSS_TONES),
+        ("dtcs", "DTCS", consts.DTCS_CODES),
+        ("polarity", "Polarity", consts.POLARITY),
+        ("canceller", "Canceller", consts.CANCELLER),
+        ("canceller freq", "Canceller freq", "int"),
+    )
 
-    def __init__(self, parent: tk.Widget) -> None:
-        super().__init__(parent)
+    def __init__(
+        self, parent: tk.Widget, rm: radio_memory.RadioMemory
+    ) -> None:
+        super().__init__(parent, rm)
         self.bank: int | None = None
 
     def set_bank(self, bank: int | None) -> None:
         self.bank = bank
 
-    def set_data(self, data: ty.Iterable[model.Channel | None]) -> None:
-        self.sheet.set_sheet_data(
-            list(itertools.starmap(BLRow, enumerate(data)))
-        )
-        self.sheet.set_all_column_widths()
-        for row in range(len(self.sheet.data)):
-            self.update_row_state(row)
+    # def set_data(self, data: ty.Iterable[model.Channel | None]) -> None:
+    #     self.sheet.set_sheet_data(
+    #         list(itertools.starmap(BLRow, enumerate(data)))
+    #     )
+    #     self.sheet.set_all_column_widths()
+    #     for row in range(len(self.sheet.data)):
+    #         self.update_row_state(row)
 
     def update_row_state(self, row: int) -> None:
         super().update_row_state(row)
@@ -171,3 +192,30 @@ class ChannelsList(channels_list.ChannelsList):
         functions.set_readonly(
             self.sheet.MT.cell_options, (row, 2), readonly=False
         )
+
+
+EmptyChannel = model.Channel(
+    number=0,
+    freq=0,
+    freq_flags=0,
+    name="",
+    mode=0,
+    af_filter=False,
+    attenuator=False,
+    tuning_step=0,
+    duplex=0,
+    offset=0,
+    tone_mode=0,
+    tsql_freq=0,
+    dtcs=0,
+    polarity=0,
+    vsc=False,
+    canceller=0,
+    canceller_freq=0,
+    hide_channel=True,
+    skip=0,
+    bank=0,
+    bank_pos=0,
+)
+
+RowType = channels_list.RowType

@@ -53,7 +53,7 @@ class RecordActionCallback(ty.Protocol[T_contra]):
         self,
         action: str,
         rows: ty.Collection[T_contra],
-    ) -> bool: ...
+    ) -> None: ...
 
 
 T = ty.TypeVar("T", bound=BaseRow)
@@ -430,6 +430,9 @@ class Row(UserList[object], ty.Generic[RT]):
         # map col name -> new value by map_changes func
         self.changes: dict[str, object] | None = None
 
+    def __repr__(self) -> str:
+        return f"Row<data={self.data!r}, changes={self.changes!r}>"
+
     def __setitem__(self, idx: int, val: object, /) -> None:  # type: ignore
         if val is None or val == self.data[idx]:
             return
@@ -507,6 +510,10 @@ class GenericList2(tk.Frame, ty.Generic[RT]):
 
         for row in range(len(self.sheet.data)):
             self.update_row_state(row)
+
+    def update_data(self, idx: int, row: RT) -> None:
+        self.sheet.data[idx] = self._row_from_data(idx, row)
+        self.update_row_state(idx)
 
     def _row_from_data(self, idx: int, obj: RT) -> Row[RT]:
         raise NotImplementedError
@@ -587,14 +594,8 @@ class GenericList2(tk.Frame, ty.Generic[RT]):
         if not data:
             return
 
-        if self.on_record_update and not self.on_record_update(action, data):  # pylint:disable=not-callable
-            return
-
-        # update back data
-        for row in data:
-            rownum = row.rownum
-            self.sheet.data[rownum] = self._row_from_data(rownum, row.obj)
-            self.update_row_state(rownum)
+        if self.on_record_update:
+            self.on_record_update(action, data)  # pylint:disable=not-callable
 
     def __on_validate_edits(self, event: EventDataDict) -> object:
         _LOG.debug("__on_validate_edits: %r", event)
@@ -741,14 +742,8 @@ class GenericList2(tk.Frame, ty.Generic[RT]):
                 for r in range(box.from_r, box.upto_r)
             ]
 
-        if self.on_record_update and not self.on_record_update(action, data):  # pylint:disable=not-callable
-            return
-
-        # update back data
-        for row in data:
-            rownum = row.rownum
-            self.sheet.data[rownum] = self._row_from_data(rownum, row.obj)
-            self.update_row_state(rownum)
+        if self.on_record_update:
+            self.on_record_update(action, data)  # pylint:disable=not-callable
 
     def update_row_state(self, row: int) -> None:
         """Set state of other cells in row (readony)."""

@@ -125,7 +125,9 @@ class BanksPage(tk.Frame):
         fields.pack(side=tk.TOP, fill=tk.X)
 
     def _create_chan_list(self, frame: tk.Frame) -> None:
-        self._chan_list = banks_channelslist.ChannelsList(frame)
+        self._chan_list = banks_channelslist.ChannelsList(
+            frame, self._change_manager.rm
+        )
         self._chan_list.pack(side=tk.TOP, expand=True, fill=tk.BOTH, pady=6)
 
         self._chan_list.on_record_selected = self._on_channel_select  # type: ignore
@@ -145,7 +147,7 @@ class BanksPage(tk.Frame):
         bframe.pack(side=tk.BOTTOM, fill=tk.X)
 
     def _on_bank_select(self, _event: tk.Event) -> None:  # type: ignore
-        if sel_bank := self._banks_list.curselection():  # type: ignore
+        if sel_bank := self._banks_list.curselection():
             self._last_selected_bank = int(sel_bank[0])
         else:
             self._last_selected_bank = 0
@@ -245,7 +247,9 @@ class BanksPage(tk.Frame):
         self._change_manager.set_bank_links(bl)
         self._change_manager.commit()
 
-    def _on_channel_select(self, rows: list[banks_channelslist.BLRow]) -> None:
+    def _on_channel_select(
+        self, rows: list[banks_channelslist.RowType]
+    ) -> None:
         self._btn_sort["state"] = "normal" if len(rows) > 1 else "disabled"
         self._last_selected_pos[self._last_selected_bank] = rows[0].rownum
 
@@ -254,7 +258,7 @@ class BanksPage(tk.Frame):
                 _LOG.debug("chan selected: %r", rec)
 
     def _on_channel_update(
-        self, action: str, rows: ty.Collection[banks_channelslist.BLRow]
+        self, action: str, rows: ty.Collection[banks_channelslist.RowType]
     ) -> None:
         match action:
             case "delete":
@@ -267,9 +271,8 @@ class BanksPage(tk.Frame):
                 self._do_move_channels(rows)
 
     def _do_delete_channels(
-        self, rows: ty.Collection[banks_channelslist.BLRow]
+        self, rows: ty.Collection[banks_channelslist.RowType]
     ) -> None:
-        chan: model.Channel | None
         if not messagebox.askyesno(
             "Delete channel",
             "Delete channel configuration from bank?",
@@ -279,7 +282,7 @@ class BanksPage(tk.Frame):
 
         channels = []
         for rec in rows:
-            if chan := rec.channel:
+            if chan := rec.obj:
                 _LOG.debug("_do_delete_channels: row=%r, chan=%r", rec, chan)
                 chan = chan.clone()
                 chan.clear_bank()
@@ -287,13 +290,15 @@ class BanksPage(tk.Frame):
 
         self._change_manager.set_channel(*channels)
         self._change_manager.commit()
+        # TODO: update changed
         self._update_chan_list()
 
-    def _do_update_channels(  # noqa: C901
-        self, rows: ty.Collection[banks_channelslist.BLRow]
-    ) -> None:
-        chan: model.Channel | None
+    #        for chan in channels:
+    #            self._chan_list.update_data(chan.bank_pos, chan)
 
+    def _do_update_channels(  # noqa: C901
+        self, rows: ty.Collection[banks_channelslist.RowType]
+    ) -> None:
         selected_bank = self._last_selected_bank
 
         # modified channels
@@ -301,34 +306,47 @@ class BanksPage(tk.Frame):
         for rec in rows:
             _LOG.debug("_do_update_channels: row=%r", rec)
 
-            if rec.new_channel is not None:  # change channel in bankpos
-                if old_chan := rec.channel:
+            if not rec.changes:
+                continue
+
+            chan: model.Channel | None = None
+
+            if (new_chan_num := rec.changes.get("channel")) is not None:
+                # change channel in bankpos
+                assert isinstance(new_chan_num, int)
+                del rec.changes["channel"]
+
+                if (old_chan := rec.obj) and old_chan.number != new_chan_num:
                     # clear old chan
+                    old_chan = old_chan.clone()
                     old_chan.clear_bank()
                     channels.append(old_chan)
 
                 # add chan to bank
-                chan = self._radio_memory.channels[rec.new_channel].clone()
+                chan = self._radio_memory.channels[new_chan_num].clone()
 
-            elif rec.new_values:  # empty pos, entered freq
+            if not rec.obj and (freq := rec.changes.get("freq")):
+                # create new position with new channel by freq
+                assert isinstance(freq, int)
+                del rec.changes["freq"]
+
+                # empty pos, entered freq
                 chan = self._radio_memory.find_first_hidden_channel()
                 if not chan:
                     # TODO: error? is this possible?
                     continue
 
                 chan = chan.clone()
+                chan.freq = freq
 
-                if freq := rec.new_values.get("freq"):
-                    assert isinstance(freq, int)
-                    chan.freq = freq
+            if not chan:
+                assert rec.obj is not None
+                chan = rec.obj.clone()
 
-            elif rec.channel:  # edit existing channel
-                chan = rec.channel
-
-            else:
-                # no chan = deleted  # TODO: change
-                self._change_manager.clear_bank_pos(selected_bank, rec.rownum)
-                continue
+            #            else:
+            #                # no chan = deleted  # TODO: change
+            #                self._change_manager.clear_bank_pos(selected_bank, rec.rownum)
+            #               continue
 
             chan.bank = selected_bank
             chan.bank_pos = rec.rownum
@@ -343,8 +361,8 @@ class BanksPage(tk.Frame):
                 chan.load_defaults_from_band(band)
                 chan.hide_channel = False
 
-            if rec.new_values:
-                chan.from_record(rec.new_values)
+            if rec.changes:
+                chan.from_record(rec.changes)
 
             channels.append(chan)
 
@@ -352,18 +370,19 @@ class BanksPage(tk.Frame):
 
         if not self.__in_paste:
             self._change_manager.commit()
+            # TODO: update changed
             self._update_chan_list()
 
     def _do_move_channels(
-        self, rows: ty.Collection[banks_channelslist.BLRow]
+        self, rows: ty.Collection[banks_channelslist.RowType]
     ) -> None:
         channels = []
         for rec in rows:
-            if not rec.channel:
+            if not rec.obj:
                 continue
 
-            _LOG.debug("_do_move_channels: %r -> %d", rec.channel, rec.rownum)
-            chan = rec.channel.clone()
+            _LOG.debug("_do_move_channels: %r -> %d", rec.obj, rec.rownum)
+            chan = rec.obj.clone()
             chan.bank_pos = rec.rownum
             channels.append(chan)
 
@@ -381,7 +400,7 @@ class BanksPage(tk.Frame):
 
         if selected.type_ == "rows":
             if rows := self._chan_list.selected_rows_data():
-                channels = (chan for row in rows if (chan := row.channel))
+                channels = (chan for row in rows if (chan := row.obj))
                 res = expimp.export_channel_str(channels)
 
         elif selected.type_ == "cells" and (
@@ -532,8 +551,11 @@ class BanksPage(tk.Frame):
         if len(rows) <= 1:
             return
 
+        echan = banks_channelslist.EmptyChannel
+
         channels = [
-            row.channel.clone() if row.channel else None for row in rows
+            chan.clone() if (chan := row.obj) is not echan and chan else None
+            for row in rows
         ]
         channels_bank_pos = [row.rownum for row in rows]
 
