@@ -54,13 +54,13 @@ class ScanEdgesPage(tk.Frame):
             "<Control-v>", self.__on_scan_edge_paste
         )
 
-    def __on_se_select(self, rows: list[scanedges_list.Row]) -> None:
+    def __on_se_select(self, rows: list[scanedges_list.RowType]) -> None:
         if _LOG.isEnabledFor(logging.DEBUG):
             for rec in rows:
-                _LOG.debug("se selected: %r", rec.se)
+                _LOG.debug("se selected: %r", rec.obj)
 
     def __on_scan_edge_updated(
-        self, action: str, rows: ty.Collection[scanedges_list.Row]
+        self, action: str, rows: ty.Collection[scanedges_list.RowType]
     ) -> None:
         match action:
             case "delete":
@@ -73,7 +73,7 @@ class ScanEdgesPage(tk.Frame):
                 self.__do_move_scan_edge(rows)
 
     def __do_delete_scan_edge(
-        self, rows: ty.Collection[scanedges_list.Row]
+        self, rows: ty.Collection[scanedges_list.RowType]
     ) -> None:
         se: model.ScanEdge | None
         if not messagebox.askyesno(
@@ -87,9 +87,9 @@ class ScanEdgesPage(tk.Frame):
             _LOG.debug(
                 "__do_delete_scan_edge: row=%r, chan=%r",
                 rec,
-                rec.se,
+                rec.obj,
             )
-            if se := rec.se:
+            if se := rec.obj:
                 se = se.clone()
                 se.delete()
                 self._change_manager.set_scan_edge(se)
@@ -98,32 +98,60 @@ class ScanEdgesPage(tk.Frame):
         self.__update_scan_edges_list()
 
     def __do_update_scan_edge(
-        self, rows: ty.Collection[scanedges_list.Row]
+        self, rows: ty.Collection[scanedges_list.RowType]
     ) -> None:
+        ses = []
+
         for rec in rows:
             _LOG.debug(
                 "__do_update_scan_edge: row=%r, se=%r",
                 rec,
-                rec.se,
+                rec.obj,
             )
-            self._change_manager.set_scan_edge(rec.se)
-            rec.updated = False
+            if not rec.changes:
+                continue
+
+            se = rec.obj
+            assert se
+
+            se = se.clone()
+            se.from_record(rec.changes)
+
+            if se.hidden:
+                if se.start and se.end:
+                    se.unhide()
+                else:
+                    se.edited = True
+
+            if not se.hidden and se.start > se.end:
+                se.start, se.end = se.end, se.start
+
+            ses.append(se)
+
+        if not ses:
+            return
+
+        for se in ses:
+            self._change_manager.set_scan_edge(se)
 
         self._change_manager.commit()
 
+        for se in ses:
+            self._scanedges_list.update_data(se.idx, se)
+
     def __do_move_scan_edge(
-        self, rows: ty.Collection[scanedges_list.Row]
+        self, rows: ty.Collection[scanedges_list.RowType]
     ) -> None:
         changes: dict[int, int] = {}
         for rec in rows:
-            se = rec.se
+            se = rec.obj
+            assert se
             _LOG.debug(
                 "__do_move_scan_edge: row=%r, se=%r -> %d", rec, se, rec.rownum
             )
             changes[rec.rownum] = se.idx
             se.idx = rec.rownum
             self._change_manager.set_scan_edge(se)
-            rec.updated = False
 
         if changes:
             self._change_manager.remap_scan_links(changes)
