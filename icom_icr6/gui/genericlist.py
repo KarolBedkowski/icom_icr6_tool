@@ -455,9 +455,12 @@ class Row(UserList[object], ty.Generic[RT]):
         return self
 
 
+ColumnsDef = ty.Sequence[Column]
+
+
 class GenericList2(tk.Frame, ty.Generic[RT]):
     _ALTERNATE_COLOR = "#F5F5FF"
-    COLUMNS: ty.ClassVar[ty.Sequence[Column]] = ()
+    COLUMNS: ty.ClassVar[ColumnsDef] = ()
 
     def __init__(self, parent: tk.Widget) -> None:
         super().__init__(parent)

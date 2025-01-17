@@ -130,8 +130,8 @@ class BanksPage(tk.Frame):
         )
         self._chan_list.pack(side=tk.TOP, expand=True, fill=tk.BOTH, pady=6)
 
-        self._chan_list.on_record_selected = self._on_channel_select  # type: ignore
-        self._chan_list.on_record_update = self._on_channel_update  # type: ignore
+        self._chan_list.on_record_selected = self._on_channel_select
+        self._chan_list.on_record_update = self._on_channel_update
         self._chan_list.sheet.bind("<Control-c>", self._on_channel_copy)
         self._chan_list.sheet.bind("<Control-v>", self._on_channel_paste)
 
@@ -355,11 +355,6 @@ class BanksPage(tk.Frame):
                 assert rec.obj is not None
                 chan = rec.obj.clone()
 
-            #            else:
-            #                # no chan = deleted  # TODO: change
-            #                self._change_manager.clear_bank_pos(selected_bank, rec.rownum)
-            #               continue
-
             chan.bank = selected_bank
             chan.bank_pos = rec.rownum
             # if new channel - make it visible
@@ -563,11 +558,8 @@ class BanksPage(tk.Frame):
         if len(rows) <= 1:
             return
 
-        echan = banks_channelslist.EmptyChannel
-
         channels = [
-            chan.clone() if (chan := row.obj) is not echan and chan else None
-            for row in rows
+            chan.clone() if (chan := row.obj) else None for row in rows
         ]
         channels_bank_pos = [row.rownum for row in rows]
 

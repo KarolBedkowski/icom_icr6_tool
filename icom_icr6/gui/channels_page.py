@@ -207,7 +207,7 @@ class ChannelsPage(tk.Frame):
 
     @property
     def _selected_group(self) -> int | None:
-        if sel := self._groups_list.curselection():  # type: ignore
+        if sel := self._groups_list.curselection():
             return sel[0]  # type: ignore
 
         return None
