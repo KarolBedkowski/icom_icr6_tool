@@ -9,7 +9,7 @@ import tkinter as tk
 import typing as ty
 from tkinter import messagebox, ttk
 
-from icom_icr6 import consts, expimp, fixers, model, validators
+from icom_icr6 import consts, expimp, fixers, validators
 from icom_icr6.change_manager import ChangeManeger
 from icom_icr6.radio_memory import RadioMemory
 
@@ -125,7 +125,7 @@ class ScanLinksPage(tk.Frame):
         self._scan_links_edges.set_data(data)
 
     def __on_select_scan_link(self, event: tk.Event | None = None) -> None:  # type: ignore
-        sel_sl = self._scan_links_list.curselection()  # type: ignore
+        sel_sl = self._scan_links_list.curselection()
         if event:
             self._scan_links_edges.reset(scroll_top=True)
 
@@ -173,7 +173,7 @@ class ScanLinksPage(tk.Frame):
         self.__update_scan_edges()
 
     def __on_scan_edge_updated(
-        self, action: str, rows: ty.Collection[scanlinks_list.Row]
+        self, action: str, rows: ty.Collection[scanlinks_list.RowType]
     ) -> None:
         match action:
             case "delete":
@@ -186,9 +186,8 @@ class ScanLinksPage(tk.Frame):
                 self.__do_move_scan_edge(rows)
 
     def __do_delete_scan_edge(
-        self, rows: ty.Collection[scanlinks_list.Row]
+        self, rows: ty.Collection[scanlinks_list.RowType]
     ) -> None:
-        se: model.ScanEdge | None
         if not messagebox.askyesno(
             "Delete scan edge",
             "Delete scan edge configuration?",
@@ -197,13 +196,9 @@ class ScanLinksPage(tk.Frame):
             return
 
         for rec in rows:
-            _LOG.debug(
-                "__do_delete_scan_edge: row=%r, chan=%r",
-                rec,
-                rec.se,
-            )
-            if se := rec.se:
-                se = se.clone()
+            _LOG.debug("__do_delete_scan_edge: row=%r", rec)
+            if sl := rec.obj:
+                se = sl.scan_edge.clone()
                 se.delete()
                 self._change_manager.set_scan_edge(se)
 
@@ -211,33 +206,30 @@ class ScanLinksPage(tk.Frame):
         self.__update_scan_edges()
 
     def __do_update_scan_edge(
-        self, rows: ty.Collection[scanlinks_list.Row]
+        self, rows: ty.Collection[scanlinks_list.RowType]
     ) -> None:
         sel_sl = self._last_selected_sl
         sl = self._radio_memory.scan_links[sel_sl].clone()
 
         for rec in rows:
-            _LOG.debug(
-                "__do_update_scan_edge: row=%r, se=%r, selected=%r",
-                rec,
-                rec.se,
-                rec.selected,
-            )
-            se = rec.se
+            _LOG.debug("__do_update_scan_edge: row=%r", rec)
+            assert rec.obj
+            se = rec.obj.scan_edge
             self._change_manager.set_scan_edge(se)
 
-            sl[se.idx] = rec.selected
-            rec.updated = False
+            sl[se.idx] = sl
 
         self._change_manager.set_scan_link(sl)
         self._change_manager.commit()
 
     def __do_move_scan_edge(
-        self, rows: ty.Collection[scanlinks_list.Row]
+        self, rows: ty.Collection[scanlinks_list.RowType]
     ) -> None:
         changes: dict[int, int] = {}
         for rec in rows:
-            se = rec.se
+            sl = rec.obj
+            assert sl
+            se = sl.scan_edge
             _LOG.debug(
                 "__do_move_scan_edge: row=%r, se=%r -> %d", rec, se, rec.rownum
             )

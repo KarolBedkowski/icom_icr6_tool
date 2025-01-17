@@ -11,7 +11,7 @@ from tksheet import EventDataDict
 
 from icom_icr6 import consts, fixers, model
 
-from . import genericlist, scanedges_list
+from . import genericlist
 
 _LOG = logging.getLogger(__name__)
 
@@ -21,8 +21,11 @@ class ScanLink(ty.NamedTuple):
     selected: bool
 
 
-class Row(scanedges_list.Row):
-    COLUMNS = (
+RowType = genericlist.Row[ScanLink]
+
+
+class ScanLnksList(genericlist.GenericList2[ScanLink]):
+    COLUMNS: ty.ClassVar[ty.Sequence[genericlist.Column]] = (
         ("idx", "Num", "int"),
         ("selected", "Selected", "bool"),
         ("name", "Name", "str"),
@@ -33,53 +36,31 @@ class Row(scanedges_list.Row):
         ("att", "ATT", consts.ATTENUATOR),
     )
 
-    def __init__(self, rownum: int, sl: ScanLink) -> None:
-        self.selected = sl.selected
-        super().__init__(rownum, sl.scan_edge)
-
-    def __setitem__(self, idx: int, val: object, /) -> None:  # type: ignore
-        if val is None or val == self.data[idx]:
-            return
-
-        col = self.COLUMNS[idx][0]
-        match col:
-            case "idx":
-                pass
-
-            case "selected":
-                self.selected = bool(val)
-                self.data[1] = val
-
-            case _:
-                self._update_se(idx, col, val)
-
-    def _make_clone(self) -> model.ScanEdge:
-        """Make copy of channel for updates."""
-        if not self.updated:
-            self.updated = True
-            self.se = self.se.clone()
-
-        return self.se
-
-    def _from_scanedge(self, se: model.ScanEdge) -> list[object]:
-        if se.hidden and not se.edited:
-            return [se.idx, self.selected, None, None, None, None, None, None]
-
-        data = se.to_record()
-        return [se.idx, self.selected, *(data[c[0]] for c in self.COLUMNS[2:])]
-
-
-class ScanLnksList(genericlist.GenericList[Row, ScanLink]):
-    _ROW_CLASS = Row
-
     def set_data_links(self, links: list[bool]) -> None:
         # update "selected" column
         self.sheet["B"].options(transposed=True).data = links
 
+    def _row_from_data(
+        self, idx: int, obj: ScanLink
+    ) -> genericlist.Row[ScanLink]:
+        se = obj.scan_edge
+        if se.hidden and not se.edited:
+            cols = [se.idx, obj.selected, None, None, None, None, None, None]
+
+        else:
+            data = se.to_record()
+            cols = [
+                se.idx,
+                obj.selected,
+                *(data[c[0]] for c in self.COLUMNS[2:]),
+            ]
+
+        return genericlist.Row(cols, idx, obj)
+
     def _on_validate_edits(self, event: EventDataDict) -> object:
         # _LOG.debug("_on_validate_edits: %r", event)
 
-        column = self.columns[self.sheet.data_c(event.column)]
+        column = self.COLUMNS[self.sheet.data_c(event.column)]
         row = self.sheet.data[event.row]
         value = event.value
 
@@ -108,7 +89,7 @@ class ScanLnksList(genericlist.GenericList[Row, ScanLink]):
     def update_row_state(self, row: int) -> None:
         """Set state of other cells in row (readony)."""
         data_row = self.sheet.data[row]
-        se = data_row.se
+        se = data_row.obj.scan_edge
         hidden = se.hidden
 
         self._set_cell_ro(row, "ts", hidden)
