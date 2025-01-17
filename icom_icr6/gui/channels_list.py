@@ -378,7 +378,7 @@ class ChannelsList2(genericlist.GenericList2[model.Channel | None]):
     def _row_from_data(
         self, idx: int, obj: model.Channel | None
     ) -> genericlist.Row[model.Channel | None]:
-        if not obj:
+        if obj is None:
             cols = [idx, *([""] * 18)]
         elif obj.hide_channel:
             cols = [obj.number, *([""] * 18)]
@@ -512,7 +512,7 @@ class ChannelsList2(genericlist.GenericList2[model.Channel | None]):
         if row_is_readonly:
             # remove all checkboxes, dropdown when row is empty
             for col in range(len(self.COLUMNS)):
-                self.sheet.span(row, col).del_dropdown().del_checkbox().clear()
+                self.sheet.span(row, col).del_dropdown().del_checkbox()
 
             return
 

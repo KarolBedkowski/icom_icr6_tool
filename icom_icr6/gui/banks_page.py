@@ -311,19 +311,31 @@ class BanksPage(tk.Frame):
 
             chan: model.Channel | None = None
 
-            if (new_chan_num := rec.changes.get("channel")) is not None:
-                # change channel in bankpos
-                assert isinstance(new_chan_num, int)
-                del rec.changes["channel"]
+            if "channel" in rec.changes:
+                if (new_chan_num := rec.changes.get("channel")) is not None:
+                    # change channel in bankpos
+                    assert isinstance(new_chan_num, int)
+                    del rec.changes["channel"]
 
-                if (old_chan := rec.obj) and old_chan.number != new_chan_num:
-                    # clear old chan
-                    old_chan = old_chan.clone()
-                    old_chan.clear_bank()
-                    channels.append(old_chan)
+                    if (
+                        old_chan := rec.obj
+                    ) and old_chan.number != new_chan_num:
+                        # clear old chan
+                        old_chan = old_chan.clone()
+                        old_chan.clear_bank()
+                        channels.append(old_chan)
 
-                # add chan to bank
-                chan = self._radio_memory.channels[new_chan_num].clone()
+                    # add chan to bank
+                    chan = self._radio_memory.channels[new_chan_num].clone()
+
+                else:
+                    # remove channel from bank
+                    if (c := rec.obj) is not None:
+                        c = c.clone()
+                        c.clear_bank()
+                        channels.append(c)
+
+                    continue
 
             if not rec.obj and (freq := rec.changes.get("freq")):
                 # create new position with new channel by freq

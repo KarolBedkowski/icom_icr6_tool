@@ -434,7 +434,8 @@ class Row(UserList[object], ty.Generic[RT]):
         return f"Row<data={self.data!r}, changes={self.changes!r}>"
 
     def __setitem__(self, idx: int, val: object, /) -> None:  # type: ignore
-        if val is None or val == self.data[idx]:
+        current_val = self.data[idx]
+        if val == current_val or (val is None and current_val == ""):
             return
 
         if self._changes is None:
@@ -445,9 +446,7 @@ class Row(UserList[object], ty.Generic[RT]):
         super().__setitem__(idx, val)
 
     def __hash__(self) -> int:
-        return hash(
-            self.__class__.__name__ + str(self.data[0] if self.data else None)
-        )
+        return hash(f"row-{self.data[0]}")
 
     def map_changes(self, cols: ty.Sequence[Column]) -> ty.Self:
         if self._changes:
