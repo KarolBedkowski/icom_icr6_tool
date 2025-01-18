@@ -6,6 +6,7 @@
 Notebook tab containing banks and channels.
 """
 
+import itertools
 import logging
 import tkinter as tk
 import typing as ty
@@ -281,104 +282,100 @@ class BanksPage(tk.Frame):
             return
 
         channels = []
+        bank_pos = []
         for rec in rows:
             if chan := rec.obj:
                 _LOG.debug("_do_delete_channels: row=%r, chan=%r", rec, chan)
+                bank_pos.append(rec.rownum)
                 chan = chan.clone()
                 chan.clear_bank()
                 channels.append(chan)
 
         self._change_manager.set_channel(*channels)
         self._change_manager.commit()
-        # TODO: update changed
-        self._update_chan_list()
 
-    #        for chan in channels:
-    #            self._chan_list.update_data(chan.bank_pos, chan)
+        for pos in bank_pos:
+            self._chan_list.update_data(pos, None)
 
-    def _do_update_channels(  # noqa: C901
+    def _do_update_channels(
         self, rows: ty.Collection[banks_channelslist.RowType]
     ) -> None:
-        selected_bank = self._last_selected_bank
-
         # modified channels
-        channels = []
-        for rec in rows:
-            _LOG.debug("_do_update_channels: row=%r", rec)
-
-            if not rec.changes:
-                continue
-
-            chan: model.Channel | None = None
-
-            if "channel" in rec.changes:
-                if (new_chan_num := rec.changes.get("channel")) is not None:
-                    # change channel in bankpos
-                    assert isinstance(new_chan_num, int)
-                    del rec.changes["channel"]
-
-                    if (
-                        old_chan := rec.obj
-                    ) and old_chan.number != new_chan_num:
-                        # clear old chan
-                        old_chan = old_chan.clone()
-                        old_chan.clear_bank()
-                        channels.append(old_chan)
-
-                    # add chan to bank
-                    chan = self._radio_memory.channels[new_chan_num].clone()
-
-                else:
-                    # remove channel from bank
-                    if (c := rec.obj) is not None:
-                        c = c.clone()
-                        c.clear_bank()
-                        channels.append(c)
-
-                    continue
-
-            if not rec.obj and (freq := rec.changes.get("freq")):
-                # create new position with new channel by freq
-                assert isinstance(freq, int)
-                del rec.changes["freq"]
-
-                # empty pos, entered freq
-                chan = self._radio_memory.find_first_hidden_channel()
-                if not chan:
-                    # TODO: error? is this possible?
-                    continue
-
-                chan = chan.clone()
-                chan.freq = freq
-
-            if not chan:
-                assert rec.obj is not None
-                chan = rec.obj.clone()
-
-            chan.bank = selected_bank
-            chan.bank_pos = rec.rownum
-            # if new channel - make it visible
-            if chan.hide_channel:
-                # when hidden channel has no frequency; set 50MHz
-                if not chan.freq:
-                    chan.freq = 50_000_000
-
-                chan.freq = fixers.fix_frequency(chan.freq)
-                band = self._change_manager.rm.get_band_for_freq(chan.freq)
-                chan.load_defaults_from_band(band)
-                chan.hide_channel = False
-
-            if rec.changes:
-                chan.from_record(rec.changes)
-
-            channels.append(chan)
+        channels = list(
+            itertools.chain.from_iterable(map(self.__do_update_channel, rows))
+        )
 
         self._change_manager.set_channel(*channels)
 
         if not self.__in_paste:
             self._change_manager.commit()
-            # TODO: update changed
-            self._update_chan_list()
+            for chan in channels:
+                self._chan_list.update_data(chan.bank_pos, chan)
+
+    def __do_update_channel(
+        self, rec: banks_channelslist.RowType
+    ) -> ty.Iterator[model.Channel]:
+        _LOG.debug("_do_update_channels: row=%r", rec)
+        assert rec.changes
+        chan: model.Channel | None = None
+
+        if "channel" in rec.changes:
+            if (new_chan_num := rec.changes.get("channel")) is not None:
+                # change channel in bankpos
+                assert isinstance(new_chan_num, int)
+                del rec.changes["channel"]
+
+                if (old_chan := rec.obj) and old_chan.number != new_chan_num:
+                    # clear old chan
+                    old_chan = old_chan.clone()
+                    old_chan.clear_bank()
+                    yield old_chan
+
+                # add chan to bank
+                chan = self._radio_memory.channels[new_chan_num].clone()
+
+            else:
+                # remove channel from bank
+                if (c := rec.obj) is not None:
+                    c = c.clone()
+                    c.clear_bank()
+                    yield c
+
+                return
+
+        if not rec.obj and (freq := rec.changes.get("freq")):
+            # create new position with new channel by freq
+            assert isinstance(freq, int)
+            del rec.changes["freq"]
+
+            # empty pos, entered freq
+            chan = self._radio_memory.find_first_hidden_channel()
+            if not chan:
+                # TODO: error? is this possible?
+                return
+
+            chan = chan.clone()
+            chan.freq = freq
+
+        if not chan:
+            assert rec.obj is not None
+            chan = rec.obj.clone()
+
+        chan.bank = self._last_selected_bank
+        chan.bank_pos = rec.rownum
+
+        # if new channel - make it visible
+        if chan.hide_channel:
+            # when hidden channel has no frequency; set 50MHz
+            chan.freq = fixers.fix_frequency(chan.freq or 50_000_000)
+            band = self._change_manager.rm.get_band_for_freq(chan.freq)
+            chan.load_defaults_from_band(band)
+            chan.hide_channel = False
+
+        if rec.changes:
+            chan.from_record(rec.changes)
+
+        yield chan
 
     def _do_move_channels(
         self, rows: ty.Collection[banks_channelslist.RowType]
@@ -396,7 +393,8 @@ class BanksPage(tk.Frame):
         if channels:
             self._change_manager.set_channel(*channels)
             self._change_manager.commit()
-            self._update_chan_list()
+            for chan in channels:
+                self._chan_list.update_data(chan.bank_pos, chan)
 
     def _on_channel_copy(self, _event: tk.Event) -> None:  # type: ignore
         selected = self._chan_list.sheet.get_currently_selected()
