@@ -108,11 +108,9 @@ class ScanEdgesPage(tk.Frame):
                 rec,
                 rec.obj,
             )
-            if not rec.changes:
-                continue
-
             se = rec.obj
             assert se
+            assert rec.changes
 
             se = se.clone()
             se.from_record(rec.changes)

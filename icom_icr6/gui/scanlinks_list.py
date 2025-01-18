@@ -43,6 +43,8 @@ class ScanLnksList(genericlist.GenericList2[ScanLink]):
     def _row_from_data(
         self, idx: int, obj: ScanLink
     ) -> genericlist.Row[ScanLink]:
+        cols: list[object]
+
         se = obj.scan_edge
         if se.hidden and not se.edited:
             cols = [se.idx, obj.selected, None, None, None, None, None, None]

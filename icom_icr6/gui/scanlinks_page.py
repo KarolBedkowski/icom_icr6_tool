@@ -210,17 +210,40 @@ class ScanLinksPage(tk.Frame):
     ) -> None:
         sel_sl = self._last_selected_sl
         sl = self._radio_memory.scan_links[sel_sl].clone()
+        ses = []
 
         for rec in rows:
-            _LOG.debug("__do_update_scan_edge: row=%r", rec)
+            _LOG.debug("__do_update_scan_link: row=%r", rec)
             assert rec.obj
-            se = rec.obj.scan_edge
-            self._change_manager.set_scan_edge(se)
+            assert rec.changes
 
-            sl[se.idx] = sl
+            se = rec.obj.scan_edge.clone()
+            se.from_record(rec.changes)
+
+            if se.hidden:
+                if se.start and se.end:
+                    se.unhide()
+                else:
+                    se.edited = True
+
+            if not se.hidden and se.start > se.end:
+                se.start, se.end = se.end, se.start
+
+            ses.append(se)
+
+            if (sel := rec.changes.get("selected")) is not None:
+                sl[se.idx] = sel
+
+        for se in ses:
+            self._change_manager.set_scan_edge(se)
 
         self._change_manager.set_scan_link(sl)
         self._change_manager.commit()
+
+        for se in ses:
+            self._scan_links_edges.update_data(
+                se.idx, scanlinks_list.ScanLink(se, sl[se.idx])
+            )
 
     def __do_move_scan_edge(
         self, rows: ty.Collection[scanlinks_list.RowType]
