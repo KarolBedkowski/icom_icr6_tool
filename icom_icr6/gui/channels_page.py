@@ -555,7 +555,7 @@ class ChannelsPage(tk.Frame):
             return
 
         sheet = self._chan_list.sheet
-        chan = sheet.data[sel_rows[0]].channel
+        chan = sheet.data[sel_rows[0]].obj
         if not chan or not chan.freq:
             return
 

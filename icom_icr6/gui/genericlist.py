@@ -230,14 +230,15 @@ class GenericList2(tk.Frame, ty.Generic[T]):
             maxrow = max(map(max, event.moved.rows.data.items()))
 
             for rownum in range(minrow, maxrow + 1):
-                row = self.sheet.data[rownum].map_changes(self.COLUMNS)
-                row.rownum = rownum
-                data.add(row)
+                if row := self.sheet.data[rownum].map_changes(self.COLUMNS):
+                    row.rownum = rownum
+                    data.add(row)
 
         else:
             data = {
-                self.sheet.data[r].map_changes(self.COLUMNS)
+                row
                 for r, _c in event.cells.table
+                if (row := self.sheet.data[r].map_changes(self.COLUMNS))
             }
 
         if not data:
@@ -376,17 +377,15 @@ class GenericList2(tk.Frame, ty.Generic[T]):
 
         if selected.type_ == "rows":
             box = selected.box
-            data = [
-                row
-                for r in range(box.from_r, box.upto_r)
-                if (row := self.sheet.data[r].map_changes(self.COLUMNS))
-            ]
+            # there may be no other changes
+            data = [self.sheet.data[r] for r in range(box.from_r, box.upto_r)]
 
         elif selected.type_ == "cells":
             box = self.adjust_box(selected.box)
             self.sheet[box].clear()
             action = "update"
 
+            # only rows with changed data
             data = [
                 row
                 for r in range(box.from_r, box.upto_r)
