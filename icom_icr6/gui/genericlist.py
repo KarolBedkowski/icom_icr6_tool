@@ -230,9 +230,10 @@ class GenericList2(tk.Frame, ty.Generic[T]):
             maxrow = max(map(max, event.moved.rows.data.items()))
 
             for rownum in range(minrow, maxrow + 1):
-                if row := self.sheet.data[rownum].map_changes(self.COLUMNS):
-                    row.rownum = rownum
-                    data.add(row)
+                row = self.sheet.data[rownum]
+                row.map_changes(self.COLUMNS)
+                row.rownum = rownum
+                data.add(row)
 
         else:
             data = {
