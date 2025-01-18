@@ -23,6 +23,7 @@ class ScanEdgesPage(tk.Frame):
         super().__init__(parent)
         self._change_manager = cm
         self._last_selected_se: list[int] = []
+        self.__in_paste = False
 
         self._create_list(self)
 
@@ -132,6 +133,9 @@ class ScanEdgesPage(tk.Frame):
         for se in ses:
             self._change_manager.set_scan_edge(se)
 
+        if self.__in_paste:
+            return
+
         self._change_manager.commit()
 
         for se in ses:
@@ -207,36 +211,36 @@ class ScanEdgesPage(tk.Frame):
         if not sel:
             return
 
+        self.__in_paste = True
+
         clip = gui_model.Clipboard.instance()
         data = ty.cast(str, clip.get())
         try:
             # try import whole scan edge
-            self.__on_scan_edge_paste_se(sel, data)
-        except ValueError:
-            # try import as plain data
-            self.__on_scan_edge_paste_simple(data)
-        except Exception:
+            if not self.__on_scan_edge_paste_se(sel, data):
+                self.__on_scan_edge_paste_simple(data)
+
+        except Exception as err:
             _LOG.exception("__on_channel_paste error")
+            self._change_manager.abort()
+            messagebox.showerror(
+                "Paste data error", f"Clipboard content can't be pasted: {err}"
+            )
+        else:
+            self._change_manager.commit()
+            self.__update_scan_edges_list()
+
+        self.__in_paste = False
 
     def __on_scan_edge_paste_simple(self, data: str) -> None:
-        try:
-            rows = expimp.import_str_as_table(data)
-        except ValueError:
-            raise
-        except Exception:
-            _LOG.exception("simple import from clipboard error")
-            raise
+        if rows := expimp.import_str_as_table(data):
+            self._scanedges_list.paste(rows)
 
-        self._scanedges_list.paste(rows)
-
-    def __on_scan_edge_paste_se(self, sel: tuple[int, ...], data: str) -> None:
+    def __on_scan_edge_paste_se(self, sel: tuple[int, ...], data: str) -> bool:
         try:
             rows = list(expimp.import_scan_edges_str(data))
         except ValueError:
-            raise
-        except Exception:
-            _LOG.exception("import from clipboard error")
-            raise
+            return False
 
         # special case - when in clipboard is one record and selected  many-
         # duplicate
@@ -255,7 +259,7 @@ class ScanEdgesPage(tk.Frame):
                 if se_num == consts.NUM_SCAN_EDGES - 1:
                     break
 
-        self.__update_scan_edges_list()
+        return True
 
     def __paste_se(self, row: dict[str, object], se_num: int) -> bool:
         if not row.get("start") or not row.get("end"):
@@ -271,6 +275,6 @@ class ScanEdgesPage(tk.Frame):
             return False
 
         se.idx = se_num
+        se.unhide()
         self._change_manager.set_scan_edge(se)
-        self._change_manager.commit()
         return True
