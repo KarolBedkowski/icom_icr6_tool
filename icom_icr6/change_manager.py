@@ -146,17 +146,21 @@ class ChangeManeger:
         self._undo_manager.abort()
 
     def set_channel(self, *channels: model.Channel) -> bool:
-        """Set channel(s). return True when other channels are also changed."""
+        """Set channel(s). Return True when other channels are also changed.
+        """
         _LOG.debug("set_channel: %r", channels)
 
         for chan in channels:
             chan.validate()
 
-        # keep track of bank pos uset by changed channels
+        # keep track of bank pos used by changed channels
+        #  (bank, bank_pos) -> channel number
+        # bank can be also "not_set"
         bank_chan_pos: dict[tuple[int, int], int] = {}
 
         for chan in channels:
             if not chan.freq or chan.hide_channel:
+                # clear bank in hidden channels
                 chan.bank = consts.BANK_NOT_SET
             else:
                 bank_chan_pos[chan.bank, chan.bank_pos] = chan.number
@@ -189,6 +193,7 @@ class ChangeManeger:
                 chan.clear_bank()
                 chan.updated = True
                 self._undo_manager.push("channel", prev, chan)
+                self.rm.channels[chan.number] = chan
                 more_channels_changed = True
 
         return more_channels_changed
