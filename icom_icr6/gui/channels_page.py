@@ -318,6 +318,7 @@ class ChannelsPage(tk.Frame):
 
         except Exception as err:
             _LOG.exception("__on_channel_paste error")
+            self._change_manager.abort()
             messagebox.showerror(
                 "Paste data error", f"Clipboard content can't be pasted: {err}"
             )
