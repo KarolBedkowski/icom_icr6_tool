@@ -30,20 +30,28 @@ T = ty.TypeVar("T")
 
 
 @ty.runtime_checkable
-class RecordActionCallback(ty.Protocol[T_contra]):
+class RecordActionCallback(ty.Protocol[T]):
     def __call__(
         self,
         action: str,
-        rows: ty.Collection[T_contra],
+        rows: list[T],
     ) -> None: ...
 
 
 @ty.runtime_checkable
-class RecordSelectedCallback2(ty.Protocol[T]):
+class RecordSelectedCallback(ty.Protocol[T]):
     def __call__(
         self,
         rows: list[T],
     ) -> None: ...
+
+
+def dummy_record_acton_cb(action: str, rows: ty.Collection[T_contra]) -> None:
+    pass
+
+
+def dummy_record_select_cb(rows: list[T]) -> None:
+    pass
 
 
 def to_freq(o: object, **_kwargs: object) -> int:
@@ -70,6 +78,7 @@ class Row(UserList[object], ty.Generic[T]):
     ) -> None:
         super().__init__(data)
         self.rownum: int = rownnum
+        # object for row - used for validation etc
         self.obj: T | None = obj
         # map col id -> new value
         self._changes: dict[int, object] | None = None
@@ -92,9 +101,11 @@ class Row(UserList[object], ty.Generic[T]):
         super().__setitem__(idx, val)
 
     def __hash__(self) -> int:
-        return hash(f"row-{self.data[0]}")
+        return hash(f"row-{id(self.obj)}-{self.data[0]}")
 
     def map_changes(self, cols: ty.Sequence[Column]) -> ty.Self | None:
+        """Fill `changes` dict using `cols` and registered in `_changes`
+        values."""
         if self._changes:
             self.changes = {cols[c][0]: v for c, v in self._changes.items()}
             return self
@@ -133,13 +144,20 @@ class GenericList2(tk.Frame, ty.Generic[T]):
         # disable popup menu
         self.sheet.disable_bindings("right_click_popup_menu", "undo")
 
+        # map column name to column index
         self.colmap = {
             name: idx for idx, (name, *_) in enumerate(self.COLUMNS)
         }
         self._configure_sheet()
 
-        self.on_record_update: RecordActionCallback[Row[T]] | None = None
-        self.on_record_selected: RecordSelectedCallback2[Row[T]] | None = None
+        # function to call on data update
+        self.on_record_update: RecordActionCallback[Row[T]] = (
+            dummy_record_acton_cb
+        )
+        # function to call on select row
+        self.on_record_selected: RecordSelectedCallback[Row[T]] = (
+            dummy_record_select_cb
+        )
 
     def reset(self, *, scroll_top: bool = False) -> None:
         self.sheet.deselect_any(rows=None, columns=None)
@@ -198,6 +216,7 @@ class GenericList2(tk.Frame, ty.Generic[T]):
             span.format(int_formatter(invalid_value="")).align("right")
 
         elif values == "bool":
+            # align not work on checkbox...
             span.checkbox().align("center")
 
         elif values == "freq":
@@ -218,8 +237,7 @@ class GenericList2(tk.Frame, ty.Generic[T]):
     def _on_sheet_modified(self, event: EventDataDict) -> None:
         # _LOG.debug("_on_sheet_modified: %r", event)
 
-        data: set[Row[T]] = set()
-        action = "update"
+        data: list[Row[T]] = []
 
         if event.eventname == "move_rows":
             if not event.moved.rows:
@@ -233,20 +251,20 @@ class GenericList2(tk.Frame, ty.Generic[T]):
                 row = self.sheet.data[rownum]
                 row.map_changes(self.COLUMNS)
                 row.rownum = rownum
-                data.add(row)
+                data.append(row)
 
         else:
-            data = {
+            action = "update"
+            data = [
                 row
                 for r, _c in event.cells.table
                 if (row := self.sheet.data[r].map_changes(self.COLUMNS))
-            }
+            ]
 
         if not data:
             return
 
-        if self.on_record_update:
-            self.on_record_update(action, data)  # pylint:disable=not-callable
+        self.on_record_update(action, data)  # pylint:disable=not-callable
 
     def __on_validate_edits(self, event: EventDataDict) -> object:
         _LOG.debug("__on_validate_edits: %r", event)
@@ -261,6 +279,7 @@ class GenericList2(tk.Frame, ty.Generic[T]):
             return None
 
     def _on_validate_edits(self, event: EventDataDict) -> object:
+        """Validate object, return valid (corrected) value."""
         return event.value
 
     def _on_sheet_select(self, event: EventDataDict) -> None:
@@ -270,12 +289,10 @@ class GenericList2(tk.Frame, ty.Generic[T]):
 
         sel_box = event.selected.box
 
-        if self.on_record_selected:
-            rows = [
-                self.sheet.data[r]
-                for r in range(sel_box.from_r, sel_box.upto_r)
-            ]
-            self.on_record_selected(rows)  # pylint:disable=not-callable
+        rows = [
+            self.sheet.data[r] for r in range(sel_box.from_r, sel_box.upto_r)
+        ]
+        self.on_record_selected(rows)  # pylint:disable=not-callable
 
     def selected_rows(self) -> ty.Sequence[int]:
         return self.sheet.get_selected_rows(  # type: ignore
@@ -342,6 +359,7 @@ class GenericList2(tk.Frame, ty.Generic[T]):
         csel_col = currently_selected.column
         column = self.sheet.data_c(currently_selected.column)
         end_row = max(len(data) + box.from_r, box.upto_r)
+        # cycle data to get required by destination number of rows
         cdata = cycle(data)
 
         for row in range(box.from_r, end_row):
@@ -374,10 +392,9 @@ class GenericList2(tk.Frame, ty.Generic[T]):
         if not selected:
             return
 
-        action = "delete"
-
         if selected.type_ == "rows":
             box = selected.box
+            action = "delete"
             # there may be no other changes
             data = [self.sheet.data[r] for r in range(box.from_r, box.upto_r)]
 
@@ -392,10 +409,11 @@ class GenericList2(tk.Frame, ty.Generic[T]):
                 for r in range(box.from_r, box.upto_r)
                 if (row := self.sheet.data[r].map_changes(self.COLUMNS))
             ]
+
         else:
             return
 
-        if self.on_record_update and data:
+        if data:
             self.on_record_update(action, data)  # pylint:disable=not-callable
 
     def update_row_state(self, row: int) -> None:

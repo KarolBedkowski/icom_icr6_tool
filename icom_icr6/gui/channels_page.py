@@ -161,7 +161,6 @@ class ChannelsPage(tk.Frame):
 
         self._change_manager.set_channel(*channels)
         self._change_manager.commit()
-        self.__update_chan_list()
 
         for chan in channels:
             self._chan_list.update_data(chan.number % 100, chan)
@@ -245,7 +244,9 @@ class ChannelsPage(tk.Frame):
 
         self._change_manager.set_channel(*channels)
         self._change_manager.commit()
-        self.__update_chan_list()
+
+        for chan in channels:
+            self._chan_list.update_data(chan.number % 100, chan)
 
     def __on_channel_select(self, rows: list[channels_list.RowType]) -> None:
         btn_state = "normal" if len(rows) > 1 else "disabled"

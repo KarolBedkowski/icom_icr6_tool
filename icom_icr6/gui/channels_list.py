@@ -112,11 +112,15 @@ class ChannelsList2(genericlist.GenericList2[model.Channel | None]):
         # _LOG.debug("_on_validate_edits: %r", event)
         # WARN: validation not work on checkbox
 
-        column = self.COLUMNS[self.sheet.data_c(event.column)]
+        column_idx = self.sheet.data_c(event.column)
+        column = self.COLUMNS[column_idx]
         row: genericlist.Row[model.Channel] = self.sheet.data[event.row]
         chan = row.obj
-
         value = event.value
+
+        # skip validation for not-changed cells
+        if value == row[column_idx]:
+            return value
 
         _LOG.debug(
             "_on_validate_edits: row=%d, col=%s, value=%r, row=%r",
@@ -156,26 +160,37 @@ class ChannelsList2(genericlist.GenericList2[model.Channel | None]):
                 )
 
             case "bank" if chan:
-                value = value.strip()
-                if chan.bank != value and self.on_channel_bank_validate:
-                    # change bank,
-                    bank_pos = self.on_channel_bank_validate(  # pylint:disable=not-callable
-                        value[0] if value else "",
-                        chan.number,
-                        0,
-                        try_set_free_slot=True,
-                    )
-                    if bank_pos is None:
-                        return None
-
-                    row[16] = bank_pos
-                    value = self.radio_memory.get_bank_fullname(value)
+                if value:
+                    value = self._validate_bank(value, row)
 
             case "bank_pos" if chan:
                 value = self._validate_bank_pos(value, chan)
 
         _LOG.debug("_on_validate_edits: result value=%r", value)
         return value
+
+    def _validate_bank(
+        self, value: str, row: genericlist.Row[model.Channel]
+    ) -> object:
+        value = value.strip()
+        chan = row.obj
+        assert chan
+
+        if not self.on_channel_bank_validate:
+            return value
+
+        # change bank,
+        bank_pos = self.on_channel_bank_validate(  # pylint:disable=not-callable
+            value[0] if value else "",
+            chan.number,
+            0,
+            try_set_free_slot=True,
+        )
+        if bank_pos is None:
+            return None
+
+        row[16] = bank_pos
+        return self.radio_memory.get_bank_fullname(value)
 
     def _validate_bank_pos(self, value: object, chan: model.Channel) -> object:
         if value == "" or value is None:
