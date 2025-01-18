@@ -141,6 +141,10 @@ class ChangeManeger:
         """Commit changes in undo queue."""
         self._undo_manager.commit()
 
+    def abort(self) -> None:
+        """Clean temporary undo queue."""
+        self._undo_manager.abort()
+
     def set_channel(self, *channels: model.Channel) -> bool:
         """Set channel(s). return True when other channels are also changed."""
         _LOG.debug("set_channel: %r", channels)
