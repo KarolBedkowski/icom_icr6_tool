@@ -50,7 +50,7 @@ class ChannelsPage(tk.Frame):
 
     def update_tab(self, channel_number: int | None = None) -> None:
         # hide canceller in global models
-        self._chan_list.set_region(self._change_manager.rm.region)
+        self._chan_list.set_radio_memory(self._change_manager.rm)
         self._update_groups_list()
 
         if channel_number is None:
@@ -78,7 +78,7 @@ class ChannelsPage(tk.Frame):
         self.__update_chan_list(select=chanpos)
 
     def reset(self) -> None:
-        self._chan_list.set_region(self._change_manager.rm.region)
+        self._chan_list.set_radio_memory(self._change_manager.rm)
         self._last_selected_group = 0
         self._last_selected_pos = [0] * len(gui_model.CHANNEL_RANGES)
         self._groups_list.selection_set(0)

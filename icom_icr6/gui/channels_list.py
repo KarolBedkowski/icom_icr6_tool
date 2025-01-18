@@ -83,10 +83,10 @@ class ChannelsList2(genericlist.GenericList2[model.Channel | None]):
 
         return genericlist.Row(cols, idx, obj)
 
-    def set_region(self, region: consts.Region) -> None:
-        _LOG.debug("set_region: %r", region)
-        self.region = region
-        self.set_hide_canceller(hide=region != consts.Region.JAPAN)
+    def set_radio_memory(self, rm: radio_memory.RadioMemory) -> None:
+        self.radio_memory = rm
+        self.region = rm.region
+        self.set_hide_canceller(hide=self.region != consts.Region.JAPAN)
 
     def set_hide_canceller(self, *, hide: bool) -> None:
         canc_columns = [

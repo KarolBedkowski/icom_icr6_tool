@@ -63,7 +63,7 @@ class BanksPage(tk.Frame):
         self, bank: int | None = None, bank_pos: int | None = None
     ) -> None:
         # hide canceller in global models
-        self._chan_list.set_region(self._change_manager.rm.region)
+        self._chan_list.set_radio_memory(self._change_manager.rm)
         self._update_banks_list()
 
         if bank is None:
@@ -96,7 +96,7 @@ class BanksPage(tk.Frame):
         self._update_chan_list(select=bank_pos)
 
     def reset(self) -> None:
-        self._chan_list.set_region(self._change_manager.rm.region)
+        self._chan_list.set_radio_memory(self._change_manager.rm)
         self._last_selected_bank = 0
         self._last_selected_pos = [0] * consts.NUM_BANKS
         self._update_banks_list()

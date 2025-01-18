@@ -31,14 +31,14 @@ class AutoWriteChannelsPage(tk.Frame):
 
     def update_tab(self, channel_number: int | None = None) -> None:
         # hide canceller in global models
-        self._chan_list.set_region(self._change_manager.rm.region)
+        self._chan_list.set_radio_memory(self._change_manager.rm)
         self._update_channels_list(select=channel_number)
 
     def select(self, channel_number: int) -> None:
         self._chan_list.selection_set([channel_number])
 
     def reset(self) -> None:
-        self._chan_list.set_region(self._change_manager.rm.region)
+        self._chan_list.set_radio_memory(self._change_manager.rm)
         self._update_channels_list()
 
     @property
