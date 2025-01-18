@@ -29,9 +29,11 @@ class ChannelsPage(tk.Frame):
         self.__need_full_refresh = False
         self.__in_paste = False
         self._last_selected_group = 0
+        # keep selection per group
         self._last_selected_pos = [0] * len(gui_model.CHANNEL_RANGES)
-        self._groups_stats: list[str] = []
-        self._groups = tk.StringVar(value=self._groups_stats)  # type: ignore
+        # labels with stats
+        self._groups_labels: list[str] = []
+        self._groups = tk.StringVar(value=self._groups_labels)  # type: ignore
         self._update_groups_list()
 
         pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
@@ -212,7 +214,7 @@ class ChannelsPage(tk.Frame):
         return None
 
     def _update_groups_list(self) -> None:
-        self._groups_stats = groups = []
+        self._groups_labels = groups = []
         for group in range(13):
             active = sum(
                 1
@@ -408,8 +410,8 @@ class ChannelsPage(tk.Frame):
         )
 
         # update group list stats
-        self._groups_stats[group] = f"{group:>2}  ({active})"
-        self._groups.set(self._groups_stats)  # type: ignore
+        self._groups_labels[group] = f"{group:>2}  ({active})"
+        self._groups.set(self._groups_labels)  # type: ignore
 
     def __on_channel_bank_set(
         self,
