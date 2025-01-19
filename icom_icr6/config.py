@@ -27,6 +27,8 @@ class Config:
     find_window_geometry: str = "600x300"
     reports_window_geometry: str = "800x600"
 
+    gui_scaling: float = 1.0
+
     def push_last_file(self, file: str) -> None:
         if not file:
             return
@@ -72,6 +74,10 @@ def load(file: Path) -> Config:
         or CONFIG.reports_window_geometry
     )
 
+    CONFIG.gui_scaling = float(
+        cfg.get("gui", "scaling", fallback="") or CONFIG.gui_scaling
+    )
+
     _LOG.debug("config %r", CONFIG)
     return CONFIG
 
@@ -88,6 +94,7 @@ def save(file: Path) -> None:
     }
     cfg["main_wnd"] = {"geometry": CONFIG.main_window_geometry}
     cfg["find_wnd"] = {"geometry": CONFIG.find_window_geometry}
+    cfg["gui"] = {"scaling": f"{CONFIG.gui_scaling:.2f}"}
 
     file.parent.mkdir(parents=True, exist_ok=True)
     with file.open(mode="w") as fout:

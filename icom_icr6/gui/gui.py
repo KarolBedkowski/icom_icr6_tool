@@ -587,6 +587,7 @@ def start_gui(cfg_file: Path | None, icf_file: Path | None) -> None:
     root = tk.Tk()
     gui_model.Clipboard.initialize(root)
 
+    root.tk.call("tk", "scaling", config.CONFIG.gui_scaling)
     root.title("ICOM IC-R6 Tool")
     style = ttk.Style()
     style.theme_use("clam")
