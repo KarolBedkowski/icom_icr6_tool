@@ -104,6 +104,33 @@ class RadioMemory:
 
         _LOG.debug("region: %r", self.file_etcdata)
 
+    def validate_objects(self) -> ty.Iterable[str]:
+        banks_pos: dict[tuple[int, int], int] = {}
+        for ch in self.get_active_channels():
+            try:
+                ch.validate()
+            except model.ValidateError as err:
+                yield f"channel {ch.number} validation error: {err}"
+
+            if ch.bank == consts.BANK_NOT_SET:
+                continue
+
+            bp = (ch.bank, ch.bank_pos)
+            if pch := banks_pos.get(bp):
+                bname = consts.BANK_NAMES[ch.bank]
+                yield (
+                    f"channel {ch.number} use bank {bname} / {ch.bank_pos} "
+                    f"previously used by channel {pch}"
+                )
+            else:
+                banks_pos[bp] = ch.number
+
+        for se in self.scan_edges:
+            try:
+                se.validate()
+            except model.ValidateError as err:
+                yield f"scan edger {se.idx} validation error: {err}"
+
     def load_memory(self) -> None:
         with memoryview(self.mem) as mv:
             self._load_channels(mv)

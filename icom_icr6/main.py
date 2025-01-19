@@ -344,9 +344,15 @@ def main_print_stats(args: argparse.Namespace) -> None:
         print(line)
 
 
-def _parse_args_radio_commands(
-    cmds: argparse._SubParsersAction[argparse.ArgumentParser],
-) -> None:
+def main_validate_icf(args: argparse.Namespace) -> None:
+    mem = ic_io.load_icf_file(args.icf_file)
+    for line in mem.validate_objects():
+        print(line)
+
+    print("Validation finished")
+
+
+def _parse_args_radio_commands(cmds: argparse._SubParsersAction) -> None:  # type: ignore
     cmd = cmds.add_parser(
         "clone_from_radio", help="Clone memory from radio into ICF file"
     )
@@ -446,6 +452,12 @@ def _parse_args_reports_commands(
     cmd.set_defaults(func=main_print_stats)
 
 
+def _parse_args_support_commands(cmds: argparse._SubParsersAction) -> None:  # type: ignore
+    cmd = cmds.add_parser("validate", help="Validate ICF file")
+    cmd.add_argument("icf_file", type=Path, help="Input ICF file")
+    cmd.set_defaults(func=main_validate_icf)
+
+
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -462,6 +474,7 @@ def _parse_args() -> argparse.Namespace:
     _parse_args_print_commands(cmds)
     _parse_args_convert_commands(cmds)
     _parse_args_reports_commands(cmds)
+    _parse_args_support_commands(cmds)
 
     return parser.parse_args()
 
