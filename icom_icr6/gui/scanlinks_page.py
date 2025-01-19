@@ -196,9 +196,9 @@ class ScanLinksPage(tk.Frame):
         ):
             return
 
-        for rec in rows:
-            _LOG.debug("__do_delete_scan_edge: row=%r", rec)
-            if sl := rec.obj:
+        for row in rows:
+            _LOG.debug("__do_delete_scan_edge: row=%r", row)
+            if sl := row.obj:
                 se = sl.scan_edge.clone()
                 se.delete()
                 self._change_manager.set_scan_edge(se)
@@ -213,13 +213,13 @@ class ScanLinksPage(tk.Frame):
         sl = self._radio_memory.scan_links[sel_sl].clone()
         ses = []
 
-        for rec in rows:
-            _LOG.debug("__do_update_scan_link: row=%r", rec)
-            assert rec.obj
-            assert rec.changes
+        for row in rows:
+            _LOG.debug("__do_update_scan_link: row=%r", row)
+            assert row.obj
+            assert row.changes
 
-            se = rec.obj.scan_edge.clone()
-            se.from_record(rec.changes)
+            se = row.obj.scan_edge.clone()
+            se.from_record(row.changes)
 
             if se.hidden:
                 if se.start and se.end:
@@ -232,7 +232,7 @@ class ScanLinksPage(tk.Frame):
 
             ses.append(se)
 
-            if (sel := rec.changes.get("selected")) is not None:
+            if (sel := row.changes.get("selected")) is not None:
                 sl[se.idx] = sel
 
         for se in ses:
@@ -253,15 +253,15 @@ class ScanLinksPage(tk.Frame):
         self, rows: ty.Collection[scanlinks_list.RowType]
     ) -> None:
         changes: dict[int, int] = {}
-        for rec in rows:
-            sl = rec.obj
+        for row in rows:
+            sl = row.obj
             assert sl
             se = sl.scan_edge
             _LOG.debug(
-                "__do_move_scan_edge: row=%r, se=%r -> %d", rec, se, rec.rownum
+                "__do_move_scan_edge: row=%r, se=%r -> %d", row, se, row.rownum
             )
-            changes[rec.rownum] = se.idx
-            se.idx = rec.rownum
+            changes[row.rownum] = se.idx
+            se.idx = row.rownum
             self._change_manager.set_scan_edge(se)
 
         if changes:
@@ -310,6 +310,7 @@ class ScanLinksPage(tk.Frame):
             messagebox.showerror(
                 "Paste data error", f"Clipboard content can't be pasted: {err}"
             )
+
         else:
             self._change_manager.commit()
             self.__update_scan_edges()
@@ -353,6 +354,7 @@ class ScanLinksPage(tk.Frame):
         try:
             se.from_record(row)
             se.validate()
+
         except ValueError:
             _LOG.exception("import from clipboard error")
             _LOG.error("se_num=%d, row=%r", se_num, row)

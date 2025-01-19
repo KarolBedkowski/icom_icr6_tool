@@ -255,8 +255,8 @@ class BanksPage(tk.Frame):
         self._last_selected_pos[self._last_selected_bank] = rows[0].rownum
 
         if _LOG.isEnabledFor(logging.DEBUG):
-            for rec in rows:
-                _LOG.debug("chan selected: %r", rec)
+            for row in rows:
+                _LOG.debug("chan selected: %r", row)
 
     def _on_channel_update(
         self, action: str, rows: ty.Collection[banks_channelslist.RowType]
@@ -283,10 +283,10 @@ class BanksPage(tk.Frame):
 
         channels = []
         bank_pos = []
-        for rec in rows:
-            if chan := rec.obj:
-                _LOG.debug("_do_delete_channels: row=%r, chan=%r", rec, chan)
-                bank_pos.append(rec.rownum)
+        for row in rows:
+            if chan := row.obj:
+                _LOG.debug("_do_delete_channels: row=%r, chan=%r", row, chan)
+                bank_pos.append(row.rownum)
                 chan = chan.clone()
                 chan.clear_bank()
                 channels.append(chan)
@@ -313,19 +313,19 @@ class BanksPage(tk.Frame):
                 self._chan_list.update_data(chan.bank_pos, chan)
 
     def __do_update_channel(
-        self, rec: banks_channelslist.RowType
+        self, row: banks_channelslist.RowType
     ) -> ty.Iterator[model.Channel]:
-        _LOG.debug("_do_update_channels: row=%r", rec)
-        assert rec.changes
+        _LOG.debug("__do_update_channel: row=%r", row)
+        assert row.changes
         chan: model.Channel | None = None
 
-        if "channel" in rec.changes:
-            if (new_chan_num := rec.changes.get("channel")) is not None:
+        if "channel" in row.changes:
+            if (new_chan_num := row.changes.get("channel")) is not None:
                 # change channel in bankpos
                 assert isinstance(new_chan_num, int)
-                del rec.changes["channel"]
+                del row.changes["channel"]
 
-                if (old_chan := rec.obj) and old_chan.number != new_chan_num:
+                if (old_chan := row.obj) and old_chan.number != new_chan_num:
                     # clear old chan
                     old_chan = old_chan.clone()
                     old_chan.clear_bank()
@@ -336,17 +336,17 @@ class BanksPage(tk.Frame):
 
             else:
                 # remove channel from bank
-                if (c := rec.obj) is not None:
+                if (c := row.obj) is not None:
                     c = c.clone()
                     c.clear_bank()
                     yield c
 
                 return
 
-        if not rec.obj and (freq := rec.changes.get("freq")):
+        if not row.obj and (freq := row.changes.get("freq")):
             # create new position with new channel by freq
             assert isinstance(freq, int)
-            del rec.changes["freq"]
+            del row.changes["freq"]
 
             # empty pos, entered freq
             chan = self._radio_memory.find_first_hidden_channel()
@@ -358,11 +358,11 @@ class BanksPage(tk.Frame):
             chan.freq = freq
 
         if not chan:
-            assert rec.obj is not None
-            chan = rec.obj.clone()
+            assert row.obj is not None
+            chan = row.obj.clone()
 
         chan.bank = self._last_selected_bank
-        chan.bank_pos = rec.rownum
+        chan.bank_pos = row.rownum
 
         # if new channel - make it visible
         if chan.hide_channel:
@@ -372,8 +372,8 @@ class BanksPage(tk.Frame):
             chan.load_defaults_from_band(band)
             chan.hide_channel = False
 
-        if rec.changes:
-            chan.from_record(rec.changes)
+        if row.changes:
+            chan.from_record(row.changes)
 
         yield chan
 
@@ -381,13 +381,13 @@ class BanksPage(tk.Frame):
         self, rows: ty.Collection[banks_channelslist.RowType]
     ) -> None:
         channels = []
-        for rec in rows:
-            if not rec.obj:
+        for row in rows:
+            if not row.obj:
                 continue
 
-            _LOG.debug("_do_move_channels: %r -> %d", rec.obj, rec.rownum)
-            chan = rec.obj.clone()
-            chan.bank_pos = rec.rownum
+            _LOG.debug("_do_move_channels: %r -> %d", row.obj, row.rownum)
+            chan = row.obj.clone()
+            chan.bank_pos = row.rownum
             channels.append(chan)
 
         if channels:

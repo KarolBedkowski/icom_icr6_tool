@@ -154,9 +154,9 @@ class ChannelsPage(tk.Frame):
             return
 
         channels = []
-        for rec in rows:
-            _LOG.debug("__do_delete_channels: %r", rec)
-            if chan := rec.obj:
+        for row in rows:
+            _LOG.debug("__do_delete_channels: %r", row)
+            if chan := row.obj:
                 chan = chan.clone()
                 chan.delete()
                 channels.append(chan)
@@ -171,16 +171,16 @@ class ChannelsPage(tk.Frame):
         self, rows: ty.Collection[channels_list.RowType]
     ) -> None:
         channels = []
-        for idx, rec in enumerate(rows):
-            _LOG.debug("__do_update_channels: [%d] %r", idx, rec)
-            if not rec.changes:
+        for idx, row in enumerate(rows):
+            _LOG.debug("__do_update_channels: [%d] %r", idx, row)
+            if not row.changes:
                 continue
 
-            chan = rec.obj
+            chan = row.obj
             assert chan is not None
 
             chan = chan.clone()
-            if chan.hide_channel and (freq := rec.changes.get("freq")):
+            if chan.hide_channel and (freq := row.changes.get("freq")):
                 assert isinstance(freq, int)
                 band = self._change_manager.rm.get_band_for_freq(freq)
                 chan.load_defaults_from_band(band)
@@ -188,7 +188,7 @@ class ChannelsPage(tk.Frame):
                     chan.freq, chan.tuning_step
                 )
 
-            chan.from_record(rec.changes)
+            chan.from_record(row.changes)
             chan.hide_channel = chan.freq == 0
             channels.append(chan)
 
@@ -236,11 +236,11 @@ class ChannelsPage(tk.Frame):
         range_start = sel_group * 100
         channels = []
 
-        for rec in rows:
-            assert rec.obj
-            channum = range_start + rec.rownum
-            _LOG.debug("__do_move_channels: %r -> %d", rec, channum)
-            chan = rec.obj.clone()
+        for row in rows:
+            assert row.obj
+            channum = range_start + row.rownum
+            _LOG.debug("__do_move_channels: %r -> %d", row, channum)
+            chan = row.obj.clone()
             chan.number = channum
             channels.append(chan)
 
@@ -262,8 +262,8 @@ class ChannelsPage(tk.Frame):
         self._last_selected_pos[self._last_selected_group] = pos
 
         if _LOG.isEnabledFor(logging.DEBUG):
-            for rec in rows:
-                _LOG.debug("chan selected: %r", rec.obj)
+            for row in rows:
+                _LOG.debug("chan selected: %r", row.obj)
 
     def __update_chan_list(
         self,

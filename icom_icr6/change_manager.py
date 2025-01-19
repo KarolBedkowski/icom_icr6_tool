@@ -146,8 +146,7 @@ class ChangeManeger:
         self._undo_manager.abort()
 
     def set_channel(self, *channels: model.Channel) -> bool:
-        """Set channel(s). Return True when other channels are also changed.
-        """
+        """Set channel(s). Return True when other channels are also changed."""
         _LOG.debug("set_channel: %r", channels)
 
         for chan in channels:

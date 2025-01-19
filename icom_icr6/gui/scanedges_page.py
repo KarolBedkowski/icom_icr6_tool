@@ -57,8 +57,8 @@ class ScanEdgesPage(tk.Frame):
 
     def __on_se_select(self, rows: list[scanedges_list.RowType]) -> None:
         if _LOG.isEnabledFor(logging.DEBUG):
-            for rec in rows:
-                _LOG.debug("se selected: %r", rec.obj)
+            for row in rows:
+                _LOG.debug("se selected: %r", row.obj)
 
     def __on_scan_edge_updated(
         self, action: str, rows: ty.Collection[scanedges_list.RowType]
@@ -84,13 +84,13 @@ class ScanEdgesPage(tk.Frame):
         ):
             return
 
-        for rec in rows:
+        for row in rows:
             _LOG.debug(
                 "__do_delete_scan_edge: row=%r, chan=%r",
-                rec,
-                rec.obj,
+                row,
+                row.obj,
             )
-            if se := rec.obj:
+            if se := row.obj:
                 se = se.clone()
                 se.delete()
                 self._change_manager.set_scan_edge(se)
@@ -103,18 +103,18 @@ class ScanEdgesPage(tk.Frame):
     ) -> None:
         ses = []
 
-        for rec in rows:
+        for row in rows:
             _LOG.debug(
                 "__do_update_scan_edge: row=%r, se=%r",
-                rec,
-                rec.obj,
+                row,
+                row.obj,
             )
-            se = rec.obj
+            se = row.obj
             assert se
-            assert rec.changes
+            assert row.changes
 
             se = se.clone()
-            se.from_record(rec.changes)
+            se.from_record(row.changes)
 
             if se.hidden:
                 if se.start and se.end:
@@ -145,14 +145,14 @@ class ScanEdgesPage(tk.Frame):
         self, rows: ty.Collection[scanedges_list.RowType]
     ) -> None:
         changes: dict[int, int] = {}
-        for rec in rows:
-            se = rec.obj
+        for row in rows:
+            se = row.obj
             assert se
             _LOG.debug(
-                "__do_move_scan_edge: row=%r, se=%r -> %d", rec, se, rec.rownum
+                "__do_move_scan_edge: row=%r, se=%r -> %d", row, se, row.rownum
             )
-            changes[rec.rownum] = se.idx
-            se.idx = rec.rownum
+            changes[row.rownum] = se.idx
+            se.idx = row.rownum
             self._change_manager.set_scan_edge(se)
 
         if changes:
@@ -226,6 +226,7 @@ class ScanEdgesPage(tk.Frame):
             messagebox.showerror(
                 "Paste data error", f"Clipboard content can't be pasted: {err}"
             )
+
         else:
             self._change_manager.commit()
             self.__update_scan_edges_list()
@@ -269,6 +270,7 @@ class ScanEdgesPage(tk.Frame):
         try:
             se.from_record(row)
             se.validate()
+
         except ValueError:
             _LOG.exception("import from clipboard error")
             _LOG.error("se_num=%d, row=%r", se_num, row)

@@ -373,9 +373,7 @@ def _parse_args_radio_commands(cmds: argparse._SubParsersAction) -> None:  # typ
     cmd.set_defaults(func=main_send_command)
 
 
-def _parse_args_print_commands(
-    cmds: argparse._SubParsersAction[argparse.ArgumentParser],
-) -> None:
+def _parse_args_print_commands(cmds: argparse._SubParsersAction) -> None: # type: ignore
     cmd = cmds.add_parser("channels", help="Print channels")
     cmd.add_argument("icf_file", type=Path, help="Input ICF file")
     cmd.add_argument(
@@ -422,9 +420,7 @@ def _parse_args_print_commands(
     cmd.set_defaults(func=main_print_dupl_freq)
 
 
-def _parse_args_convert_commands(
-    cmds: argparse._SubParsersAction[argparse.ArgumentParser],
-) -> None:
+def _parse_args_convert_commands(cmds: argparse._SubParsersAction) -> None: # type: ignore
     cmd = cmds.add_parser(
         "icf2raw", help="Convert ICF file to raw memory file"
     )
@@ -441,7 +437,7 @@ def _parse_args_convert_commands(
 
 
 def _parse_args_reports_commands(
-    cmds: argparse._SubParsersAction[argparse.ArgumentParser],
+    cmds: argparse._SubParsersAction, # type: ignore
 ) -> None:
     cmd = cmds.add_parser("sheet", help="Print summary information")
     cmd.add_argument("icf_file", type=Path, help="Input ICF file")
