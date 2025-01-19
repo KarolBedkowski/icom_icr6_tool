@@ -20,7 +20,7 @@ except ImportError:
     try:
         from rich.traceback import install
 
-        install(show_locals=True)
+        install(show_locals=True, suppress=["typeguard"])
         print("rich.traceback enabled")
     except ImportError:
         pass
@@ -99,8 +99,9 @@ try:
     import snoop
 
     snoop.install()
+    print("snoop installed")
 except ImportError:
-    pass
+    print("snoop unavailable")
 
 builtins.APP_DEV_MODE = True
 

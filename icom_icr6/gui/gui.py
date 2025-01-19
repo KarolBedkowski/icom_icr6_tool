@@ -490,7 +490,7 @@ class App(tk.Frame):
         """Switch main notebook to `index` tab. Return True when switched,
         False when already `index` tab is visible."""
         ntb = self._ntb
-        tabs = ntb.tabs()  # type: ignore
+        tabs = ntb.tabs()
         selected_tab = tabs.index(ntb.select())
         if selected_tab == index:
             return False

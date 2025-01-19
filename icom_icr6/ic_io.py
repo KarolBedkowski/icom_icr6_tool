@@ -363,8 +363,7 @@ class Radio:
                 my_checksum = calc_checksum(rawdata[: length + 3])
                 if checksum != my_checksum:
                     _LOG.error(
-                        "invalid checksum: idx=%d, exp=%r, rec=%r, "
-                        "frame=%s",
+                        "invalid checksum: idx=%d, exp=%r, rec=%r, frame=%s",
                         idx,
                         my_checksum,
                         checksum,

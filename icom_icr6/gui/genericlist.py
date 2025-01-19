@@ -392,8 +392,10 @@ class GenericList2(tk.Frame, ty.Generic[T]):
                 for r in range(box.from_r, box.upto_r)
                 if (row := self.sheet.data[r].map_changes(self.COLUMNS))
             ]
+        else:
+            return
 
-        if self.on_record_update:
+        if self.on_record_update and data:
             self.on_record_update(action, data)  # pylint:disable=not-callable
 
     def update_row_state(self, row: int) -> None:

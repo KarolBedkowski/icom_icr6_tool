@@ -37,9 +37,9 @@ class RadioModel:
     ) -> RadioModel:
         serial = binascii.unhexlify(data[25 : 25 + 14])
         serial_decoded = (
-            f"{serial[0]<<8|serial[1]:04d}"
+            f"{serial[0] << 8 | serial[1]:04d}"
             f"{serial[2]:02d}{serial[3]:02d}"
-            f"{serial[5]<<8|serial[6]:04d}"
+            f"{serial[5] << 8 | serial[6]:04d}"
         )
 
         debug_info = (
