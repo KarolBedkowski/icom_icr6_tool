@@ -1,4 +1,4 @@
-# Copyright © 2024 Karol Będkowski <Karol Będkowski@kkomp>
+# Copyright © 2024-2025 Karol Będkowski <Karol Będkowski@kkomp>
 #
 # Distributed under terms of the GPLv3 license.
 
@@ -26,8 +26,8 @@ class ChannelsPage(tk.Frame):
         super().__init__(parent)
         self._parent = parent
         self._change_manager = cm
-        self.__need_full_refresh = False
-        self.__in_paste = False
+        self._need_full_refresh = False
+        self._in_paste = False
         self._last_selected_group = 0
         # keep selection per group
         self._last_selected_pos = [0] * len(gui_model.CHANNEL_RANGES)
@@ -40,12 +40,12 @@ class ChannelsPage(tk.Frame):
         self._groups_list = tk.Listbox(
             pw, selectmode=tk.SINGLE, width=10, listvariable=self._groups
         )
-        self._groups_list.bind("<<ListboxSelect>>", self.__on_group_select)
+        self._groups_list.bind("<<ListboxSelect>>", self._on_group_select)
         pw.add(self._groups_list, weight=0)
 
         frame = tk.Frame(pw)
         self._create_channel_list(frame)
-        self._chan_list.radio_memory = cm.rm
+        self._chan_list.set_radio_memory(cm.rm)
         pw.add(frame, weight=1)
 
         pw.pack(expand=True, fill=tk.BOTH, side=tk.TOP, padx=12, pady=12)
@@ -77,14 +77,14 @@ class ChannelsPage(tk.Frame):
 
         self._groups_list.selection_clear(0, 13)
         self._groups_list.selection_set(group)
-        self.__update_chan_list(select=chanpos)
+        self._update_chan_list(select=chanpos)
 
     def reset(self) -> None:
         self._chan_list.set_radio_memory(self._change_manager.rm)
         self._last_selected_group = 0
         self._last_selected_pos = [0] * len(gui_model.CHANNEL_RANGES)
         self._groups_list.selection_set(0)
-        self.__update_chan_list()
+        self._update_chan_list()
         self._update_groups_list()
 
     @property
@@ -95,18 +95,18 @@ class ChannelsPage(tk.Frame):
         self._chan_list = channels_list.ChannelsList2(
             frame, self._change_manager.rm
         )
-        self._chan_list.on_record_update = self.__on_channel_update
-        self._chan_list.on_record_selected = self.__on_channel_select
-        self._chan_list.on_channel_bank_validate = self.__on_channel_bank_set
+        self._chan_list.on_record_update = self._on_channel_update
+        self._chan_list.on_record_selected = self._on_channel_select
+        self._chan_list.on_channel_bank_validate = self._on_channel_bank_set
         self._chan_list.pack(side=tk.TOP, expand=True, fill=tk.BOTH, pady=6)
-        self._chan_list.sheet.bind("<Control-c>", self.__on_channel_copy)
-        self._chan_list.sheet.bind("<Control-v>", self.__on_channel_paste)
+        self._chan_list.sheet.bind("<Control-c>", self._on_channel_copy)
+        self._chan_list.sheet.bind("<Control-v>", self._on_channel_paste)
 
         bframe = tk.Frame(frame)
         self._btn_sort = ttk.Button(
             bframe,
             text="Sort...",
-            command=self.__on_btn_sort,
+            command=self._on_btn_sort,
             state="disabled",
         )
         self._btn_sort.pack(side=tk.LEFT)
@@ -114,36 +114,36 @@ class ChannelsPage(tk.Frame):
         self._btn_fill = ttk.Button(
             bframe,
             text="Fill values...",
-            command=self.__on_btn_fill,
+            command=self._on_btn_fill,
             state="disabled",
         )
         self._btn_fill.pack(side=tk.LEFT)
 
         bframe.pack(side=tk.BOTTOM, fill=tk.X)
 
-    def __on_group_select(self, _event: tk.Event) -> None:  # type: ignore
+    def _on_group_select(self, _event: tk.Event) -> None:  # type: ignore
         sel_group = self._selected_group
         if sel_group is None:
             return
 
         self._last_selected_group = sel_group
         self._chan_list.reset(scroll_top=True)
-        self.__update_chan_list(select=self._last_selected_pos[sel_group])
+        self._update_chan_list(select=self._last_selected_pos[sel_group])
 
-    def __on_channel_update(
+    def _on_channel_update(
         self, action: str, rows: ty.Collection[channels_list.RowType]
     ) -> None:
         match action:
             case "delete":
-                self.__do_delete_channels(rows)
+                self._do_delete_channels(rows)
 
             case "update":
-                self.__do_update_channels(rows)
+                self._do_update_channels(rows)
 
             case "move":
-                self.__do_move_channels(rows)
+                self._do_move_channels(rows)
 
-    def __do_delete_channels(
+    def _do_delete_channels(
         self, rows: ty.Collection[channels_list.RowType]
     ) -> None:
         if not messagebox.askyesno(
@@ -155,7 +155,7 @@ class ChannelsPage(tk.Frame):
 
         channels = []
         for row in rows:
-            _LOG.debug("__do_delete_channels: %r", row)
+            _LOG.debug("_do_delete_channels: %r", row)
             if chan := row.obj:
                 chan = chan.clone()
                 chan.delete()
@@ -167,19 +167,21 @@ class ChannelsPage(tk.Frame):
         for chan in channels:
             self._chan_list.update_data(chan.number % 100, chan)
 
-    def __do_update_channels(
+    def _do_update_channels(
         self, rows: ty.Collection[channels_list.RowType]
     ) -> None:
         channels = []
-        for idx, row in enumerate(rows):
-            _LOG.debug("__do_update_channels: [%d] %r", idx, row)
+        for row in rows:
+            _LOG.debug("_do_update_channels: %r", row)
             if not row.changes:
+                _LOG.warning("_do_update_channels: no changes: %r", row)
                 continue
 
             chan = row.obj
             assert chan is not None
-
             chan = chan.clone()
+
+            # chan is hidden and freq is given - load defaults for this freq
             if chan.hide_channel and (freq := row.changes.get("freq")):
                 assert isinstance(freq, int)
                 band = self._change_manager.rm.get_band_for_freq(freq)
@@ -188,19 +190,23 @@ class ChannelsPage(tk.Frame):
                     chan.freq, chan.tuning_step
                 )
 
+            # update channel from changes and unhide if freq is valid
             chan.from_record(row.changes)
             chan.hide_channel = chan.freq == 0
             channels.append(chan)
 
-        self.__need_full_refresh |= self._change_manager.set_channel(*channels)
+        # other channels may be changed (replace bank pos)
+        self._need_full_refresh |= self._change_manager.set_channel(*channels)
 
-        if self.__in_paste:
+        # to not commit changes when in paste; commit is at the end
+        if self._in_paste:
             return
 
         self._change_manager.commit()
-        if self.__need_full_refresh:
-            self.__update_chan_list()
+        if self._need_full_refresh:
+            self._update_chan_list()
         else:
+            # update only changed channels
             for chan in channels:
                 self._chan_list.update_data(chan.number % 100, chan)
 
@@ -226,7 +232,7 @@ class ChannelsPage(tk.Frame):
 
         self._groups.set(groups)  # type: ignore
 
-    def __do_move_channels(
+    def _do_move_channels(
         self, rows: ty.Collection[channels_list.RowType]
     ) -> None:
         sel_group = self._selected_group
@@ -238,8 +244,9 @@ class ChannelsPage(tk.Frame):
 
         for row in rows:
             assert row.obj
+            # new position in in row.rownum
             channum = range_start + row.rownum
-            _LOG.debug("__do_move_channels: %r -> %d", row, channum)
+            _LOG.debug("_do_move_channels: %r -> %d", row, channum)
             chan = row.obj.clone()
             chan.number = channum
             channels.append(chan)
@@ -250,11 +257,13 @@ class ChannelsPage(tk.Frame):
         for chan in channels:
             self._chan_list.update_data(chan.number % 100, chan)
 
-    def __on_channel_select(self, rows: list[channels_list.RowType]) -> None:
+    def _on_channel_select(self, rows: list[channels_list.RowType]) -> None:
+        # change buttons state
         btn_state = "normal" if len(rows) > 1 else "disabled"
         self._btn_sort["state"] = btn_state
         self._btn_fill["state"] = btn_state
 
+        # remember selected position in group
         chan = rows[0].obj
         assert chan is not None
         num = chan.number
@@ -265,7 +274,7 @@ class ChannelsPage(tk.Frame):
             for row in rows:
                 _LOG.debug("chan selected: %r", row.obj)
 
-    def __update_chan_list(
+    def _update_chan_list(
         self,
         _event: tk.Event | None = None,  # type: ignore
         *,
@@ -278,13 +287,13 @@ class ChannelsPage(tk.Frame):
         )
 
         self._show_stats()
-        self.__need_full_refresh = False
+        self._need_full_refresh = False
 
         if select is not None:
             self.update_idletasks()
             self.after(10, lambda: self._chan_list.selection_set([select]))
 
-    def __on_channel_copy(self, _event: tk.Event) -> None:  # type: ignore
+    def _on_channel_copy(self, _event: tk.Event) -> None:  # type: ignore
         selected = self._chan_list.sheet.get_currently_selected()
         if not selected:
             return
@@ -304,23 +313,23 @@ class ChannelsPage(tk.Frame):
         if res:
             gui_model.Clipboard.instance().put(res)
 
-    def __on_channel_paste(self, _event: tk.Event) -> None:  # type: ignore
+    def _on_channel_paste(self, _event: tk.Event) -> None:  # type: ignore
         sel = self._chan_list.selection()
         if not sel:
             return
 
-        self.__in_paste = True
+        self._in_paste = True
 
         clip = gui_model.Clipboard.instance()
         data = ty.cast(str, clip.get())
         try:
             # try import whole channels
-            if not self.__on_channel_paste_channels(sel, data):
+            if not self._on_channel_paste_channels(sel, data):
                 # try import as plain data
-                self.__on_channel_paste_simple(data)
+                self._on_channel_paste_simple(data)
 
         except Exception as err:
-            _LOG.exception("__on_channel_paste error")
+            _LOG.exception("_on_channel_paste error")
             self._change_manager.abort()
             messagebox.showerror(
                 "Paste data error", f"Clipboard content can't be pasted: {err}"
@@ -328,11 +337,12 @@ class ChannelsPage(tk.Frame):
 
         else:
             self._change_manager.commit()
-            self.__update_chan_list()
+            self._update_chan_list()
 
-        self.__in_paste = False
+        finally:
+            self._in_paste = False
 
-    def __on_channel_paste_channels(
+    def _on_channel_paste_channels(
         self, sel: tuple[int, ...], data: str
     ) -> bool:
         """Try paste data in csv format. Return True on success."""
@@ -352,28 +362,29 @@ class ChannelsPage(tk.Frame):
         if len(sel) > 1 and len(rows) == 1:
             row = rows[0]
             for spos in sel:
-                if not self.__paste_channel(row, spos + range_start):
+                if not self._paste_channel(row, spos + range_start):
                     break
 
         else:
             start_num = sel[0] + range_start
             for chan_num, row in enumerate(rows, start_num):
-                if not self.__paste_channel(row, chan_num):
+                if not self._paste_channel(row, chan_num):
                     break
+
                 # stop on range boundary
                 if chan_num % 100 == 99:  # noqa: PLR2004
                     break
 
         return True
 
-    def __on_channel_paste_simple(self, data: str) -> None:
+    def _on_channel_paste_simple(self, data: str) -> None:
         """Paste simple data into tksheet.
         Raise on invalid data."""
         if rows := expimp.import_str_as_table(data):
             self._chan_list.paste(rows)
 
-    def __paste_channel(self, row: dict[str, object], chan_num: int) -> bool:
-        _LOG.debug("__paste_channel chan_num=%d, row=%r", chan_num, row)
+    def _paste_channel(self, row: dict[str, object], chan_num: int) -> bool:
+        _LOG.debug("_paste_channel chan_num=%d, row=%r", chan_num, row)
         chan = self._radio_memory.channels[chan_num].clone()
         # do not clean existing rows
         if not row.get("freq"):
@@ -388,7 +399,7 @@ class ChannelsPage(tk.Frame):
             _LOG.error("chan_num=%d, row=%r", chan_num, row)
             return False
 
-        chan.hide_channel = False
+        chan.hide_channel = chan.freq != 0
         # do not set bank on paste
         chan.bank = consts.BANK_NOT_SET
         chan.bank_pos = 0
@@ -405,6 +416,7 @@ class ChannelsPage(tk.Frame):
             c.bank != consts.BANK_NOT_SET
             for c in rm.get_active_channels_in_group(group)
         )
+
         self._parent.set_status(  # type: ignore
             f"Active channels: {active}; in banks: {in_banks}"
         )
@@ -413,7 +425,7 @@ class ChannelsPage(tk.Frame):
         self._groups_labels[group] = f"{group:>2}  ({active})"
         self._groups.set(self._groups_labels)  # type: ignore
 
-    def __on_channel_bank_set(
+    def _on_channel_bank_set(
         self,
         bank: int | str,
         channum: int,
@@ -421,14 +433,17 @@ class ChannelsPage(tk.Frame):
         *,
         try_set_free_slot: bool = False,
     ) -> int | None:
-        _LOG.debug("__on_channel_bank_set %r, %r, %r", bank, channum, bank_pos)
+        _LOG.debug("_on_channel_bank_set %r, %r, %r", bank, channum, bank_pos)
         if bank in (consts.BANK_NOT_SET, ""):
             return bank_pos
 
+        # if bank name, map it to index
         if isinstance(bank, str):
-            bank = consts.BANK_NAMES.index(bank)
+            bank = consts.BANK_NAMES.index(bank[0])
 
         bank_channels = self._radio_memory.get_bank_channels(bank)
+
+        # check current channel position in bank
         dst_bank_pos = bank_channels[bank_pos]
         if dst_bank_pos == channum:
             # no changes
@@ -438,7 +453,7 @@ class ChannelsPage(tk.Frame):
         if dst_bank_pos is None:
             return bank_pos
 
-        # selected bank pos is occupied by other chan
+        # selected bank pos is occupied by other channel
 
         if try_set_free_slot:
             # find unused next slot
@@ -460,10 +475,10 @@ class ChannelsPage(tk.Frame):
         # not found unused slot - replace, require update other rows
         # this may create duplicates  but this should be cleaned on channel
         # save
-        self.__need_full_refresh = True
+        self._need_full_refresh = True
         return bank_pos
 
-    def __on_btn_sort(self) -> None:
+    def _on_btn_sort(self) -> None:
         rows = self._chan_list.selected_rows_data()
         if len(rows) <= 1:
             return
@@ -505,20 +520,20 @@ class ChannelsPage(tk.Frame):
 
         self._change_manager.set_channel(*channels)
         self._change_manager.commit()
-        self.__update_chan_list()
+        self._update_chan_list()
 
-    def __on_btn_fill(self) -> None:
+    def _on_btn_fill(self) -> None:
         rows = self._chan_list.selected_rows_data()
         if len(rows) <= 1:
             return
 
         popup_menu = tk.Menu(self, tearoff=0)
         popup_menu.add_command(
-            label="Copy first row to following", command=self.__do_fill_down
+            label="Copy first row to following", command=self._do_fill_down
         )
 
         popup_menu.add_command(
-            label="Increment freq by TS", command=self.__do_fill_freq
+            label="Increment freq by TS", command=self._do_fill_freq
         )
         try:
             btn = self._btn_fill
@@ -526,13 +541,11 @@ class ChannelsPage(tk.Frame):
         finally:
             popup_menu.grab_release()
 
-    def __do_fill_down(self) -> None:
+    def _do_fill_down(self) -> None:
         """Copy value from first selected cell down"""
         sel_rows = self._chan_list.selected_rows()
         if len(sel_rows) <= 1:
             return
-
-        sheet = self._chan_list.sheet
 
         # visible cols
         sel_cols = self._chan_list.selected_columns()
@@ -541,6 +554,7 @@ class ChannelsPage(tk.Frame):
 
         min_col, max_col = sel_cols[0], sel_cols[-1] + 1
         first_row = sel_rows[0]
+        sheet = self._chan_list.sheet
         data = sheet[(first_row, min_col), (first_row + 1, max_col)].data
 
         with suppress(ValueError):
@@ -551,14 +565,14 @@ class ChannelsPage(tk.Frame):
         for row in sel_rows[1:]:
             sheet.span((row, min_col), emit_event=True).data = data
 
-    def __do_fill_freq(self) -> None:
+    def _do_fill_freq(self) -> None:
         """Copy freq from first row increased by ts"""
         sel_rows = self._chan_list.selected_rows()
         if len(sel_rows) <= 1:
             return
 
         chan = self._chan_list.data[sel_rows[0]].obj
-        if not chan or not chan.freq:
+        if not chan or not chan.freq or chan.hide_channel:
             return
 
         start_freq = chan.freq

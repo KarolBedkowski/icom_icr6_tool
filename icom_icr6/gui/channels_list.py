@@ -1,4 +1,4 @@
-# Copyright © 2024 Karol Będkowski <Karol Będkowski@kkomp>
+# Copyright © 2024-2025 Karol Będkowski <Karol Będkowski@kkomp>
 #
 # Distributed under terms of the GPLv3 license.
 
@@ -58,12 +58,14 @@ class ChannelsList2(genericlist.GenericList2[model.Channel | None]):
         ("canceller freq", "Canceller freq", "int"),
     )
 
+    _EMPTY_ROW = ("",) * 18
+
     def __init__(
         self, parent: tk.Widget, rm: radio_memory.RadioMemory
     ) -> None:
         super().__init__(parent)
-        self.region = consts.Region.GLOBAL
-        self.radio_memory = rm
+        self._region = consts.Region.GLOBAL
+        self._radio_memory = rm
 
         self.on_channel_bank_validate: BankPosValidator | None = None
 
@@ -71,29 +73,30 @@ class ChannelsList2(genericlist.GenericList2[model.Channel | None]):
         self, idx: int, obj: model.Channel | None
     ) -> genericlist.Row[model.Channel | None]:
         if obj is None:
-            cols = [idx, *([""] * 18)]
+            cols = [idx, *self._EMPTY_ROW]
+
         elif obj.hide_channel:
-            cols = [obj.number, *([""] * 18)]
+            cols = [obj.number, *self._EMPTY_ROW]
+
         else:
             data = obj.to_record()
             if obj.bank != consts.BANK_NOT_SET:
-                data["bank"] = self.radio_memory.banks[obj.bank].full_name
+                data["bank"] = self._radio_memory.banks[obj.bank].full_name
 
             cols = [data[col] for col, *_ in self.COLUMNS]
 
         return genericlist.Row(cols, idx, obj)
 
     def set_radio_memory(self, rm: radio_memory.RadioMemory) -> None:
-        self.radio_memory = rm
-        self.region = rm.region
-        self.set_hide_canceller(hide=self.region != consts.Region.JAPAN)
+        self._radio_memory = rm
+        self._region = rm.region
 
-    def set_hide_canceller(self, *, hide: bool) -> None:
+        # hide canceller if region is other than Japan
         canc_columns = [
             self.colmap[c] - 1 for c in ("canceller", "canceller freq")
         ]
 
-        if hide:
+        if self._region != consts.Region.JAPAN:
             self.sheet.hide_columns(canc_columns)
         else:
             self.sheet.show_columns(canc_columns)
@@ -114,7 +117,7 @@ class ChannelsList2(genericlist.GenericList2[model.Channel | None]):
 
         column_idx = self.sheet.data_c(event.column)
         column = self.COLUMNS[column_idx]
-        row: genericlist.Row[model.Channel] = self.sheet.data[event.row]
+        row = self.data[event.row]
         chan = row.obj
         value = event.value
 
@@ -133,7 +136,7 @@ class ChannelsList2(genericlist.GenericList2[model.Channel | None]):
         match column[0]:
             case "channel":
                 value = int(value)
-                if not 0 <= value <= consts.NUM_CHANNELS:
+                if not 0 <= value < consts.NUM_CHANNELS:
                     return None
 
             case "freq":
@@ -146,10 +149,10 @@ class ChannelsList2(genericlist.GenericList2[model.Channel | None]):
                 value = value.upper()
 
             case "offset" if chan:
-                val = genericlist.to_freq(value)
-                value = (
-                    fixers.fix_offset(chan.freq, off) if (off := val) else 0
-                )
+                if off := genericlist.to_freq(value):
+                    value = fixers.fix_offset(chan.freq, off)
+                else:
+                    value = 0
 
             case "canceller freq":
                 # round frequency to 10kHz
@@ -159,11 +162,10 @@ class ChannelsList2(genericlist.GenericList2[model.Channel | None]):
                     consts.CANCELLER_MIN_FREQ,
                 )
 
-            case "bank" if chan:
-                if value:
-                    value = self._validate_bank(value, row)
+            case "bank" if chan and value:
+                value = self._validate_bank(value, row)
 
-            case "bank_pos" if chan:
+            case "bank_pos" if chan and value:
                 value = self._validate_bank_pos(value, chan)
 
         _LOG.debug("_on_validate_edits: result value=%r", value)
@@ -190,7 +192,7 @@ class ChannelsList2(genericlist.GenericList2[model.Channel | None]):
             return None
 
         row[16] = bank_pos
-        return self.radio_memory.get_bank_fullname(value)
+        return self._radio_memory.get_bank_fullname(value)
 
     def _validate_bank_pos(self, value: object, chan: model.Channel) -> object:
         if value == "" or value is None:
@@ -235,7 +237,7 @@ class ChannelsList2(genericlist.GenericList2[model.Channel | None]):
                 # mode depend on market
                 vals = (
                     consts.MODES_JAP
-                    if self.region.is_japan
+                    if self._region.is_japan
                     else consts.MODES_NON_JAP
                 )
                 span.dropdown(values=vals, set_value=data_row[idx])
@@ -245,14 +247,14 @@ class ChannelsList2(genericlist.GenericList2[model.Channel | None]):
 
                 span.dropdown(
                     values=consts.tuning_steps_for_freq(
-                        chan.freq, self.region
+                        chan.freq, self._region
                     ),
                     set_value=data_row[idx],
                 )
 
             elif colname == "bank":
                 # use full bank names
-                names = [bank.full_name for bank in self.radio_memory.banks]
+                names = [bank.full_name for bank in self._radio_memory.banks]
                 sel = (
                     names[chan.bank]
                     if chan.bank != consts.BANK_NOT_SET

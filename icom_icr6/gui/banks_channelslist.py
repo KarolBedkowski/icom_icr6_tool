@@ -1,16 +1,15 @@
-# Copyright © 2024 Karol Będkowski <Karol Będkowski@kkomp>
+# Copyright © 2024-2025 Karol Będkowski <Karol Będkowski@kkomp>
 #
 # Distributed under terms of the GPLv3 license.
 
 """ """
 
 import logging
-import tkinter as tk
 import typing as ty
 
 from tksheet import functions
 
-from icom_icr6 import consts, radio_memory
+from icom_icr6 import consts
 
 from . import channels_list
 
@@ -41,15 +40,6 @@ class ChannelsList(channels_list.ChannelsList2):
         ("canceller", "Canceller", consts.CANCELLER),
         ("canceller freq", "Canceller freq", "int"),
     )
-
-    def __init__(
-        self, parent: tk.Widget, rm: radio_memory.RadioMemory
-    ) -> None:
-        super().__init__(parent, rm)
-        self.bank: int | None = None
-
-    def set_bank(self, bank: int | None) -> None:
-        self.bank = bank
 
     def update_row_state(self, row: int) -> None:
         super().update_row_state(row)

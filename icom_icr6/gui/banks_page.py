@@ -1,4 +1,4 @@
-# Copyright © 2024 Karol Będkowski <Karol Będkowski@kkomp>
+# Copyright © 2024-2025 Karol Będkowski <Karol Będkowski@kkomp>
 #
 # Distributed under terms of the GPLv3 license.
 
@@ -37,7 +37,7 @@ class BanksPage(tk.Frame):
         self._bank_link = gui_model.BoolVar()
         self._bank_link.trace("w", self._on_bank_link_changed)  # type: ignore
         self._change_manager = cm
-        self.__in_paste = False
+        self._in_paste = False
         self._last_selected_bank = 0
         self._last_selected_pos = [0] * consts.NUM_BANKS
         self._banks_stats: list[str] = []
@@ -179,9 +179,6 @@ class BanksPage(tk.Frame):
     ) -> None:
         selected_bank = self._last_selected_bank
 
-        self._chan_list.set_bank(selected_bank)
-        self._last_selected_bank = selected_bank
-
         bank = self._radio_memory.banks[selected_bank]
         self._bank_name.set(bank.name.rstrip())
 
@@ -307,7 +304,7 @@ class BanksPage(tk.Frame):
 
         self._change_manager.set_channel(*channels)
 
-        if not self.__in_paste:
+        if not self._in_paste:
             self._change_manager.commit()
             for chan in channels:
                 self._chan_list.update_data(chan.bank_pos, chan)
@@ -421,7 +418,7 @@ class BanksPage(tk.Frame):
         if not sel:
             return
 
-        self.__in_paste = True
+        self._in_paste = True
 
         clip = gui_model.Clipboard.instance()
         data = ty.cast(str, clip.get())
@@ -444,7 +441,7 @@ class BanksPage(tk.Frame):
             self._change_manager.commit()
             self._update_chan_list()
 
-        self.__in_paste = False
+        self._in_paste = False
 
     def _on_channel_paste_channels(
         self, selected_bank: int, sel_pos: tuple[int, ...], data: str
