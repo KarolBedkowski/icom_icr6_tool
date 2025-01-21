@@ -6,6 +6,7 @@
 
 import importlib.resources
 import logging
+import os
 import tkinter as tk
 import typing as ty
 from pathlib import Path
@@ -587,7 +588,16 @@ def start_gui(cfg_file: Path | None, icf_file: Path | None) -> None:
     root = tk.Tk()
     gui_model.Clipboard.initialize(root)
 
-    root.tk.call("tk", "scaling", config.CONFIG.gui_scaling)
+    if scaling := config.CONFIG.gui_scaling:
+        root.tk.call("tk", "scaling", scaling)
+    else:
+        try:
+            root.tk.call("tk", "scaling", float(os.environ["GDK_SCALE"]))
+        except ValueError:
+            _LOG.warning("invalid env GDK_SCALE")
+        except KeyError:
+            pass
+
     root.title("ICOM IC-R6 Tool")
     style = ttk.Style()
     style.theme_use("clam")
