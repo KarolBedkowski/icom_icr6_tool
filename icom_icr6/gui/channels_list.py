@@ -207,7 +207,7 @@ class ChannelsList2(genericlist.GenericList2[model.Channel | None]):
 
         return pos
 
-    def update_row_state(self, row: int) -> None:
+    def _update_row_state(self, row: int) -> None:
         """Set state of other cells in row (readony)."""
         data_row: genericlist.Row[model.Channel] = self.sheet.data[row]
         chan = data_row.obj

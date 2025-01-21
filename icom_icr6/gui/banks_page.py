@@ -414,7 +414,7 @@ class BanksPage(tk.Frame):
             gui_model.Clipboard.instance().put(res)
 
     def _on_channel_paste(self, _event: tk.Event) -> None:  # type: ignore
-        sel = self._chan_list.selection()
+        sel = self._chan_list.selected_rows()
         if not sel:
             return
 

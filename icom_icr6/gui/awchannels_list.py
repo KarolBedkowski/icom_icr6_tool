@@ -44,7 +44,7 @@ class ChannelsList(channels_list.ChannelsList2):
         super().__init__(parent, rm)
         self.sheet.extra_bindings("begin_move_rows", self._on_begin_row_move)
 
-    def update_row_state(self, row: int) -> None:
+    def _update_row_state(self, row: int) -> None:
         data_row = self.sheet.data[row]
         chan = data_row.obj
 

@@ -88,7 +88,7 @@ class ScanLnksList(genericlist.GenericList2[ScanLink]):
         _LOG.debug("_on_validate_edits: result value=%r", value)
         return value
 
-    def update_row_state(self, row: int) -> None:
+    def _update_row_state(self, row: int) -> None:
         """Set state of other cells in row (readony)."""
         data_row = self.sheet.data[row]
         se = data_row.obj.scan_edge

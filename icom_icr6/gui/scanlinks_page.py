@@ -294,7 +294,7 @@ class ScanLinksPage(tk.Frame):
             gui_model.Clipboard.instance().put(res)
 
     def __on_scan_edge_paste(self, _event: tk.Event) -> None:  # type: ignore
-        sel = self._scan_links_edges.selection()
+        sel = self._scan_links_edges.selected_rows()
         if not sel:
             return
 

@@ -41,8 +41,8 @@ class ChannelsList(channels_list.ChannelsList2):
         ("canceller freq", "Canceller freq", "int"),
     )
 
-    def update_row_state(self, row: int) -> None:
-        super().update_row_state(row)
+    def _update_row_state(self, row: int) -> None:
+        super()._update_row_state(row)
         # make col "channel" always rw
         functions.set_readonly(
             self.sheet.MT.cell_options, (row, 2), readonly=False

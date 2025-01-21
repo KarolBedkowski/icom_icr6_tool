@@ -162,7 +162,7 @@ class ScanEdgesPage(tk.Frame):
         self.__update_scan_edges_list()
 
     def __on_channel_delete(self, _event: tk.Event) -> None:  # type: ignore
-        sel = self._scanedges_list.selection()
+        sel = self._scanedges_list.selected_rows()
         if not sel:
             return
 
@@ -207,7 +207,7 @@ class ScanEdgesPage(tk.Frame):
             gui_model.Clipboard.instance().put(res)
 
     def __on_scan_edge_paste(self, _event: tk.Event) -> None:  # type: ignore
-        sel = self._scanedges_list.selection()
+        sel = self._scanedges_list.selected_rows()
         if not sel:
             return
 

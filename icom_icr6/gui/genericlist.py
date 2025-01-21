@@ -1,4 +1,4 @@
-# Copyright © 2024 Karol Będkowski <Karol Będkowski@kkomp>
+# Copyright © 2024-2025 Karol Będkowski <Karol Będkowski@kkomp>
 #
 # Distributed under terms of the GPLv3 license.
 
@@ -25,28 +25,21 @@ from .support import format_freq
 _LOG = logging.getLogger(__name__)
 
 Column = tuple[str, str, str | ty.Collection[str]]
-T_contra = ty.TypeVar("T_contra", contravariant=True)
+ColumnsDef = ty.Sequence[Column]
 T = ty.TypeVar("T")
 
 
 @ty.runtime_checkable
 class RecordActionCallback(ty.Protocol[T]):
-    def __call__(
-        self,
-        action: str,
-        rows: list[T],
-    ) -> None: ...
+    def __call__(self, action: str, rows: list[T]) -> None: ...
 
 
 @ty.runtime_checkable
 class RecordSelectedCallback(ty.Protocol[T]):
-    def __call__(
-        self,
-        rows: list[T],
-    ) -> None: ...
+    def __call__(self, rows: list[T]) -> None: ...
 
 
-def dummy_record_acton_cb(action: str, rows: ty.Collection[T_contra]) -> None:
+def dummy_record_acton_cb(action: str, rows: list[T]) -> None:
     pass
 
 
@@ -77,6 +70,7 @@ class Row(UserList[object], ty.Generic[T]):
         obj: T | None = None,
     ) -> None:
         super().__init__(data)
+        # position object in the list
         self.rownum: int = rownnum
         # object for row - used for validation etc
         self.obj: T | None = obj
@@ -86,7 +80,10 @@ class Row(UserList[object], ty.Generic[T]):
         self.changes: dict[str, object] | None = None
 
     def __repr__(self) -> str:
-        return f"Row<data={self.data!r}, changes={self.changes!r}>"
+        if self.changes:
+            return f"Row<data={self.data!r}, changes={self.changes!r}>"
+
+        return f"Row<data={self.data!r}, _changes={self._changes!r}>"
 
     def __setitem__(self, idx: int, val: object, /) -> None:  # type: ignore
         current_val = self.data[idx]
@@ -103,17 +100,16 @@ class Row(UserList[object], ty.Generic[T]):
     def __hash__(self) -> int:
         return hash(f"row-{id(self.obj)}-{self.data[0]}")
 
-    def map_changes(self, cols: ty.Sequence[Column]) -> ty.Self | None:
+    def map_changes(
+        self, cols: ty.Sequence[Column], *, do_not_filter: bool = False
+    ) -> ty.Self | None:
         """Fill `changes` dict using `cols` and registered in `_changes`
         values."""
         if self._changes:
             self.changes = {cols[c][0]: v for c, v in self._changes.items()}
             return self
 
-        return None
-
-
-ColumnsDef = ty.Sequence[Column]
+        return self if do_not_filter else None
 
 
 class GenericList2(tk.Frame, ty.Generic[T]):
@@ -159,6 +155,11 @@ class GenericList2(tk.Frame, ty.Generic[T]):
             dummy_record_select_cb
         )
 
+    def visible_cols(self) -> list[int]:
+        return self.sheet.MT.displayed_columns  # type: ignore
+
+    # data
+
     def reset(self, *, scroll_top: bool = False) -> None:
         self.sheet.deselect_any(rows=None, columns=None)
         if scroll_top:
@@ -169,33 +170,120 @@ class GenericList2(tk.Frame, ty.Generic[T]):
         return self.sheet.data  # type: ignore
 
     def set_data(self, data: ty.Iterable[T]) -> None:
-        _LOG.debug("set_data")
         self.sheet.set_sheet_data(
             list(starmap(self._row_from_data, enumerate(data)))
         )
-        self.sheet.set_all_column_widths()
 
         for row in range(len(self.sheet.data)):
-            self.update_row_state(row)
+            self._update_row_state(row)
+
+        self.sheet.set_all_column_widths()
 
     def update_data(self, idx: int, row: T) -> None:
         self.sheet.data[idx] = self._row_from_data(idx, row)
-        self.update_row_state(idx)
+        self._update_row_state(idx)
 
-    def _row_from_data(self, idx: int, obj: T) -> Row[T]:
-        raise NotImplementedError
+    def set_data_rows(
+        self, col: int, rows: ty.Iterable[tuple[int, list[object]]]
+    ) -> None:
+        sheet = self.sheet
+        for row, data in rows:
+            sheet.span((row, col), emit_event=True).data = data
 
-    def selection(self) -> tuple[int, ...]:
-        """Get selected rows."""
-        return self.sheet.get_selected_rows(  # type: ignore
-            get_cells_as_rows=True, return_tuple=True
-        )
+    def paste(self, data: list[list[str]]) -> None:
+        _LOG.debug("paste: %r", data)
+        currently_selected = self.sheet.get_currently_selected()
+        if not currently_selected:
+            return
+
+        box = currently_selected.box
+        csel_col = currently_selected.column
+        column = self.sheet.data_c(currently_selected.column)
+        end_row = max(len(data) + box.from_r, box.upto_r)
+        # cycle data to get required by destination number of rows
+        cdata = cycle(data)
+
+        for row in range(box.from_r, end_row):
+            row_data = next(cdata)
+            # validate
+            ev = EventDataDict()
+            ev.row = row
+            res_data = []
+            for col, value in enumerate(row_data, csel_col):
+                ev.column = col
+                ev.value = value
+                try:
+                    res_data.append(self._on_validate_edits(ev))
+                except ValueError:
+                    _LOG.exception("_on_validate_edits: %r", ev)
+                    res_data.append(None)
+
+            self.sheet.span((row, column), emit_event=True).data = res_data
+
+    # selection
 
     def selection_set(self, sel: ty.Iterable[int]) -> None:
         """Set selection on `sel` rows"""
         for r in sel:
             self.sheet.select_row(r)
             self.sheet.see(row=r, column=0)
+
+    def selected_rows(self) -> tuple[int, ...]:
+        return self.sheet.get_selected_rows(  # type: ignore
+            get_cells_as_rows=True, return_tuple=True
+        )
+
+    def selected_columns(self) -> list[int]:
+        """get columns index include hidden ones"""
+        return list(
+            map(
+                self.sheet.data_c,
+                self.sheet.get_selected_columns(
+                    get_cells_as_columns=True, return_tuple=True
+                ),
+            )
+        )
+
+    def selected_rows_data(self) -> list[Row[T]]:
+        return [
+            self.sheet.data[r]
+            for r in sorted(
+                self.sheet.get_selected_rows(get_cells_as_rows=True)
+            )
+        ]
+
+    def selected_data(self) -> list[list[object]] | None:
+        res = None
+
+        currently_selected = self.sheet.get_currently_selected()
+        if currently_selected and currently_selected.type_ == "cells":
+            box = currently_selected.box
+            res = self.sheet.get_data(
+                box.from_r,
+                self.sheet.data_c(box.from_c),
+                box.upto_r,
+                self.sheet.data_c(box.upto_c - 1) + 1,
+            )
+
+            # always return list of list
+            if box.from_c == box.upto_c - 1:
+                # one col
+                if box.from_r == box.upto_r - 1:
+                    # one row
+                    res = [[res]]
+                else:
+                    res = [[c] for c in res]
+
+            elif box.from_r == box.upto_r - 1:
+                # one row
+                res = [res]
+
+        return res
+
+    #####################
+    def _row_from_data(self, idx: int, obj: T) -> Row[T]:
+        """Map `obj` to Row object; `idx` is number of item row."""
+        raise NotImplementedError
 
     def _configure_sheet(self) -> None:
         self.sheet.headers([c[1] for c in self.COLUMNS])
@@ -261,10 +349,8 @@ class GenericList2(tk.Frame, ty.Generic[T]):
                 if (row := self.sheet.data[r].map_changes(self.COLUMNS))
             ]
 
-        if not data:
-            return
-
-        self.on_record_update(action, data)  # pylint:disable=not-callable
+        if data:
+            self.on_record_update(action, data)  # pylint:disable=not-callable
 
     def __on_validate_edits(self, event: EventDataDict) -> object:
         _LOG.debug("__on_validate_edits: %r", event)
@@ -292,99 +378,8 @@ class GenericList2(tk.Frame, ty.Generic[T]):
         rows = [
             self.sheet.data[r] for r in range(sel_box.from_r, sel_box.upto_r)
         ]
+
         self.on_record_selected(rows)  # pylint:disable=not-callable
-
-    def selected_rows(self) -> ty.Sequence[int]:
-        return self.sheet.get_selected_rows(  # type: ignore
-            get_cells_as_rows=True, return_tuple=True
-        )
-
-    def selected_columns(self) -> ty.Sequence[int]:
-        """get columns index include hidden ones"""
-        return list(
-            map(
-                self.sheet.data_c,
-                self.sheet.get_selected_columns(
-                    get_cells_as_columns=True, return_tuple=True
-                ),
-            )
-        )
-
-    def visible_cols(self) -> list[int]:
-        return self.sheet.MT.displayed_columns  # type: ignore
-
-    def selected_rows_data(self) -> list[Row[T]]:
-        return [
-            self.sheet.data[r]
-            for r in sorted(
-                self.sheet.get_selected_rows(get_cells_as_rows=True)
-            )
-        ]
-
-    def selected_data(self) -> list[list[object]] | None:
-        res = None
-
-        currently_selected = self.sheet.get_currently_selected()
-        if currently_selected and currently_selected.type_ == "cells":
-            box = currently_selected.box
-            res = self.sheet.get_data(
-                box.from_r,
-                self.sheet.data_c(box.from_c),
-                box.upto_r,
-                self.sheet.data_c(box.upto_c - 1) + 1,
-            )
-
-            # always return list of list
-            if box.from_c == box.upto_c - 1:
-                # one col
-                if box.from_r == box.upto_r - 1:
-                    # one row
-                    res = [[res]]
-                else:
-                    res = [[c] for c in res]
-
-            elif box.from_r == box.upto_r - 1:
-                # one row
-                res = [res]
-
-        return res
-
-    def paste(self, data: list[list[str]]) -> None:
-        _LOG.debug("paste: %r", data)
-        currently_selected = self.sheet.get_currently_selected()
-        if not currently_selected:
-            return
-
-        box = currently_selected.box
-        csel_col = currently_selected.column
-        column = self.sheet.data_c(currently_selected.column)
-        end_row = max(len(data) + box.from_r, box.upto_r)
-        # cycle data to get required by destination number of rows
-        cdata = cycle(data)
-
-        for row in range(box.from_r, end_row):
-            row_data = next(cdata)
-            # validate
-            ev = EventDataDict()
-            ev.row = row
-            res_data = []
-            for col, value in enumerate(row_data, csel_col):
-                ev.column = col
-                ev.value = value
-                try:
-                    res_data.append(self._on_validate_edits(ev))
-                except ValueError:
-                    _LOG.exception("_on_validate_edits: %r", ev)
-                    res_data.append(None)
-
-            self.sheet.span((row, column), emit_event=True).data = res_data
-
-    def set_data_rows(
-        self, col: int, rows: ty.Iterable[tuple[int, list[object]]]
-    ) -> None:
-        sheet = self.sheet
-        for row, data in rows:
-            sheet.span((row, col), emit_event=True).data = data
 
     def _on_delete_key(self, event: tk.Event) -> None:  # type: ignore
         _LOG.debug("_on_delete_key: event=%r", event)
@@ -399,7 +394,7 @@ class GenericList2(tk.Frame, ty.Generic[T]):
             data = [self.sheet.data[r] for r in range(box.from_r, box.upto_r)]
 
         elif selected.type_ == "cells":
-            box = self.adjust_box(selected.box)
+            box = self._adjust_box(selected.box)
             self.sheet[box].clear()
             action = "update"
 
@@ -416,7 +411,7 @@ class GenericList2(tk.Frame, ty.Generic[T]):
         if data:
             self.on_record_update(action, data)  # pylint:disable=not-callable
 
-    def update_row_state(self, row: int) -> None:
+    def _update_row_state(self, row: int) -> None:
         """Set state of other cells in row (readony)."""
 
     def _set_cell_ro(self, row: int, colname: str, readonly: object) -> None:
@@ -432,6 +427,7 @@ class GenericList2(tk.Frame, ty.Generic[T]):
             fg="#d0d0d0" if ro else "black",
             bg=self._ALTERNATE_COLOR if row & 1 else None,
         )
+
         functions.set_readonly(
             self.sheet.MT.cell_options, (row, col), readonly=ro
         )
@@ -440,7 +436,7 @@ class GenericList2(tk.Frame, ty.Generic[T]):
         # prevent moving columns
         raise ValueError
 
-    def adjust_box(self, box: Box_nt) -> Box_nt:
+    def _adjust_box(self, box: Box_nt) -> Box_nt:
         """fix box to match hidden columns."""
         return Box_nt(
             box.from_r,
