@@ -159,7 +159,9 @@ class ScanLinksPage(tk.Frame):
         sel_sl = self._last_selected_sl
 
         val = True
-        if all(row.selected for row in self._scan_links_edges.sheet.data):
+        if all(
+            row.obj.selected for row in self._scan_links_edges.data if row.obj
+        ):
             val = False
 
         self._scan_links_edges.set_data_links([val] * consts.NUM_SCAN_EDGES)

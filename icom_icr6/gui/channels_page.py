@@ -544,7 +544,7 @@ class ChannelsPage(tk.Frame):
         data = sheet[(first_row, min_col), (first_row + 1, max_col)].data
 
         with suppress(ValueError):
-            # remove bano_pos if is on list
+            # remove bank_pos if is on list
             idx = sel_cols.index(self._chan_list.colmap["bank_pos"])
             data[idx] = None
 
@@ -557,8 +557,7 @@ class ChannelsPage(tk.Frame):
         if len(sel_rows) <= 1:
             return
 
-        sheet = self._chan_list.sheet
-        chan = sheet.data[sel_rows[0]].obj
+        chan = self._chan_list.data[sel_rows[0]].obj
         if not chan or not chan.freq:
             return
 

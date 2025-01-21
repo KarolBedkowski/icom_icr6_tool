@@ -165,8 +165,8 @@ class GenericList2(tk.Frame, ty.Generic[T]):
             self.sheet.see(row=0, column=0)
 
     @property
-    def data(self) -> ty.Iterable[T | None]:
-        yield from self.sheet.data
+    def data(self) -> list[Row[T]]:
+        return self.sheet.data  # type: ignore
 
     def set_data(self, data: ty.Iterable[T]) -> None:
         _LOG.debug("set_data")
