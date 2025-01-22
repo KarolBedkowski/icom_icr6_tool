@@ -458,8 +458,8 @@ class BanksPage(tk.Frame):
 
         bank_channels = self._radio_memory.get_bank_channels(selected_bank)
 
-        # special case - when in clipboard is one record and selected  many-
-        # duplicate
+        # special case - when in clipboard is one record and selected  many
+        # records - duplicate
         if len(sel_pos) > 1 and len(rows) == 1:
             row = rows[0]
             for spos in sel_pos:

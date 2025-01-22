@@ -26,11 +26,13 @@ class ChannelsPage(tk.Frame):
         super().__init__(parent)
         self._parent = parent
         self._change_manager = cm
+
         self._need_full_refresh = False
         self._in_paste = False
         self._last_selected_group = 0
         # keep selection per group
         self._last_selected_pos = [0] * len(gui_model.CHANNEL_RANGES)
+
         # labels with stats
         self._groups_labels: list[str] = []
         self._groups = tk.StringVar(value=self._groups_labels)  # type: ignore
@@ -205,6 +207,7 @@ class ChannelsPage(tk.Frame):
         self._change_manager.commit()
         if self._need_full_refresh:
             self._update_chan_list()
+
         else:
             # update only changed channels
             for chan in channels:

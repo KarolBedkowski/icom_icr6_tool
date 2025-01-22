@@ -26,6 +26,7 @@ def new_entry(  # noqa: PLR0913
     ttk.Label(parent, text=label).grid(
         row=row, column=col, sticky=tk.N + tk.W + tk.S, padx=6, pady=6
     )
+
     entry = ttk.Entry(parent, textvariable=var)
     entry.grid(
         row=row,
@@ -54,6 +55,7 @@ def new_combo(  # noqa: PLR0913
     ttk.Label(parent, text=label).grid(
         row=row, column=col, sticky=tk.N + tk.W, padx=6, pady=6
     )
+
     combo = ttk.Combobox(
         parent,
         values=values,
@@ -69,6 +71,7 @@ def new_combo(  # noqa: PLR0913
         pady=6,
         columnspan=colspan,
     )
+
     return combo
 
 
@@ -96,4 +99,5 @@ def new_checkbox(  # noqa:PLR0913
         pady=6,
         columnspan=colspan,
     )
+
     return cbox

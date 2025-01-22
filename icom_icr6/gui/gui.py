@@ -47,9 +47,11 @@ class App(tk.Frame):
         self._radio_memory = self._load_default_icf()
         self._change_manager = ChangeManeger(self._radio_memory)
         self._change_manager.on_undo_changes = self._on_undo_change
-        self._status_value = tk.StringVar()
         # safe is clone to device when data are loaded or cloned from radio
         self._safe_for_clone = False
+
+        # variable for window status bar
+        self._status_value = tk.StringVar()
 
         self.pack(fill="both", expand=1)
 
@@ -547,10 +549,12 @@ class App(tk.Frame):
             mem = ic_io.load_icf_file(file)
             mem.validate()
             self._radio_memory.update_from(mem)
+
         except ValueError as err:
             messagebox.showerror(
                 "Load file error", f"Loaded data are invalid: {err}"
             )
+
         except Exception as err:
             messagebox.showerror("Load file error", f"Load error: {err}")
             return
@@ -582,6 +586,7 @@ def start_gui(cfg_file: Path | None, icf_file: Path | None) -> None:
     root = tk.Tk()
     gui_model.Clipboard.initialize(root)
 
+    # set scaling; my help for hdpi displays
     scaling = config.CONFIG.gui_scaling
     if not scaling:
         try:
