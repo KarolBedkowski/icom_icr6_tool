@@ -29,19 +29,18 @@ class BanksPage(tk.Frame):
     def __init__(self, parent: tk.Widget, cm: ChangeManeger) -> None:
         super().__init__(parent)
         self._parent = parent
-        self.rowconfigure(0, weight=1)
-        self.columnconfigure(0, weight=1)
 
         self._bank_name = tk.StringVar()
         self._bank_name.trace("w", self._on_bank_name_changed)  # type: ignore
         self._bank_link = gui_model.BoolVar()
         self._bank_link.trace("w", self._on_bank_link_changed)  # type: ignore
+
         self._change_manager = cm
         self._in_paste = False
         self._last_selected_bank = 0
         self._last_selected_pos = [0] * consts.NUM_BANKS
-        self._banks_stats: list[str] = []
-        self._banks = tk.StringVar(value=self._banks_stats)  # type: ignore
+        self._banks_labels: list[str] = []
+        self._banks = tk.StringVar(value=self._banks_labels)  # type: ignore
 
         pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
         banks = self._banks_list = tk.Listbox(
@@ -110,10 +109,6 @@ class BanksPage(tk.Frame):
 
     def _create_bank_fields(self, frame: tk.Frame) -> None:
         fields = tk.Frame(frame)
-        fields.columnconfigure(0, weight=0)
-        fields.columnconfigure(1, weight=0)
-        fields.columnconfigure(2, weight=0)
-        fields.columnconfigure(3, weight=0)
 
         validator = self.register(validate_bank_name)
         self._field_bank_name = new_entry(
@@ -162,12 +157,12 @@ class BanksPage(tk.Frame):
         banks = self._banks_list
         rm = self._radio_memory
 
-        self._banks_stats = []
+        self._banks_labels = []
         for idx, bank in enumerate(self._radio_memory.banks):
             active = sum(bool(c) for c in rm.get_bank_channels(idx).channels)
-            self._banks_stats.append(_bank_list_label(idx, bank.name, active))
+            self._banks_labels.append(_bank_list_label(idx, bank.name, active))
 
-        self._banks.set(self._banks_stats)  # type: ignore
+        self._banks.set(self._banks_labels)  # type: ignore
 
         banks.selection_set(self._last_selected_bank)
 
@@ -181,9 +176,7 @@ class BanksPage(tk.Frame):
 
         bank = self._radio_memory.banks[selected_bank]
         self._bank_name.set(bank.name.rstrip())
-
-        bl = self._radio_memory.bank_links
-        self._bank_link.set_raw(bl[selected_bank])
+        self._bank_link.set_raw(self._radio_memory.bank_links[selected_bank])
 
         channels = self._radio_memory.get_bank_channels(selected_bank)
         self._chan_list.set_data(
@@ -211,19 +204,24 @@ class BanksPage(tk.Frame):
         active = sum(
             bool(c) for c in rm.get_bank_channels(selected_bank).channels
         )
+
         self._parent.set_status(f"Active channels in bank: {active}")  # type: ignore
-        self._banks_stats[selected_bank] = _bank_list_label(
+
+        self._banks_labels[selected_bank] = _bank_list_label(
             selected_bank, bank.name, active
         )
-        self._banks.set(self._banks_stats)  # type: ignore
+        self._banks.set(self._banks_labels)  # type: ignore
 
     def _on_bank_name_changed(self, _var: str, _idx: str, _op: str) -> None:
         bank = self._radio_memory.banks[self._last_selected_bank]
         name = self._bank_name.get()
         fixed_name = fixers.fix_name(name)
+
+        # stop when no changes
         if bank.name == fixed_name:
             return
 
+        # update back entry
         if fixed_name != name:
             self._bank_name.set(fixed_name)
 
@@ -237,6 +235,8 @@ class BanksPage(tk.Frame):
         bank = self._last_selected_bank
         new_val = self._bank_link.get_raw()
         bl = self._radio_memory.bank_links
+
+        # stop when no changes
         if new_val == bl[bank]:
             return
 
@@ -278,7 +278,9 @@ class BanksPage(tk.Frame):
         ):
             return
 
+        # changed channels
         channels = []
+        # list positions to clear
         bank_pos = []
         for row in rows:
             if chan := row.obj:

@@ -281,6 +281,9 @@ class GenericList2(tk.Frame, ty.Generic[T]):
         return res
 
     #####################
+
+    # configuration
+
     def _row_from_data(self, idx: int, obj: T) -> Row[T]:
         """Map `obj` to Row object; `idx` is number of item row."""
         raise NotImplementedError
@@ -321,6 +324,8 @@ class GenericList2(tk.Frame, ty.Generic[T]):
 
         else:
             _LOG.error("unknown column: %s", colname)
+
+    # callbacks
 
     def _on_sheet_modified(self, event: EventDataDict) -> None:
         # _LOG.debug("_on_sheet_modified: %r", event)
@@ -435,6 +440,8 @@ class GenericList2(tk.Frame, ty.Generic[T]):
     def _on_begin_col_move(self, _event: EventDataDict) -> None:
         # prevent moving columns
         raise ValueError
+
+    # support
 
     def _adjust_box(self, box: Box_nt) -> Box_nt:
         """fix box to match hidden columns."""
