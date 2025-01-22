@@ -306,8 +306,11 @@ class BanksPage(tk.Frame):
 
         if not self._in_paste:
             self._change_manager.commit()
-            for chan in channels:
-                self._chan_list.update_data(chan.bank_pos, chan)
+            if len(channels) > len(rows):
+                self._update_chan_list()
+            else:
+                for chan in channels:
+                    self._chan_list.update_data(chan.bank_pos, chan)
 
     def __do_update_channel(
         self, row: banks_channelslist.RowType
