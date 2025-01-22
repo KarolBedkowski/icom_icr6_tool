@@ -33,6 +33,8 @@ class ChannelsPage(tk.Frame):
         # keep selection per group
         self._last_selected_pos = [0] * len(gui_model.CHANNEL_RANGES)
 
+        self._popup_menu: tk.Menu | None = None
+
         # labels with stats
         self._groups_labels: list[str] = []
         self._groups = tk.StringVar(value=self._groups_labels)  # type: ignore
@@ -486,7 +488,9 @@ class ChannelsPage(tk.Frame):
         if len(rows) <= 1:
             return
 
-        popup_menu = tk.Menu(self, tearoff=0)
+        self._do_close_popup_menu()
+
+        self._popup_menu = popup_menu = tk.Menu(self, tearoff=0)
         popup_menu.add_command(
             label="Sort by frequency", command=lambda: self._do_sort("freq")
         )
@@ -502,6 +506,10 @@ class ChannelsPage(tk.Frame):
         popup_menu.add_command(
             label="Pack", command=lambda: self._do_sort("pack")
         )
+
+        popup_menu.bind("<Escape>", self._do_close_popup_menu)
+        popup_menu.bind("<FocusOut>", self._do_close_popup_menu)
+
         try:
             btn = self._btn_sort
             popup_menu.tk_popup(btn.winfo_rootx(), btn.winfo_rooty())
@@ -530,7 +538,9 @@ class ChannelsPage(tk.Frame):
         if len(rows) <= 1:
             return
 
-        popup_menu = tk.Menu(self, tearoff=0)
+        self._do_close_popup_menu()
+
+        self._popup_menu = popup_menu = tk.Menu(self, tearoff=0)
         popup_menu.add_command(
             label="Copy first row to following", command=self._do_fill_down
         )
@@ -538,6 +548,10 @@ class ChannelsPage(tk.Frame):
         popup_menu.add_command(
             label="Increment freq by TS", command=self._do_fill_freq
         )
+
+        popup_menu.bind("<Escape>", self._do_close_popup_menu)
+        popup_menu.bind("<FocusOut>", self._do_close_popup_menu)
+
         try:
             btn = self._btn_fill
             popup_menu.tk_popup(btn.winfo_rootx(), btn.winfo_rooty())
@@ -588,3 +602,9 @@ class ChannelsPage(tk.Frame):
                 for idx, row in enumerate(sel_rows[1:], 1)
             ),
         )
+
+    def _do_close_popup_menu(self, _evt: tk.Event | None = None) -> None:  # type: ignore
+        if self._popup_menu:
+            self._popup_menu.grab_release()
+            self._popup_menu.destroy()
+            self._popup_menu = None

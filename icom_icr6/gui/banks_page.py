@@ -30,17 +30,19 @@ class BanksPage(tk.Frame):
         super().__init__(parent)
         self._parent = parent
 
-        self._bank_name = tk.StringVar()
-        self._bank_name.trace("w", self._on_bank_name_changed)  # type: ignore
-        self._bank_link = gui_model.BoolVar()
-        self._bank_link.trace("w", self._on_bank_link_changed)  # type: ignore
-
         self._change_manager = cm
         self._in_paste = False
         self._last_selected_bank = 0
         self._last_selected_pos = [0] * consts.NUM_BANKS
         self._banks_labels: list[str] = []
+
+        self._bank_name = tk.StringVar()
+        self._bank_name.trace("w", self._on_bank_name_changed)  # type: ignore
+        self._bank_link = gui_model.BoolVar()
+        self._bank_link.trace("w", self._on_bank_link_changed)  # type: ignore
         self._banks = tk.StringVar(value=self._banks_labels)  # type: ignore
+
+        self._popup_menu: tk.Menu | None = None
 
         pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
         banks = self._banks_list = tk.Listbox(
@@ -528,7 +530,9 @@ class BanksPage(tk.Frame):
         if len(rows) <= 1:
             return
 
-        popup_menu = tk.Menu(self, tearoff=0)
+        self._do_close_popup_menu()
+
+        self._popup_menu = popup_menu = tk.Menu(self, tearoff=0)
         popup_menu.add_command(
             label="Sort by frequency", command=lambda: self._do_sort("freq")
         )
@@ -548,6 +552,10 @@ class BanksPage(tk.Frame):
         popup_menu.add_command(
             label="Pack", command=lambda: self._do_sort("pack")
         )
+
+        popup_menu.bind("<Escape>", self._do_close_popup_menu)
+        popup_menu.bind("<FocusOut>", self._do_close_popup_menu)
+
         try:
             btn = self._btn_sort
             popup_menu.tk_popup(btn.winfo_rootx(), btn.winfo_rooty())
@@ -575,6 +583,12 @@ class BanksPage(tk.Frame):
         self._change_manager.set_channel(*final_channels)
         self._change_manager.commit()
         self._update_chan_list()
+
+    def _do_close_popup_menu(self, _evt: tk.Event | None = None) -> None:  # type: ignore
+        if self._popup_menu:
+            self._popup_menu.grab_release()
+            self._popup_menu.destroy()
+            self._popup_menu = None
 
 
 def _bank_list_label(idx: int, bank_name: str, active: int) -> str:
