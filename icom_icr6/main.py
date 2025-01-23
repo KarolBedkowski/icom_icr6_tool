@@ -12,6 +12,7 @@ import argparse
 import builtins
 import csv
 import logging
+import pprint
 import sys
 import typing as ty
 from pathlib import Path
@@ -64,8 +65,11 @@ def main_radio_info(args: argparse.Namespace) -> None:
 
     radio = ic_io.Radio(port)
     if rm := radio.get_model():
-        print(f"Model: {rm!r}")
-        print(f"Is IC-R6: {rm.is_icr6()}")
+        if args.verbose > 2:
+            pprint.pprint(rm)
+        else:
+            print(f"Model: {rm!r}")
+            print(f"Is IC-R6: {rm.is_icr6()}")
     else:
         print("ERROR")
 
@@ -232,7 +236,7 @@ def main_print_settings(args: argparse.Namespace) -> None:
     print("Settings")
     if args.verbose > 2:
         sett = mem.settings
-        print(repr(sett))
+        pprint.pprint(sett)
     else:
         for key, val in mem.settings.values():
             print(key, val, sep=",")
@@ -323,7 +327,7 @@ def main_send_command(args: argparse.Namespace) -> None:
     print("Response: ")
     try:
         for res in r.write_read(cmd, payload):
-            print(repr(res))
+            pprint.pprint(res)
 
     except KeyboardInterrupt:
         pass
