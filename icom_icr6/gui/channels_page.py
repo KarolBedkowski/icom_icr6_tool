@@ -390,11 +390,12 @@ class ChannelsPage(tk.Frame):
 
     def _paste_channel(self, row: dict[str, object], chan_num: int) -> bool:
         _LOG.debug("_paste_channel chan_num=%d, row=%r", chan_num, row)
-        chan = self._radio_memory.channels[chan_num].clone()
         # do not clean existing rows
         if not row.get("freq"):
             _LOG.debug("paste empty row to not empty")
             return True
+
+        chan = self._radio_memory.channels[chan_num].clone()
 
         try:
             chan.from_record(row)
@@ -404,7 +405,7 @@ class ChannelsPage(tk.Frame):
             _LOG.error("chan_num=%d, row=%r", chan_num, row)
             return False
 
-        chan.hide_channel = chan.freq != 0
+        chan.hide_channel = not chan.freq
         # do not set bank on paste
         chan.bank = consts.BANK_NOT_SET
         chan.bank_pos = 0
