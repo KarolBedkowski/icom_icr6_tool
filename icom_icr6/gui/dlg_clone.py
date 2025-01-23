@@ -1,4 +1,4 @@
-# Copyright © 2024 Karol Będkowski <Karol Będkowski@kkomp>
+# Copyright © 2024-2025 Karol Będkowski <Karol Będkowski@kkomp>
 #
 # Distributed under terms of the GPLv3 license.
 
@@ -42,6 +42,7 @@ class _CloneTask(threading.Thread):
         self.abort = False
 
     def _progress_cb(self, progress: int) -> bool:
+        # push status messages only when there is no other items in queue
         if self.queue.empty():
             self.queue.put(_Result(progress=progress, status="status"))
 
@@ -144,30 +145,31 @@ class _CloneDialog(simpledialog.Dialog):
         with suppress(queue.Empty):
             while True:
                 res = self._bg_task_queue.get_nowait()
+                match res.status:
+                    case "status":
+                        self._progress_cb(res.progress)
 
-                if res.status == "status":
-                    self._progress_cb(res.progress)
-                    continue
+                    case "finished":
+                        _LOG.debug("bg task finished")
+                        self._var_progress.set("Done")
+                        self.update_idletasks()
+                        self._on_success(res.result)
+                        self.destroy()
+                        return
 
-                if res.status == "finished":
-                    _LOG.debug("bg task finished")
-                    self._var_progress.set("Done")
-                    self.update_idletasks()
-                    self._on_success(res.result)
-                    self.destroy()
-                    return
+                    case "abort":
+                        self._stop_working(
+                            "Aborted. Radio may still sending or receiving "
+                            "data."
+                        )
+                        return
 
-                if res.status == "abort":
-                    self._stop_working(
-                        "Aborted. Radio may still sending or receiving data."
-                    )
-                    return
+                    case "error":
+                        self._stop_working(f"ERROR: {res.error}.")
+                        return
 
-                if res.status == "error":
-                    self._stop_working(f"ERROR: {res.error}.")
-                    return
-
-                _LOG.error("unknown result: %r", res)
+                    case _:
+                        _LOG.error("unknown result: %r", res)
 
         self.after(250, self._monitor_bg_task)
 

@@ -1,28 +1,26 @@
-# Copyright © 2024 Karol Będkowski <Karol Będkowski@kkomp>
+# Copyright © 2024-2025 Karol Będkowski <Karol Będkowski@kkomp>
 #
 # Distributed under terms of the GPLv3 license.
 
 """ """
 
-import itertools
 import logging
-import tkinter as tk
 import typing as ty
-from contextlib import suppress
 
 from tksheet import functions
 
-from icom_icr6 import consts, model
+from icom_icr6 import consts
 
-from . import channels_list, genericlist
+from . import channels_list
 
 _LOG = logging.getLogger(__name__)
-
 _SKIPS: ty.Final = ["", "S", "P"]
 
+RowType = channels_list.RowType
 
-class BLRow(genericlist.BaseRow):
-    COLUMNS = (
+
+class ChannelsList(channels_list.ChannelsList2):
+    COLUMNS: ty.ClassVar[channels_list.ColumnsDef] = (
         ("bank_pos", "Pos", "int"),
         ("channel", "Channel", "int"),
         ("freq", "Frequency", "freq"),
@@ -43,130 +41,8 @@ class BLRow(genericlist.BaseRow):
         ("canceller freq", "Canceller freq", "int"),
     )
 
-    def __init__(self, bank_pos: int, channel: model.Channel | None) -> None:
-        # channel to set
-        self.new_channel: int | None = None
-        # new freq to set (if not channel, find free channel and set)
-        self.new_values: dict[str, object] | None = None
-        self.channel = channel
-        self.rownum = bank_pos
-
-        super().__init__(bank_pos, self._from_channel(channel))
-
-    def set_channel(self, channel: model.Channel) -> None:
-        self.channel = channel
-        self.data = self._from_channel(channel)
-
-    def __setitem__(self, idx: int, val: object, /) -> None:  # type: ignore
-        if val is None or val == self.data[idx]:
-            return
-
-        chan = self.channel
-        col = self.COLUMNS[idx][0]
-
-        match col:
-            case "channel":
-                # change channel
-                with suppress(ValueError, TypeError):
-                    channum = int(val)  # type: ignore
-                    # valid channel number - change
-                    if not chan or channum != chan.number:
-                        self.new_channel = channum
-
-                return
-
-            case "freq":  # freq
-                try:
-                    freq = int(val)  # type: ignore
-                except (ValueError, TypeError):
-                    return
-
-                # valid frequency
-                # if not chan - create new
-                if not chan or chan.hide_channel:
-                    self._store_new_value("freq", freq)
-                    return
-
-        if not chan or chan.hide_channel:
-            # when channels is hidden - store new values temporary
-            self._store_new_value(col, val)
-            return
-
-        current_val = chan.to_record().get(col)
-        if current_val == val or (current_val == "" and val is None):
-            return
-
-        # if chan exists and is valid - update
-        chan = self._make_clone()
-        try:
-            chan.from_record({col: val})
-        except Exception:
-            _LOG.exception("from record error: %r=%r", col, val)
-
-        super().__setitem__(idx, val)
-
-    def _make_clone(self) -> model.Channel:
-        """Make copy of channel for updates."""
-        assert self.channel
-
-        if not self.updated:
-            self.updated = True
-            self.channel = self.channel.clone()
-
-        return self.channel
-
-    def _store_new_value(self, col: str, val: object) -> None:
-        if self.channel:
-            self._make_clone()
-
-        if self.new_values is None:
-            self.new_values = {col: val}
-        else:
-            self.new_values[col] = val
-
-    def _from_channel(self, channel: model.Channel | None) -> list[object]:
-        # valid channel
-        if (
-            channel
-            and not channel.hide_channel
-            and channel.freq
-            and channel.bank != consts.BANK_NOT_SET
-        ):
-            data = channel.to_record()
-            return [
-                self.rownum,
-                *(data[col] for col, *_ in self.COLUMNS[1:]),
-            ]
-
-        # empty channel
-        return [
-            self.rownum,
-            self.new_channel if self.new_channel is not None else "",
-            self.new_values.get("freq", "") if self.new_values else "",
-            *([""] * 15),
-        ]
-
-
-class ChannelsList(channels_list.ChannelsList):
-    _ROW_CLASS = BLRow
-
-    def __init__(self, parent: tk.Widget) -> None:
-        super().__init__(parent)
-        self.bank: int | None = None
-
-    def set_bank(self, bank: int | None) -> None:
-        self.bank = bank
-
-    def set_data(self, data: ty.Iterable[model.Channel | None]) -> None:
-        self.sheet.set_sheet_data(
-            list(itertools.starmap(BLRow, enumerate(data)))
-        )
-        self.sheet.set_all_column_widths()
-        for row in range(len(self.sheet.data)):
-            self.update_row_state(row)
-
-    def update_row_state(self, row: int) -> None:
-        super().update_row_state(row)
+    def _update_row_state(self, row: int) -> None:
+        super()._update_row_state(row)
         # make col "channel" always rw
         functions.set_readonly(
             self.sheet.MT.cell_options, (row, 2), readonly=False

@@ -115,6 +115,7 @@ class ReportsDialog(tk.Toplevel):
         match self._sel_report.get():
             case "Statistics":
                 data = "\n".join(reports.generate_stats(self._radio_memory))
+
             case "Sheet":
                 data = "\n".join(reports.generate_sheet(self._radio_memory))
 

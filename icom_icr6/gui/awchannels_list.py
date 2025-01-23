@@ -7,19 +7,20 @@
 import logging
 import tkinter as tk
 import typing as ty
-from itertools import starmap
 
 from tksheet import EventDataDict, Span
 
-from icom_icr6 import consts, model
+from icom_icr6 import consts, radio_memory
 
 from . import channels_list, genericlist
 
 _LOG = logging.getLogger(__name__)
 
+RowType = channels_list.RowType
 
-class AWCRow(genericlist.BaseRow):
-    COLUMNS = (
+
+class ChannelsList(channels_list.ChannelsList2):
+    COLUMNS: ty.ClassVar[channels_list.ColumnsDef] = (
         ("channel", "Number", "int"),
         ("freq", "Frequency", "freq"),
         ("mode", "Mode", consts.MODES),
@@ -37,43 +38,15 @@ class AWCRow(genericlist.BaseRow):
         ("canceller freq", "Canceller freq", "int"),
     )
 
-    def __init__(self, rownum: int, channel: model.Channel | None) -> None:
-        self.channel = channel
-        super().__init__(rownum, self._from_channel(channel))
-
-    def set_channel(self, channel: model.Channel) -> None:
-        self.channel = channel
-        self.data = self._from_channel(channel)
-
-    def __setitem__(self, idx: int, val: object, /) -> None:  # type: ignore
-        # immutable list
-        return
-
-    def _from_channel(self, channel: model.Channel | None) -> list[object]:
-        # valid channel
-        if channel and not channel.hide_channel and channel.freq:
-            return self._extracts_cols(channel.to_record())
-
-        # empty channel
-        return [""] * 16
-
-
-class ChannelsList(channels_list.ChannelsList):
-    _ROW_CLASS = AWCRow
-
-    def __init__(self, parent: tk.Widget) -> None:
-        super().__init__(parent)
+    def __init__(
+        self, parent: tk.Widget, rm: radio_memory.RadioMemory
+    ) -> None:
+        super().__init__(parent, rm)
         self.sheet.extra_bindings("begin_move_rows", self._on_begin_row_move)
 
-    def set_data(self, data: ty.Iterable[model.Channel | None]) -> None:
-        self.sheet.set_sheet_data(list(starmap(AWCRow, enumerate(data))))
-        self.sheet.set_all_column_widths()
-        for row in range(len(self.sheet.data)):
-            self.update_row_state(row)
-
-    def update_row_state(self, row: int) -> None:
+    def _update_row_state(self, row: int) -> None:
         data_row = self.sheet.data[row]
-        chan = data_row.channel
+        chan = data_row.obj
 
         self._set_cell_ro(row, "offset", not chan.duplex)
         self._set_cell_ro(row, "tsql_freq", chan.tone_mode not in (1, 2))

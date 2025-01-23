@@ -9,7 +9,7 @@ import tkinter as tk
 import typing as ty
 from tkinter import messagebox, ttk
 
-from icom_icr6 import consts, expimp, fixers, model, validators
+from icom_icr6 import consts, expimp, fixers, validators
 from icom_icr6.change_manager import ChangeManeger
 from icom_icr6.radio_memory import RadioMemory
 
@@ -27,12 +27,13 @@ class ScanLinksPage(tk.Frame):
         self._sl_name = tk.StringVar()
         self._sl_name.trace("w", self._on_sl_name_changed)  # type: ignore
         self._last_selected_sl = 0
+        self._in_paste = False
 
         pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
         self._scan_links_list = tk.Listbox(pw, selectmode=tk.SINGLE, width=10)
 
         self._scan_links_list.bind(
-            "<<ListboxSelect>>", self.__on_select_scan_link
+            "<<ListboxSelect>>", self._on_select_scan_link
         )
         pw.add(self._scan_links_list, weight=0)
 
@@ -45,16 +46,16 @@ class ScanLinksPage(tk.Frame):
         pw.pack(expand=True, fill=tk.BOTH, side=tk.TOP, padx=12, pady=12)
 
     def update_tab(self) -> None:
-        self.__update_scan_links_list()
-        self.__update_scan_edges()
+        self._update_scan_links_list()
+        self._update_scan_edges()
         self._scan_links_list.selection_set(self._last_selected_sl)
-        self.__on_select_scan_link()
+        self._on_select_scan_link()
 
     def reset(self) -> None:
-        self.__update_scan_links_list()
-        self.__update_scan_edges()
+        self._update_scan_links_list()
+        self._update_scan_edges()
         self._scan_links_list.selection_set(0)
-        self.__on_select_scan_link()
+        self._on_select_scan_link()
 
     @property
     def _radio_memory(self) -> RadioMemory:
@@ -80,7 +81,7 @@ class ScanLinksPage(tk.Frame):
         ttk.Button(
             frame,
             text="Select/Deselect all",
-            command=self.__on_de_select,
+            command=self._on_de_select,
         ).pack(side=tk.LEFT)
 
         frame.pack(side=tk.BOTTOM, fill=tk.X)
@@ -91,15 +92,15 @@ class ScanLinksPage(tk.Frame):
             side=tk.TOP, expand=True, fill=tk.BOTH, pady=6
         )
 
-        self._scan_links_edges.on_record_update = self.__on_scan_edge_updated
+        self._scan_links_edges.on_record_update = self._on_scan_edge_updated
         self._scan_links_edges.sheet.bind(
-            "<Control-c>", self.__on_scan_edge_copy
+            "<Control-c>", self._on_scan_edge_copy
         )
         self._scan_links_edges.sheet.bind(
-            "<Control-v>", self.__on_scan_edge_paste
+            "<Control-v>", self._on_scan_edge_paste
         )
 
-    def __update_scan_links_list(self) -> None:
+    def _update_scan_links_list(self) -> None:
         sel_sl = self._last_selected_sl
 
         sls = self._scan_links_list
@@ -110,7 +111,7 @@ class ScanLinksPage(tk.Frame):
 
         self._scan_links_list.selection_set(sel_sl)
 
-    def __update_scan_edges(self) -> None:
+    def _update_scan_edges(self) -> None:
         sel_sl = self._last_selected_sl
 
         sl = self._radio_memory.scan_links[sel_sl]
@@ -124,8 +125,8 @@ class ScanLinksPage(tk.Frame):
 
         self._scan_links_edges.set_data(data)
 
-    def __on_select_scan_link(self, event: tk.Event | None = None) -> None:  # type: ignore
-        sel_sl = self._scan_links_list.curselection()  # type: ignore
+    def _on_select_scan_link(self, event: tk.Event | None = None) -> None:  # type: ignore
+        sel_sl = self._scan_links_list.curselection()
         if event:
             self._scan_links_edges.reset(scroll_top=True)
 
@@ -152,13 +153,15 @@ class ScanLinksPage(tk.Frame):
         sl.name = fixed_name
         self._change_manager.set_scan_link(sl)
         self._change_manager.commit()
-        self.__update_scan_links_list()
+        self._update_scan_links_list()
 
-    def __on_de_select(self) -> None:
+    def _on_de_select(self) -> None:
         sel_sl = self._last_selected_sl
 
         val = True
-        if all(row.selected for row in self._scan_links_edges.sheet.data):
+        if all(
+            row.obj.selected for row in self._scan_links_edges.data if row.obj
+        ):
             val = False
 
         self._scan_links_edges.set_data_links([val] * consts.NUM_SCAN_EDGES)
@@ -170,25 +173,24 @@ class ScanLinksPage(tk.Frame):
         self._change_manager.set_scan_link(sl)
         self._change_manager.commit()
 
-        self.__update_scan_edges()
+        self._update_scan_edges()
 
-    def __on_scan_edge_updated(
-        self, action: str, rows: ty.Collection[scanlinks_list.Row]
+    def _on_scan_edge_updated(
+        self, action: str, rows: ty.Collection[scanlinks_list.RowType]
     ) -> None:
         match action:
             case "delete":
-                self.__do_delete_scan_edge(rows)
+                self._do_delete_scan_edge(rows)
 
             case "update":
-                self.__do_update_scan_edge(rows)
+                self._do_update_scan_edge(rows)
 
             case "move":
-                self.__do_move_scan_edge(rows)
+                self._do_move_scan_edge(rows)
 
-    def __do_delete_scan_edge(
-        self, rows: ty.Collection[scanlinks_list.Row]
+    def _do_delete_scan_edge(
+        self, rows: ty.Collection[scanlinks_list.RowType]
     ) -> None:
-        se: model.ScanEdge | None
         if not messagebox.askyesno(
             "Delete scan edge",
             "Delete scan edge configuration?",
@@ -196,62 +198,81 @@ class ScanLinksPage(tk.Frame):
         ):
             return
 
-        for rec in rows:
-            _LOG.debug(
-                "__do_delete_scan_edge: row=%r, chan=%r",
-                rec,
-                rec.se,
-            )
-            if se := rec.se:
-                se = se.clone()
+        for row in rows:
+            _LOG.debug("_do_delete_scan_edge: row=%r", row)
+            if sl := row.obj:
+                se = sl.scan_edge.clone()
                 se.delete()
                 self._change_manager.set_scan_edge(se)
 
         self._change_manager.commit()
-        self.__update_scan_edges()
+        self._update_scan_edges()
 
-    def __do_update_scan_edge(
-        self, rows: ty.Collection[scanlinks_list.Row]
+    def _do_update_scan_edge(
+        self, rows: ty.Collection[scanlinks_list.RowType]
     ) -> None:
         sel_sl = self._last_selected_sl
         sl = self._radio_memory.scan_links[sel_sl].clone()
+        ses = []
 
-        for rec in rows:
-            _LOG.debug(
-                "__do_update_scan_edge: row=%r, se=%r, selected=%r",
-                rec,
-                rec.se,
-                rec.selected,
-            )
-            se = rec.se
+        for row in rows:
+            _LOG.debug("__do_update_scan_link: row=%r", row)
+            assert row.obj
+            assert row.changes
+
+            se = row.obj.scan_edge.clone()
+            se.from_record(row.changes)
+
+            if se.hidden:
+                if se.start and se.end:
+                    se.unhide()
+                else:
+                    se.edited = True
+
+            if not se.hidden and se.start > se.end:
+                se.start, se.end = se.end, se.start
+
+            ses.append(se)
+
+            if (sel := row.changes.get("selected")) is not None:
+                sl[se.idx] = sel
+
+        for se in ses:
             self._change_manager.set_scan_edge(se)
 
-            sl[se.idx] = rec.selected
-            rec.updated = False
-
         self._change_manager.set_scan_link(sl)
-        self._change_manager.commit()
 
-    def __do_move_scan_edge(
-        self, rows: ty.Collection[scanlinks_list.Row]
+        if not self._in_paste:
+            # when in paste, commit and refresh view is at the end
+            self._change_manager.commit()
+
+            for se in ses:
+                self._scan_links_edges.update_data(
+                    se.idx, scanlinks_list.ScanLink(se, sl[se.idx])
+                )
+
+    def _do_move_scan_edge(
+        self, rows: ty.Collection[scanlinks_list.RowType]
     ) -> None:
         changes: dict[int, int] = {}
-        for rec in rows:
-            se = rec.se
+        for row in rows:
+            sl = row.obj
+            assert sl
+            se = sl.scan_edge
             _LOG.debug(
-                "__do_move_scan_edge: row=%r, se=%r -> %d", rec, se, rec.rownum
+                "_do_move_scan_edge: row=%r, se=%r -> %d", row, se, row.rownum
             )
-            changes[rec.rownum] = se.idx
-            se.idx = rec.rownum
+            changes[row.rownum] = se.idx
+            se.idx = row.rownum
             self._change_manager.set_scan_edge(se)
 
         if changes:
             self._change_manager.remap_scan_links(changes)
 
         self._change_manager.commit()
-        self.__update_scan_edges()
+        self._update_scan_edges()
 
-    def __on_scan_edge_copy(self, _event: tk.Event) -> None:  # type: ignore
+    def _on_scan_edge_copy(self, _event: tk.Event) -> None:  # type: ignore
         selected = self._scan_links_edges.sheet.get_currently_selected()
         if not selected:
             return
@@ -272,62 +293,63 @@ class ScanLinksPage(tk.Frame):
         if res:
             gui_model.Clipboard.instance().put(res)
 
-    def __on_scan_edge_paste(self, _event: tk.Event) -> None:  # type: ignore
-        sel = self._scan_links_edges.selection()
+    def _on_scan_edge_paste(self, _event: tk.Event) -> None:  # type: ignore
+        sel = self._scan_links_edges.selected_rows()
         if not sel:
             return
 
+        self._in_paste = True
         clip = gui_model.Clipboard.instance()
         data = ty.cast(str, clip.get())
         try:
             # try import whole scan edge
-            self.__on_scan_edge_paste_se(sel, data)
-        except ValueError:
-            # try import as plain data
-            self.__on_scan_edge_paste_simple(data)
-        except Exception:
+            if not self._on_scan_edge_paste_se(sel, data):
+                self._on_scan_edge_paste_simple(data)
+
+        except Exception as err:
             _LOG.exception("__on_channel_paste error")
+            self._change_manager.abort()
+            messagebox.showerror(
+                "Paste data error", f"Clipboard content can't be pasted: {err}"
+            )
 
-    def __on_scan_edge_paste_simple(self, data: str) -> None:
-        try:
-            rows = expimp.import_str_as_table(data)
-        except ValueError:
-            raise
-        except Exception:
-            _LOG.exception("simple import from clipboard error")
-            raise
+        else:
+            self._change_manager.commit()
+            self._update_scan_edges()
 
-        self._scan_links_edges.paste(rows)
+        finally:
+            self._in_paste = False
 
-    def __on_scan_edge_paste_se(self, sel: tuple[int, ...], data: str) -> None:
+    def _on_scan_edge_paste_simple(self, data: str) -> None:
+        if rows := expimp.import_str_as_table(data):
+            self._scan_links_edges.paste(rows)
+
+    def _on_scan_edge_paste_se(self, sel: tuple[int, ...], data: str) -> bool:
         try:
             rows = list(expimp.import_scan_edges_str(data))
         except ValueError:
-            raise
-        except Exception:
-            _LOG.exception("import from clipboard error")
-            return
+            return False
 
         # special case - when in clipboard is one record and selected  many-
         # duplicate
         if len(sel) > 1 and len(rows) == 1:
             row = rows[0]
             for spos in sel:
-                if not self.__paste_se(row, spos):
+                if not self._paste_se(row, spos):
                     break
 
         else:
             start_num = sel[0]
             for se_num, row in enumerate(rows, start_num):
-                if not self.__paste_se(row, se_num):
+                if not self._paste_se(row, se_num):
                     break
 
                 if se_num == consts.NUM_SCAN_EDGES - 1:
                     break
 
-        self.__update_scan_edges()
+        return True
 
-    def __paste_se(self, row: dict[str, object], se_num: int) -> bool:
+    def _paste_se(self, row: dict[str, object], se_num: int) -> bool:
         if not row.get("start") or not row.get("end"):
             return True
 
@@ -335,14 +357,16 @@ class ScanLinksPage(tk.Frame):
         try:
             se.from_record(row)
             se.validate()
+
         except ValueError:
             _LOG.exception("import from clipboard error")
             _LOG.error("se_num=%d, row=%r", se_num, row)
             return False
 
         se.idx = se_num
+        se.unhide()
         self._change_manager.set_scan_edge(se)
-        self._change_manager.commit()
+
         return True
 
 

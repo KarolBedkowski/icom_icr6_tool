@@ -1,4 +1,4 @@
-# Copyright © 2024 Karol Będkowski <Karol Będkowski@kkomp>
+# Copyright © 2024-2025 Karol Będkowski <Karol Będkowski@kkomp>
 #
 # Distributed under terms of the GPLv3 license.
 
@@ -6,6 +6,7 @@
 
 import importlib.resources
 import logging
+import os
 import tkinter as tk
 import typing as ty
 from pathlib import Path
@@ -46,9 +47,11 @@ class App(tk.Frame):
         self._radio_memory = self._load_default_icf()
         self._change_manager = ChangeManeger(self._radio_memory)
         self._change_manager.on_undo_changes = self._on_undo_change
-        self._status_value = tk.StringVar()
-        # safe is clone to device when data are loaded or cloned from dev
+        # safe is clone to device when data are loaded or cloned from radio
         self._safe_for_clone = False
+
+        # variable for window status bar
+        self._status_value = tk.StringVar()
 
         self.pack(fill="both", expand=1)
 
@@ -62,6 +65,15 @@ class App(tk.Frame):
         self._ntb.add(self._create_nb_awchannels(), text="Autowrite channels")
         self._ntb.add(self._create_nb_settings(), text="Settings")
         self._ntb.bind("<<NotebookTabChanged>>", self.__on_nb_page_changed)
+
+        self._pages: tuple[TabWidget, ...] = (
+            self._nb_channels,
+            self._nb_banks,
+            self._nb_scan_edge,
+            self._nb_scan_links,
+            self._nb_aw_channels,
+            self._nb_settings,
+        )
 
         self._ntb.pack(fill="both", expand=True)
 
@@ -345,7 +357,7 @@ class App(tk.Frame):
             except ValueError as err:
                 messagebox.showerror(
                     "Clone from radio error",
-                    f"Cloned data are invalid: {err}",
+                    f"Cloned data is invalid: {err}",
                 )
                 return
 
@@ -356,11 +368,14 @@ class App(tk.Frame):
             self._change_manager.reset()
 
     def _on_menu_clone_to_radio(self, _event: tk.Event | None = None) -> None:  # type: ignore
-        if not self._safe_for_clone:
-            messagebox.showerror(
-                "Clone to device",
-                "Please open valid icf file or clone data from device.",
-            )
+        if not self._safe_for_clone and not messagebox.askokcancel(
+            "Clone to device",
+            "Clone default data (for global region) to radio may don't "
+            "work as expected. \n"
+            "For safe operation please open valid icf file or clone data "
+            "from device.\n\n"
+            "Continue?",
+        ):
             return
 
         try:
@@ -378,7 +393,7 @@ class App(tk.Frame):
             info = (
                 f"Model: {model.human_model()}\n"
                 f"Rev: {model.rev}\n"
-                f"Is IC-R6: {model.is_icr6()}\n"
+                f"Is IC-R6: {'yes' if model.is_icr6() else 'no'}\n"
                 f"Serial: {model.serial}\n"
                 f"Comment: {model.comment}"
             )
@@ -490,7 +505,7 @@ class App(tk.Frame):
         """Switch main notebook to `index` tab. Return True when switched,
         False when already `index` tab is visible."""
         ntb = self._ntb
-        tabs = ntb.tabs()  # type: ignore
+        tabs = ntb.tabs()
         selected_tab = tabs.index(ntb.select())
         if selected_tab == index:
             return False
@@ -517,28 +532,10 @@ class App(tk.Frame):
     def _update_tab_content(self) -> None:
         selected_tab = self._selected_tab
         _LOG.debug("update page: %r", selected_tab)
-
-        pages: tuple[TabWidget, ...] = (
-            self._nb_channels,
-            self._nb_banks,
-            self._nb_scan_edge,
-            self._nb_scan_links,
-            self._nb_aw_channels,
-            self._nb_settings,
-        )
-        pages[selected_tab].update_tab()
+        self._pages[selected_tab].update_tab()
 
     def _reset_tab_content(self) -> None:
-        pages: tuple[TabWidget, ...] = (
-            self._nb_channels,
-            self._nb_banks,
-            self._nb_scan_edge,
-            self._nb_scan_links,
-            self._nb_aw_channels,
-            self._nb_settings,
-        )
-
-        for page in pages:
+        for page in self._pages:
             page.reset()
 
     def _load_default_icf(self) -> RadioMemory:
@@ -552,10 +549,12 @@ class App(tk.Frame):
             mem = ic_io.load_icf_file(file)
             mem.validate()
             self._radio_memory.update_from(mem)
+
         except ValueError as err:
             messagebox.showerror(
                 "Load file error", f"Loaded data are invalid: {err}"
             )
+
         except Exception as err:
             messagebox.showerror("Load file error", f"Load error: {err}")
             return
@@ -587,7 +586,20 @@ def start_gui(cfg_file: Path | None, icf_file: Path | None) -> None:
     root = tk.Tk()
     gui_model.Clipboard.initialize(root)
 
-    root.tk.call("tk", "scaling", config.CONFIG.gui_scaling)
+    # set scaling; my help for hdpi displays
+    scaling = config.CONFIG.gui_scaling
+    if not scaling:
+        try:
+            scaling = float(os.environ["GDK_SCALE"])
+        except ValueError:
+            _LOG.warning("invalid env GDK_SCALE")
+        except KeyError:
+            pass
+
+    if scaling:
+        _LOG.info("set scale: %r", scaling)
+        root.tk.call("tk", "scaling", scaling)
+
     root.title("ICOM IC-R6 Tool")
     style = ttk.Style()
     style.theme_use("clam")

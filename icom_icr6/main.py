@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 # vim:fenc=utf-8
 #
-# Copyright © 2024 Karol Będkowski <Karol Będkowski@kkomp>
+# Copyright © 2024-2025 Karol Będkowski <Karol Będkowski@kkomp>
 #
 # Distributed under terms of the GPLv3 license.
 # ruff: noqa: PLR2004
@@ -12,6 +12,7 @@ import argparse
 import builtins
 import csv
 import logging
+import pprint
 import sys
 import typing as ty
 from pathlib import Path
@@ -64,8 +65,11 @@ def main_radio_info(args: argparse.Namespace) -> None:
 
     radio = ic_io.Radio(port)
     if rm := radio.get_model():
-        print(f"Model: {rm!r}")
-        print(f"Is IC-R6: {rm.is_icr6()}")
+        if args.verbose > 2:
+            pprint.pprint(rm)
+        else:
+            print(f"Model: {rm!r}")
+            print(f"Is IC-R6: {rm.is_icr6()}")
     else:
         print("ERROR")
 
@@ -232,7 +236,7 @@ def main_print_settings(args: argparse.Namespace) -> None:
     print("Settings")
     if args.verbose > 2:
         sett = mem.settings
-        print(repr(sett))
+        pprint.pprint(sett)
     else:
         for key, val in mem.settings.values():
             print(key, val, sep=",")
@@ -323,7 +327,7 @@ def main_send_command(args: argparse.Namespace) -> None:
     print("Response: ")
     try:
         for res in r.write_read(cmd, payload):
-            print(repr(res))
+            pprint.pprint(res)
 
     except KeyboardInterrupt:
         pass
@@ -373,9 +377,7 @@ def _parse_args_radio_commands(cmds: argparse._SubParsersAction) -> None:  # typ
     cmd.set_defaults(func=main_send_command)
 
 
-def _parse_args_print_commands(
-    cmds: argparse._SubParsersAction[argparse.ArgumentParser],
-) -> None:
+def _parse_args_print_commands(cmds: argparse._SubParsersAction) -> None:  # type: ignore
     cmd = cmds.add_parser("channels", help="Print channels")
     cmd.add_argument("icf_file", type=Path, help="Input ICF file")
     cmd.add_argument(
@@ -422,9 +424,7 @@ def _parse_args_print_commands(
     cmd.set_defaults(func=main_print_dupl_freq)
 
 
-def _parse_args_convert_commands(
-    cmds: argparse._SubParsersAction[argparse.ArgumentParser],
-) -> None:
+def _parse_args_convert_commands(cmds: argparse._SubParsersAction) -> None:  # type: ignore
     cmd = cmds.add_parser(
         "icf2raw", help="Convert ICF file to raw memory file"
     )
@@ -441,7 +441,7 @@ def _parse_args_convert_commands(
 
 
 def _parse_args_reports_commands(
-    cmds: argparse._SubParsersAction[argparse.ArgumentParser],
+    cmds: argparse._SubParsersAction,  # type: ignore
 ) -> None:
     cmd = cmds.add_parser("sheet", help="Print summary information")
     cmd.add_argument("icf_file", type=Path, help="Input ICF file")

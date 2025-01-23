@@ -71,6 +71,8 @@ python_version = "3.11"
 strict = true
 exclude = ['_test\.py$', "tmp"]
 ignore_missing_imports = true
+#disallow_untyped_defs = false
+disallow_untyped_calls = false
 
 
 [tool.pylint.main]

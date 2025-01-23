@@ -1,4 +1,4 @@
-# Copyright © 2024 Karol Będkowski <Karol Będkowski@kkomp>
+# Copyright © 2024-2025 Karol Będkowski <Karol Będkowski@kkomp>
 #
 # Distributed under terms of the GPLv3 license.
 
@@ -6,6 +6,7 @@
 Notebook tab containing banks and channels.
 """
 
+import itertools
 import logging
 import tkinter as tk
 import typing as ty
@@ -28,19 +29,20 @@ class BanksPage(tk.Frame):
     def __init__(self, parent: tk.Widget, cm: ChangeManeger) -> None:
         super().__init__(parent)
         self._parent = parent
-        self.rowconfigure(0, weight=1)
-        self.columnconfigure(0, weight=1)
+
+        self._change_manager = cm
+        self._in_paste = False
+        self._last_selected_bank = 0
+        self._last_selected_pos = [0] * consts.NUM_BANKS
+        self._banks_labels: list[str] = []
 
         self._bank_name = tk.StringVar()
         self._bank_name.trace("w", self._on_bank_name_changed)  # type: ignore
         self._bank_link = gui_model.BoolVar()
         self._bank_link.trace("w", self._on_bank_link_changed)  # type: ignore
-        self._change_manager = cm
-        self.__in_paste = False
-        self._last_selected_bank = 0
-        self._last_selected_pos = [0] * consts.NUM_BANKS
-        self._banks_stats: list[str] = []
-        self._banks = tk.StringVar(value=self._banks_stats)  # type: ignore
+        self._banks = tk.StringVar(value=self._banks_labels)  # type: ignore
+
+        self._popup_menu: tk.Menu | None = None
 
         pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
         banks = self._banks_list = tk.Listbox(
@@ -63,7 +65,7 @@ class BanksPage(tk.Frame):
         self, bank: int | None = None, bank_pos: int | None = None
     ) -> None:
         # hide canceller in global models
-        self._chan_list.set_region(self._change_manager.rm.region)
+        self._chan_list.set_radio_memory(self._change_manager.rm)
         self._update_banks_list()
 
         if bank is None:
@@ -96,7 +98,7 @@ class BanksPage(tk.Frame):
         self._update_chan_list(select=bank_pos)
 
     def reset(self) -> None:
-        self._chan_list.set_region(self._change_manager.rm.region)
+        self._chan_list.set_radio_memory(self._change_manager.rm)
         self._last_selected_bank = 0
         self._last_selected_pos = [0] * consts.NUM_BANKS
         self._update_banks_list()
@@ -109,10 +111,6 @@ class BanksPage(tk.Frame):
 
     def _create_bank_fields(self, frame: tk.Frame) -> None:
         fields = tk.Frame(frame)
-        fields.columnconfigure(0, weight=0)
-        fields.columnconfigure(1, weight=0)
-        fields.columnconfigure(2, weight=0)
-        fields.columnconfigure(3, weight=0)
 
         validator = self.register(validate_bank_name)
         self._field_bank_name = new_entry(
@@ -125,11 +123,13 @@ class BanksPage(tk.Frame):
         fields.pack(side=tk.TOP, fill=tk.X)
 
     def _create_chan_list(self, frame: tk.Frame) -> None:
-        self._chan_list = banks_channelslist.ChannelsList(frame)
+        self._chan_list = banks_channelslist.ChannelsList(
+            frame, self._change_manager.rm
+        )
         self._chan_list.pack(side=tk.TOP, expand=True, fill=tk.BOTH, pady=6)
 
-        self._chan_list.on_record_selected = self._on_channel_select  # type: ignore
-        self._chan_list.on_record_update = self._on_channel_update  # type: ignore
+        self._chan_list.on_record_selected = self._on_channel_select
+        self._chan_list.on_record_update = self._on_channel_update
         self._chan_list.sheet.bind("<Control-c>", self._on_channel_copy)
         self._chan_list.sheet.bind("<Control-v>", self._on_channel_paste)
 
@@ -145,7 +145,7 @@ class BanksPage(tk.Frame):
         bframe.pack(side=tk.BOTTOM, fill=tk.X)
 
     def _on_bank_select(self, _event: tk.Event) -> None:  # type: ignore
-        if sel_bank := self._banks_list.curselection():  # type: ignore
+        if sel_bank := self._banks_list.curselection():
             self._last_selected_bank = int(sel_bank[0])
         else:
             self._last_selected_bank = 0
@@ -159,12 +159,12 @@ class BanksPage(tk.Frame):
         banks = self._banks_list
         rm = self._radio_memory
 
-        self._banks_stats = []
+        self._banks_labels = []
         for idx, bank in enumerate(self._radio_memory.banks):
             active = sum(bool(c) for c in rm.get_bank_channels(idx).channels)
-            self._banks_stats.append(_bank_list_label(idx, bank.name, active))
+            self._banks_labels.append(_bank_list_label(idx, bank.name, active))
 
-        self._banks.set(self._banks_stats)  # type: ignore
+        self._banks.set(self._banks_labels)  # type: ignore
 
         banks.selection_set(self._last_selected_bank)
 
@@ -176,14 +176,9 @@ class BanksPage(tk.Frame):
     ) -> None:
         selected_bank = self._last_selected_bank
 
-        self._chan_list.set_bank(selected_bank)
-        self._last_selected_bank = selected_bank
-
         bank = self._radio_memory.banks[selected_bank]
         self._bank_name.set(bank.name.rstrip())
-
-        bl = self._radio_memory.bank_links
-        self._bank_link.set_raw(bl[selected_bank])
+        self._bank_link.set_raw(self._radio_memory.bank_links[selected_bank])
 
         channels = self._radio_memory.get_bank_channels(selected_bank)
         self._chan_list.set_data(
@@ -211,19 +206,24 @@ class BanksPage(tk.Frame):
         active = sum(
             bool(c) for c in rm.get_bank_channels(selected_bank).channels
         )
+
         self._parent.set_status(f"Active channels in bank: {active}")  # type: ignore
-        self._banks_stats[selected_bank] = _bank_list_label(
+
+        self._banks_labels[selected_bank] = _bank_list_label(
             selected_bank, bank.name, active
         )
-        self._banks.set(self._banks_stats)  # type: ignore
+        self._banks.set(self._banks_labels)  # type: ignore
 
     def _on_bank_name_changed(self, _var: str, _idx: str, _op: str) -> None:
         bank = self._radio_memory.banks[self._last_selected_bank]
         name = self._bank_name.get()
         fixed_name = fixers.fix_name(name)
+
+        # stop when no changes
         if bank.name == fixed_name:
             return
 
+        # update back entry
         if fixed_name != name:
             self._bank_name.set(fixed_name)
 
@@ -237,6 +237,8 @@ class BanksPage(tk.Frame):
         bank = self._last_selected_bank
         new_val = self._bank_link.get_raw()
         bl = self._radio_memory.bank_links
+
+        # stop when no changes
         if new_val == bl[bank]:
             return
 
@@ -245,16 +247,18 @@ class BanksPage(tk.Frame):
         self._change_manager.set_bank_links(bl)
         self._change_manager.commit()
 
-    def _on_channel_select(self, rows: list[banks_channelslist.BLRow]) -> None:
+    def _on_channel_select(
+        self, rows: list[banks_channelslist.RowType]
+    ) -> None:
         self._btn_sort["state"] = "normal" if len(rows) > 1 else "disabled"
         self._last_selected_pos[self._last_selected_bank] = rows[0].rownum
 
         if _LOG.isEnabledFor(logging.DEBUG):
-            for rec in rows:
-                _LOG.debug("chan selected: %r", rec)
+            for row in rows:
+                _LOG.debug("chan selected: %r", row)
 
     def _on_channel_update(
-        self, action: str, rows: ty.Collection[banks_channelslist.BLRow]
+        self, action: str, rows: ty.Collection[banks_channelslist.RowType]
     ) -> None:
         match action:
             case "delete":
@@ -267,9 +271,8 @@ class BanksPage(tk.Frame):
                 self._do_move_channels(rows)
 
     def _do_delete_channels(
-        self, rows: ty.Collection[banks_channelslist.BLRow]
+        self, rows: ty.Collection[banks_channelslist.RowType]
     ) -> None:
-        chan: model.Channel | None
         if not messagebox.askyesno(
             "Delete channel",
             "Delete channel configuration from bank?",
@@ -277,100 +280,125 @@ class BanksPage(tk.Frame):
         ):
             return
 
+        # changed channels
         channels = []
-        for rec in rows:
-            if chan := rec.channel:
-                _LOG.debug("_do_delete_channels: row=%r, chan=%r", rec, chan)
+        # list positions to clear
+        bank_pos = []
+        for row in rows:
+            if chan := row.obj:
+                _LOG.debug("_do_delete_channels: row=%r, chan=%r", row, chan)
+                bank_pos.append(row.rownum)
                 chan = chan.clone()
                 chan.clear_bank()
                 channels.append(chan)
 
         self._change_manager.set_channel(*channels)
         self._change_manager.commit()
-        self._update_chan_list()
 
-    def _do_update_channels(  # noqa: C901
-        self, rows: ty.Collection[banks_channelslist.BLRow]
+        for pos in bank_pos:
+            self._chan_list.update_data(pos, None)
+
+    def _do_update_channels(
+        self, rows: ty.Collection[banks_channelslist.RowType]
     ) -> None:
-        chan: model.Channel | None
-
-        selected_bank = self._last_selected_bank
-
         # modified channels
-        channels = []
-        for rec in rows:
-            _LOG.debug("_do_update_channels: row=%r", rec)
-
-            if rec.new_channel is not None:  # change channel in bankpos
-                if old_chan := rec.channel:
-                    # clear old chan
-                    old_chan.clear_bank()
-                    channels.append(old_chan)
-
-                # add chan to bank
-                chan = self._radio_memory.channels[rec.new_channel].clone()
-
-            elif rec.new_values:  # empty pos, entered freq
-                chan = self._radio_memory.find_first_hidden_channel()
-                if not chan:
-                    # TODO: error? is this possible?
-                    continue
-
-                chan = chan.clone()
-
-                if freq := rec.new_values.get("freq"):
-                    assert isinstance(freq, int)
-                    chan.freq = freq
-
-            elif rec.channel:  # edit existing channel
-                chan = rec.channel
-
-            else:
-                # no chan = deleted  # TODO: change
-                self._change_manager.clear_bank_pos(selected_bank, rec.rownum)
-                continue
-
-            chan.bank = selected_bank
-            chan.bank_pos = rec.rownum
-            # if new channel - make it visible
-            if chan.hide_channel:
-                # when hidden channel has no frequency; set 50MHz
-                if not chan.freq:
-                    chan.freq = 50_000_000
-
-                chan.freq = fixers.fix_frequency(chan.freq)
-                band = self._change_manager.rm.get_band_for_freq(chan.freq)
-                chan.load_defaults_from_band(band)
-                chan.hide_channel = False
-
-            if rec.new_values:
-                chan.from_record(rec.new_values)
-
-            channels.append(chan)
+        channels = list(
+            itertools.chain.from_iterable(map(self.__do_update_channel, rows))
+        )
 
         self._change_manager.set_channel(*channels)
 
-        if not self.__in_paste:
+        if not self._in_paste:
             self._change_manager.commit()
-            self._update_chan_list()
+            if len(channels) > len(rows):
+                self._update_chan_list()
+            else:
+                for chan in channels:
+                    self._chan_list.update_data(chan.bank_pos, chan)
+
+    def __do_update_channel(
+        self, row: banks_channelslist.RowType
+    ) -> ty.Iterator[model.Channel]:
+        _LOG.debug("__do_update_channel: row=%r", row)
+        assert row.changes
+        chan: model.Channel | None = None
+
+        if "channel" in row.changes:
+            if (new_chan_num := row.changes.get("channel")) is not None:
+                # change channel in bankpos
+                assert isinstance(new_chan_num, int)
+                del row.changes["channel"]
+
+                if (old_chan := row.obj) and old_chan.number != new_chan_num:
+                    # clear old chan
+                    old_chan = old_chan.clone()
+                    old_chan.clear_bank()
+                    yield old_chan
+
+                # add chan to bank
+                chan = self._radio_memory.channels[new_chan_num].clone()
+
+            else:
+                # remove channel from bank
+                if (c := row.obj) is not None:
+                    c = c.clone()
+                    c.clear_bank()
+                    yield c
+
+                return
+
+        if not row.obj and (freq := row.changes.get("freq")):
+            # create new position with new channel by freq
+            assert isinstance(freq, int)
+            del row.changes["freq"]
+
+            # empty pos, entered freq
+            chan = self._radio_memory.find_first_hidden_channel()
+            if not chan:
+                # TODO: error? is this possible?
+                return
+
+            chan = chan.clone()
+            chan.freq = freq
+
+        if not chan:
+            assert row.obj is not None
+            chan = row.obj.clone()
+
+        chan.bank = self._last_selected_bank
+        chan.bank_pos = row.rownum
+
+        # if new channel - make it visible
+        if chan.hide_channel:
+            # when hidden channel has no frequency; set 50MHz
+            chan.freq = fixers.fix_frequency(chan.freq or 50_000_000)
+            band = self._change_manager.rm.get_band_for_freq(chan.freq)
+            chan.load_defaults_from_band(band)
+            chan.hide_channel = False
+
+        if row.changes:
+            chan.from_record(row.changes)
+
+        yield chan
 
     def _do_move_channels(
-        self, rows: ty.Collection[banks_channelslist.BLRow]
+        self, rows: ty.Collection[banks_channelslist.RowType]
     ) -> None:
         channels = []
-        for rec in rows:
-            if not rec.channel:
+        for row in rows:
+            if not row.obj:
                 continue
 
-            _LOG.debug("_do_move_channels: %r -> %d", rec.channel, rec.rownum)
-            chan = rec.channel.clone()
-            chan.bank_pos = rec.rownum
+            _LOG.debug("_do_move_channels: %r -> %d", row.obj, row.rownum)
+            chan = row.obj.clone()
+            chan.bank_pos = row.rownum
             channels.append(chan)
 
         if channels:
             self._change_manager.set_channel(*channels)
             self._change_manager.commit()
-            self._update_chan_list()
+            for chan in channels:
+                self._chan_list.update_data(chan.bank_pos, chan)
 
     def _on_channel_copy(self, _event: tk.Event) -> None:  # type: ignore
         selected = self._chan_list.sheet.get_currently_selected()
@@ -381,7 +409,7 @@ class BanksPage(tk.Frame):
 
         if selected.type_ == "rows":
             if rows := self._chan_list.selected_rows_data():
-                channels = (chan for row in rows if (chan := row.channel))
+                channels = (chan for row in rows if (chan := row.obj))
                 res = expimp.export_channel_str(channels)
 
         elif selected.type_ == "cells" and (
@@ -393,11 +421,11 @@ class BanksPage(tk.Frame):
             gui_model.Clipboard.instance().put(res)
 
     def _on_channel_paste(self, _event: tk.Event) -> None:  # type: ignore
-        sel = self._chan_list.selection()
+        sel = self._chan_list.selected_rows()
         if not sel:
             return
 
-        self.__in_paste = True
+        self._in_paste = True
 
         clip = gui_model.Clipboard.instance()
         data = ty.cast(str, clip.get())
@@ -411,6 +439,7 @@ class BanksPage(tk.Frame):
 
         except Exception as err:
             _LOG.exception("_on_channel_paste error")
+            self._change_manager.abort()
             messagebox.showerror(
                 "Paste data error", f"Clipboard content can't be pasted: {err}"
             )
@@ -419,7 +448,7 @@ class BanksPage(tk.Frame):
             self._change_manager.commit()
             self._update_chan_list()
 
-        self.__in_paste = False
+        self._in_paste = False
 
     def _on_channel_paste_channels(
         self, selected_bank: int, sel_pos: tuple[int, ...], data: str
@@ -431,8 +460,8 @@ class BanksPage(tk.Frame):
 
         bank_channels = self._radio_memory.get_bank_channels(selected_bank)
 
-        # special case - when in clipboard is one record and selected  many-
-        # duplicate
+        # special case - when in clipboard is one record and selected  many
+        # records - duplicate
         if len(sel_pos) > 1 and len(rows) == 1:
             row = rows[0]
             for spos in sel_pos:
@@ -501,7 +530,9 @@ class BanksPage(tk.Frame):
         if len(rows) <= 1:
             return
 
-        popup_menu = tk.Menu(self, tearoff=0)
+        self._do_close_popup_menu()
+
+        self._popup_menu = popup_menu = tk.Menu(self, tearoff=0)
         popup_menu.add_command(
             label="Sort by frequency", command=lambda: self._do_sort("freq")
         )
@@ -521,6 +552,10 @@ class BanksPage(tk.Frame):
         popup_menu.add_command(
             label="Pack", command=lambda: self._do_sort("pack")
         )
+
+        popup_menu.bind("<Escape>", self._do_close_popup_menu)
+        popup_menu.bind("<FocusOut>", self._do_close_popup_menu)
+
         try:
             btn = self._btn_sort
             popup_menu.tk_popup(btn.winfo_rootx(), btn.winfo_rooty())
@@ -533,7 +568,7 @@ class BanksPage(tk.Frame):
             return
 
         channels = [
-            row.channel.clone() if row.channel else None for row in rows
+            chan.clone() if (chan := row.obj) else None for row in rows
         ]
         channels_bank_pos = [row.rownum for row in rows]
 
@@ -548,6 +583,12 @@ class BanksPage(tk.Frame):
         self._change_manager.set_channel(*final_channels)
         self._change_manager.commit()
         self._update_chan_list()
+
+    def _do_close_popup_menu(self, _evt: tk.Event | None = None) -> None:  # type: ignore
+        if self._popup_menu:
+            self._popup_menu.grab_release()
+            self._popup_menu.destroy()
+            self._popup_menu = None
 
 
 def _bank_list_label(idx: int, bank_name: str, active: int) -> str:

@@ -31,14 +31,14 @@ class AutoWriteChannelsPage(tk.Frame):
 
     def update_tab(self, channel_number: int | None = None) -> None:
         # hide canceller in global models
-        self._chan_list.set_region(self._change_manager.rm.region)
+        self._chan_list.set_radio_memory(self._change_manager.rm)
         self._update_channels_list(select=channel_number)
 
     def select(self, channel_number: int) -> None:
         self._chan_list.selection_set([channel_number])
 
     def reset(self) -> None:
-        self._chan_list.set_region(self._change_manager.rm.region)
+        self._chan_list.set_radio_memory(self._change_manager.rm)
         self._update_channels_list()
 
     @property
@@ -46,7 +46,9 @@ class AutoWriteChannelsPage(tk.Frame):
         return self._change_manager.rm
 
     def _create_channel_list(self, frame: tk.Frame) -> None:
-        self._chan_list = awchannels_list.ChannelsList(frame)
+        self._chan_list = awchannels_list.ChannelsList(
+            frame, self._change_manager.rm
+        )
         self._chan_list.pack(
             expand=True, fill=tk.BOTH, side=tk.TOP, padx=12, pady=12
         )
@@ -71,7 +73,7 @@ class AutoWriteChannelsPage(tk.Frame):
 
         if selected.type_ == "rows":
             if rows := self._chan_list.selected_rows_data():
-                channels = (chan for row in rows if (chan := row.channel))
+                channels = (chan for row in rows if (chan := row.obj))
                 res = expimp.export_channel_str(channels)
 
         elif selected.type_ == "cells" and (
@@ -84,7 +86,9 @@ class AutoWriteChannelsPage(tk.Frame):
 
     def _show_stats(self) -> None:
         active = sum(
-            bool(r and (c := r.channel) and not c.hide_channel)
-            for r in self._chan_list.data
+            bool(r and (c := r.obj) and not c.hide_channel)
+            for r in ty.cast(
+                ty.Iterable[awchannels_list.RowType], self._chan_list.data
+            )
         )
         self._parent.set_status(f"Channels: {active}")  # type: ignore

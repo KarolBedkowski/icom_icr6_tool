@@ -13,12 +13,12 @@ try:
     import stackprinter
 
     stackprinter.set_excepthook(style="color",
-                                suppressed_paths=[r"lib/python.*/site-packages/"])
+                                suppressed_paths=[r"site-packages", r"dist-packages"])
 except ImportError:
     try:
         from rich.traceback import install
 
-        install(show_locals=True)
+        install(show_locals=True, suppress=["typeguard"])
     except ImportError:
         pass
 

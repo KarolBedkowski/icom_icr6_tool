@@ -216,6 +216,17 @@ class RadioMemory:
             )
         )
 
+    def get_bank_fullname(self, bank: int | str) -> str | None:
+        if isinstance(bank, str):
+            if not bank:
+                return None
+
+            bank_idx = consts.BANK_NAMES.index(bank[0])
+        else:
+            bank_idx = bank
+
+        return self.banks[bank_idx].full_name
+
     def is_usa_model(self) -> bool:
         return self.region == consts.Region.USA
 
