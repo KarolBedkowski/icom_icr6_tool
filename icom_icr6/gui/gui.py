@@ -351,6 +351,8 @@ class App(tk.Frame):
     ) -> None:
         dlg = dlg_clone.CloneFromRadioDialog(self)
         if dlg.radio_memory:
+            self.set_status("Clone from radio finished.")
+
             mem = dlg.radio_memory
             try:
                 mem.validate()
@@ -369,11 +371,11 @@ class App(tk.Frame):
 
     def _on_menu_clone_to_radio(self, _event: tk.Event | None = None) -> None:  # type: ignore
         if not self._safe_for_clone and not messagebox.askokcancel(
-            "Clone to device",
+            "Clone to radio",
             "Clone default data (for global region) to radio may don't "
             "work as expected. \n"
             "For safe operation please open valid icf file or clone data "
-            "from device.\n\n"
+            "from radio.\n\n"
             "Continue?",
         ):
             return
@@ -382,10 +384,12 @@ class App(tk.Frame):
             self._radio_memory.validate_loaded_data()
             self._radio_memory.commit()
         except ValueError as err:
-            messagebox.showerror("Clone to device - Invalid data", str(err))
+            messagebox.showerror("Clone to radio - Invalid data", str(err))
             return
 
-        dlg_clone.CloneToRadioDialog(self, self._radio_memory)
+        dlg = dlg_clone.CloneToRadioDialog(self, self._radio_memory)
+        if dlg.result:
+            self.set_status("Clone to radio finished.")
 
     def _on_menu_radio_info(self, _event: tk.Event | None = None) -> None:  # type: ignore
         dlg = dlg_clone.RadioInfoDialog(self)
