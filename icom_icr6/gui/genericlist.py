@@ -304,6 +304,15 @@ class GenericList2(tk.Frame, ty.Generic[T]):
                 )
             ).align("right")
 
+        elif values == "offset":
+            span.format(
+                int_formatter(
+                    format_function=model.fmt.parse_offset,
+                    to_str_function=model.fmt.format_freq,
+                    invalid_value="",
+                )
+            ).align("right")
+
         elif isinstance(values, (list, tuple)):
             span.dropdown(values=values).align("center")
 

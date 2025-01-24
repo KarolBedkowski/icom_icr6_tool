@@ -45,7 +45,7 @@ class ChannelsList2(genericlist.GenericList2[model.Channel | None]):
         ("att", "ATT", "bool"),  # 5
         ("ts", "Tuning Step", consts.STEPS),
         ("dup", "DUP", consts.DUPLEX_DIRS),
-        ("offset", "Offset", "freq"),
+        ("offset", "Offset", "offset"),
         ("skip", "Skip", _SKIPS),
         ("vsc", "VSC", "bool"),  # 10
         ("tone_mode", "Tone", consts.TONE_MODES),
@@ -149,7 +149,7 @@ class ChannelsList2(genericlist.GenericList2[model.Channel | None]):
                 value = value.upper()
 
             case "offset" if chan:
-                if off := model.fmt.parse_freq(value):
+                if off := model.fmt.parse_offset(value):
                     value = fixers.fix_offset(chan.freq, off)
                 else:
                     value = 0
