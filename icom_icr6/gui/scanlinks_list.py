@@ -76,7 +76,7 @@ class ScanLnksList(genericlist.GenericList2[ScanLink]):
 
         match column[0]:
             case "start" | "end":
-                val = genericlist.to_freq(value)
+                val = model.fmt.parse_freq(value)
                 value = fixers.fix_frequency(val)
 
             case "name":

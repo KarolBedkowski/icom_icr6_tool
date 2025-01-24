@@ -12,7 +12,7 @@ import tkinter as tk
 import typing as ty
 from tkinter import messagebox, ttk
 
-from icom_icr6 import consts, expimp, fixers, model, model_support, validators
+from icom_icr6 import consts, expimp, fixers, model, validators
 from icom_icr6.change_manager import ChangeManeger
 from icom_icr6.radio_memory import RadioMemory
 
@@ -572,7 +572,7 @@ class BanksPage(tk.Frame):
         ]
         channels_bank_pos = [row.rownum for row in rows]
 
-        model_support.sort_channels(channels, field)
+        model.sorting.sort_channels(channels, field)
 
         for chan, idx in zip(channels, channels_bank_pos, strict=True):
             if chan:

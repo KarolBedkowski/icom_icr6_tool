@@ -13,8 +13,6 @@ from tkinter import ttk
 
 from icom_icr6 import config, consts, model
 
-from . import support
-
 if ty.TYPE_CHECKING:
     from icom_icr6.radio_memory import RadioMemory
 
@@ -50,7 +48,7 @@ class _BasePage(tk.Frame):
             text=f"Channel {chan.number}",
             tags=("chan", str(chan.number)),
             values=(
-                support.format_freq(chan.freq),
+                model.fmt.format_freq(chan.freq),
                 consts.MODES[chan.mode],
                 chan.name,
             ),
@@ -115,7 +113,7 @@ class _FindChannelsPage(_BasePage):
                         text=f"Autowrite channel {obj.number}",
                         tags=("awchan", str(obj.number)),
                         values=(
-                            support.format_freq(obj.freq),
+                            model.fmt.format_freq(obj.freq),
                             consts.MODES[obj.mode],
                             "",
                         ),
@@ -195,7 +193,7 @@ class _FindDuplicatedPage(_BasePage):
             fiid = tree.insert(
                 "",
                 tk.END,
-                text=f"{support.format_freq(freq)}: {num} channels",
+                text=f"{model.fmt.format_freq(freq)}: {num} channels",
                 tags=("freq", str(freq)),
                 open=True,
             )

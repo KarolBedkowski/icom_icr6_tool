@@ -60,7 +60,7 @@ class ScanEdgesList(genericlist.GenericList2[model.ScanEdge]):
                 if value is None or value == "":
                     return value
 
-                val = genericlist.to_freq(value)
+                val = model.fmt.parse_freq(value)
                 value = fixers.fix_frequency(val)
 
             case "name":

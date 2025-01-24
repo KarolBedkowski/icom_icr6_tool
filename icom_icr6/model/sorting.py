@@ -1,4 +1,4 @@
-# Copyright © 2024 Karol Będkowski <Karol Będkowski@kkomp>
+# Copyright © 2025 Karol Będkowski <Karol Będkowski@kkomp>
 #
 # Distributed under terms of the GPLv3 license.
 
@@ -6,13 +6,13 @@
 
 import typing as ty
 
-from . import model
+from .channels import Channel
 
 
 def sort_channels(
-    channels: list[model.Channel | None] | list[model.Channel], field: str
+    channels: list[Channel | None] | list[Channel], field: str
 ) -> None:
-    sfunc: ty.Callable[[model.Channel | None], str | int]
+    sfunc: ty.Callable[[Channel | None], str | int]
 
     match field:
         case "name":
@@ -36,21 +36,21 @@ def sort_channels(
     channels.sort(key=sfunc)
 
 
-def _sort_func_name(chan: model.Channel | None) -> str:
+def _sort_func_name(chan: Channel | None) -> str:
     return chan.name or "\xf0" if chan and not chan.hide_channel else "\xff"
 
 
-def _sort_func_name2(chan: model.Channel | None) -> str:
+def _sort_func_name2(chan: Channel | None) -> str:
     return chan.name or "" if chan and not chan.hide_channel else "\xff"
 
 
-def _sort_func_freq(chan: model.Channel | None) -> int:
+def _sort_func_freq(chan: Channel | None) -> int:
     return chan.freq if chan and not chan.hide_channel else 9_999_999_999
 
 
-def _sort_func_pack(chan: model.Channel | None) -> int:
+def _sort_func_pack(chan: Channel | None) -> int:
     return 0 if chan and not chan.hide_channel else 1
 
 
-def _sort_func_channel(chan: model.Channel | None) -> int:
+def _sort_func_channel(chan: Channel | None) -> int:
     return chan.number if chan and not chan.hide_channel else 1400

@@ -20,7 +20,7 @@ from tksheet import (
 )
 from tksheet.other_classes import Box_nt
 
-from .support import format_freq
+from icom_icr6 import model
 
 _LOG = logging.getLogger(__name__)
 
@@ -45,21 +45,6 @@ def dummy_record_acton_cb(action: str, rows: list[T]) -> None:
 
 def dummy_record_select_cb(rows: list[T]) -> None:
     pass
-
-
-def to_freq(o: object, **_kwargs: object) -> int:
-    val = 0.0
-
-    if isinstance(o, int):
-        val = o
-    elif isinstance(o, str):
-        val = float(o.replace(" ", "").replace(",", "."))
-    elif isinstance(o, float):
-        val = o
-    else:
-        val = float(o)  # type: ignore
-
-    return int(val * 1_000_000 if 0 < val < 1400.0 else val)  # noqa:PLR2004
 
 
 class Row(UserList[object], ty.Generic[T]):
@@ -313,8 +298,8 @@ class GenericList2(tk.Frame, ty.Generic[T]):
         elif values == "freq":
             span.format(
                 int_formatter(
-                    format_function=to_freq,
-                    to_str_function=format_freq,
+                    format_function=model.fmt.parse_freq,
+                    to_str_function=model.fmt.format_freq,
                     invalid_value="",
                 )
             ).align("right")

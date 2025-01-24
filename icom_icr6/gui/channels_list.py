@@ -140,7 +140,7 @@ class ChannelsList2(genericlist.GenericList2[model.Channel | None]):
                     return None
 
             case "freq":
-                value = fixers.fix_frequency(genericlist.to_freq(value))
+                value = fixers.fix_frequency(model.fmt.parse_freq(value))
 
             case "name":
                 value = fixers.fix_name(value)
@@ -149,7 +149,7 @@ class ChannelsList2(genericlist.GenericList2[model.Channel | None]):
                 value = value.upper()
 
             case "offset" if chan:
-                if off := genericlist.to_freq(value):
+                if off := model.fmt.parse_freq(value):
                     value = fixers.fix_offset(chan.freq, off)
                 else:
                     value = 0

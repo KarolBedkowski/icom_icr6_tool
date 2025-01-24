@@ -10,7 +10,7 @@ import typing as ty
 from contextlib import suppress
 from tkinter import messagebox, ttk
 
-from icom_icr6 import consts, expimp, fixers, model_support
+from icom_icr6 import consts, expimp, fixers, model
 from icom_icr6.change_manager import ChangeManeger
 from icom_icr6.radio_memory import RadioMemory
 
@@ -525,7 +525,7 @@ class ChannelsPage(tk.Frame):
         channels = [chan.clone() for row in rows if (chan := row.obj)]
         channels_ids = [chan.number for chan in channels]
 
-        model_support.sort_channels(channels, field)
+        model.sorting.sort_channels(channels, field)
 
         for chan, idx in zip(channels, channels_ids, strict=True):
             chan.number = idx

@@ -1,4 +1,4 @@
-from . import _support
+from . import _support, fmt, sorting
 from ._support import ValidateError
 from .channels import Bank, BankChannels, BankLinks, Channel, ChannelFlags
 from .radio import RadioModel
@@ -17,6 +17,8 @@ __all__ = [
     "ScanEdge",
     "ScanLink",
     "ValidateError",
+    "fmt",
+    "sorting",
 ]
 
 
