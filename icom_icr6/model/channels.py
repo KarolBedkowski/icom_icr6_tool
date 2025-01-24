@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 
 from icom_icr6 import coding, consts, fixers, validators
 
-from . import _support
+from . import _support, fmt
 from ._support import (
     MutableMemory,
     ValidateError,
@@ -378,7 +378,7 @@ class Channel:
     def from_record(self, data: dict[str, object]) -> None:  # noqa: PLR0912,C901 pylint:disable=too-many-branches
         _LOG.debug("from_record: %r", data)
         if (freq := data.get("freq")) is not None:
-            ifreq = int(freq or "0")  # type: ignore
+            ifreq = fmt.parse_freq(freq or "0")
             self.freq = fixers.fix_frequency(ifreq) if ifreq else 0
             self.hide_channel = not self.freq
 
@@ -401,7 +401,7 @@ class Channel:
             self.tone_mode = get_index_or_default(consts.TONE_MODES, mode)
 
         if (offset := data.get("offset")) is not None:
-            off = int(offset)  # type: ignore
+            off = fmt.parse_offset(offset or "0")
             self.offset = fixers.fix_offset(self.freq, off) if off else 0
 
         if (tf := data.get("tsql_freq")) is not None:

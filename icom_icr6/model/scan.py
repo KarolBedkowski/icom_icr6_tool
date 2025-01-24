@@ -13,7 +13,7 @@ from dataclasses import dataclass
 
 from icom_icr6 import consts, validators
 
-from . import _support
+from . import _support, fmt
 from ._support import (
     MutableMemory,
     ValidateError,
@@ -253,10 +253,10 @@ class ScanEdge:
             self.idx = int(idx)  # type: ignore
 
         if (start := data.get("start")) is not None:
-            self.start = int(start or "0")  # type: ignore
+            self.start = fmt.parse_freq(start or "0")
 
         if (end := data.get("end")) is not None:
-            self.end = int(end or "0")  # type: ignore
+            self.end = fmt.parse_freq(end or "0")
 
         if mode := data.get("mode"):
             self.mode = consts.MODES.index(str(mode))
