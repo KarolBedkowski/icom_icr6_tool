@@ -6,7 +6,7 @@
 
 import typing as ty
 
-from . import consts
+from . import config, consts
 from .radio_memory import RadioMemory
 
 
@@ -23,7 +23,8 @@ def generate_sheet(rm: RadioMemory) -> ty.Iterable[str]:
     yield "Channels groups"
     for g in range(13):
         cnt = sum(1 for _ in rm.get_active_channels_in_group(g))
-        yield f"{g:2d}xx:                  ch: {cnt}"
+        name = config.CONFIG.chan_group_names[g]
+        yield f"{g:2d}xx: {name:<20}  ch: {cnt}"
 
     yield ""
     yield "Scan edges"

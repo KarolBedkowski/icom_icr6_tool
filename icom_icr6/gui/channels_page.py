@@ -10,11 +10,11 @@ import typing as ty
 from contextlib import suppress
 from tkinter import messagebox, ttk
 
-from icom_icr6 import consts, expimp, fixers, model
+from icom_icr6 import config, consts, expimp, fixers, model
 from icom_icr6.change_manager import ChangeManeger
 from icom_icr6.radio_memory import RadioMemory
 
-from . import channels_list, gui_model
+from . import channels_list, gui_model, widgets
 
 _LOG = logging.getLogger(__name__)
 
@@ -39,6 +39,8 @@ class ChannelsPage(tk.Frame):
         self._groups_labels: list[str] = []
         self._groups = tk.StringVar(value=self._groups_labels)  # type: ignore
         self._update_groups_list()
+        self._group_name = tk.StringVar()
+        self._group_name.trace("w", self._on_group_name_change)  # type: ignore
 
         pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
         self._groups_list = tk.Listbox(
@@ -48,6 +50,7 @@ class ChannelsPage(tk.Frame):
         pw.add(self._groups_list, weight=0)
 
         frame = tk.Frame(pw)
+        self._create_fields(frame)
         self._create_channel_list(frame)
         self._chan_list.set_radio_memory(cm.rm)
         pw.add(frame, weight=1)
@@ -95,6 +98,15 @@ class ChannelsPage(tk.Frame):
     def _radio_memory(self) -> RadioMemory:
         return self._change_manager.rm
 
+    def _create_fields(self, frame: tk.Frame) -> None:
+        fields = tk.Frame(frame)
+
+        self._field_bank_name = widgets.new_entry(
+            fields, 0, 0, "Local group name: ", self._group_name
+        )
+
+        fields.pack(side=tk.TOP, fill=tk.X)
+
     def _create_channel_list(self, frame: tk.Frame) -> None:
         self._chan_list = channels_list.ChannelsList2(
             frame, self._change_manager.rm
@@ -128,10 +140,12 @@ class ChannelsPage(tk.Frame):
     def _on_group_select(self, _event: tk.Event) -> None:  # type: ignore
         sel_group = self._selected_group
         if sel_group is None:
+            self._group_name.set("")
             return
 
         self._last_selected_group = sel_group
         self._chan_list.reset(scroll_top=True)
+        self._group_name.set(config.CONFIG.chan_group_names[sel_group])
         self._update_chan_list(select=self._last_selected_pos[sel_group])
 
     def _on_channel_update(
@@ -233,7 +247,7 @@ class ChannelsPage(tk.Frame):
                     group
                 )
             )
-            groups.append(f"{group:>2}  ({active})")
+            groups.append(self._get_group_label(group, active))
 
         self._groups.set(groups)  # type: ignore
 
@@ -428,8 +442,14 @@ class ChannelsPage(tk.Frame):
         )
 
         # update group list stats
-        self._groups_labels[group] = f"{group:>2}  ({active})"
+        self._groups_labels[group] = self._get_group_label(group, active)
         self._groups.set(self._groups_labels)  # type: ignore
+
+    def _get_group_label(self, group: int, active: int) -> str:
+        if name := config.CONFIG.chan_group_names[group]:
+            return f"{group:>2}  {name}  ({active})"
+
+        return f"{group:>2}  ({active})"
 
     def _on_channel_bank_set(
         self,
@@ -609,3 +629,8 @@ class ChannelsPage(tk.Frame):
             self._popup_menu.grab_release()
             self._popup_menu.destroy()
             self._popup_menu = None
+
+    def _on_group_name_change(self, _var: str, _idx: str, _op: str) -> None:
+        group = self._last_selected_group
+        config.CONFIG.chan_group_names[group] = self._group_name.get()
+        self._show_stats()

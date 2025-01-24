@@ -29,6 +29,8 @@ class Config:
 
     gui_scaling: float = 0
 
+    chan_group_names: list[str] = field(default_factory=lambda: [""] * 13)
+
     def push_last_file(self, file: str) -> None:
         if not file:
             return
@@ -78,6 +80,11 @@ def load(file: Path) -> Config:
         cfg.get("gui", "scaling", fallback="") or CONFIG.gui_scaling
     )
 
+    CONFIG.chan_group_names = [
+        cfg.get("chan_group_names", f"group{idx}", fallback="").strip()
+        for idx in range(13)
+    ]
+
     _LOG.debug("config %r", CONFIG)
     return CONFIG
 
@@ -97,6 +104,12 @@ def save(file: Path) -> None:
 
     if CONFIG.gui_scaling:
         cfg["gui"] = {"scaling": f"{CONFIG.gui_scaling:.2f}"}
+
+    cfg["chan_group_names"] = {
+        f"group{idx}": name
+        for idx, name in enumerate(CONFIG.chan_group_names)
+        if name
+    }
 
     file.parent.mkdir(parents=True, exist_ok=True)
     with file.open(mode="w") as fout:
