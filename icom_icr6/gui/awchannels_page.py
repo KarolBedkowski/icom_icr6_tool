@@ -9,12 +9,13 @@ Notebook page containing auto written channels.
 import logging
 import tkinter as tk
 import typing as ty
+from tkinter import ttk
 
 from icom_icr6 import expimp
 from icom_icr6.change_manager import ChangeManeger
 from icom_icr6.radio_memory import RadioMemory
 
-from . import awchannels_list, gui_model
+from . import awchannels_list, dlg_copy, gui_model
 
 _LOG = logging.getLogger(__name__)
 _ = ty
@@ -27,7 +28,10 @@ class AutoWriteChannelsPage(tk.Frame):
         self._parent = parent
         self._change_manager = cm
 
-        self._create_channel_list(self)
+        frame = tk.Frame(self)
+        self._create_fields(frame)
+        self._create_channel_list(frame)
+        frame.pack(expand=True, fill=tk.BOTH, padx=12, pady=12)
 
     def update_tab(self, channel_number: int | None = None) -> None:
         # hide canceller in global models
@@ -49,10 +53,24 @@ class AutoWriteChannelsPage(tk.Frame):
         self._chan_list = awchannels_list.ChannelsList(
             frame, self._change_manager.rm
         )
+        self._chan_list.on_record_selected = self._on_channel_select
         self._chan_list.pack(
             expand=True, fill=tk.BOTH, side=tk.TOP, padx=12, pady=12
         )
         self._chan_list.sheet.bind("<Control-c>", self.__on_channel_copy)
+
+    def _create_fields(self, frame: tk.Frame) -> None:
+        fields = tk.Frame(frame)
+
+        self._btn_copy = ttk.Button(
+            fields,
+            text="Copy channels...",
+            command=self._on_btn_copy,
+            state="disabled",
+        )
+        self._btn_copy.pack(side=tk.LEFT, padx=6)
+
+        fields.pack(side=tk.TOP, fill=tk.X)
 
     def _update_channels_list(
         self,
@@ -63,6 +81,14 @@ class AutoWriteChannelsPage(tk.Frame):
         self._show_stats()
         if select is not None:
             self.after(100, lambda: self._chan_list.selection_set([select]))
+
+    def _on_channel_select(self, rows: list[awchannels_list.RowType]) -> None:
+        # change buttons state
+        self._btn_copy["state"] = "normal" if rows else "disabled"
+
+        if _LOG.isEnabledFor(logging.DEBUG):
+            for row in rows:
+                _LOG.debug("chan selected: %r", row.obj)
 
     def __on_channel_copy(self, _event: tk.Event) -> None:  # type: ignore
         selected = self._chan_list.sheet.get_currently_selected()
@@ -83,6 +109,17 @@ class AutoWriteChannelsPage(tk.Frame):
 
         if res:
             gui_model.Clipboard.instance().put(res)
+
+    def _on_btn_copy(self) -> None:
+        channels = [
+            r.obj for r in self._chan_list.selected_rows_data() if r.obj
+        ]
+        if not channels:
+            return
+
+        dlg_copy.CopyChannelsDialog(
+            self, self._change_manager, channels, ro=True
+        )
 
     def _show_stats(self) -> None:
         active = sum(
