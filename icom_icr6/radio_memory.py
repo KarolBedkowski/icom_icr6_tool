@@ -222,20 +222,6 @@ class RadioMemory:
 
         return [pos for pos in range(100) if pos not in used]
 
-    def get_dupicated_bank_pos(self) -> set[int]:
-        """Return list of channels that occupy one position in bank."""
-        banks_pos: defaultdict[tuple[int, int], list[int]] = defaultdict(list)
-
-        for channum, chan in enumerate(self.channels):
-            if chan.bank != consts.BANK_NOT_SET and not chan.hide_channel:
-                banks_pos[(chan.bank, chan.bank_pos)].append(channum)
-
-        return set(
-            itertools.chain.from_iterable(
-                chans for chans in banks_pos.values() if len(chans) > 1
-            )
-        )
-
     def get_bank_fullname(self, bank: int | str) -> str | None:
         if isinstance(bank, str):
             if not bank:
@@ -247,12 +233,9 @@ class RadioMemory:
 
         return self.banks[bank_idx].full_name
 
-    def is_usa_model(self) -> bool:
-        return self.region == consts.Region.USA
-
     def validate_loaded_data(self) -> None:
         # check for doubled banks entries
-        if channels := self.get_dupicated_bank_pos():
+        if channels := self._get_dupicated_bank_pos():
             errmsg = "Bank with invalid (doubled) bank position: " + ", ".join(
                 map(str, channels)
             )
@@ -517,6 +500,20 @@ class RadioMemory:
             return consts.Region.GLOBAL2
 
         return consts.Region.GLOBAL
+
+    def _get_dupicated_bank_pos(self) -> set[int]:
+        """Return list of channels that occupy one position in bank."""
+        banks_pos: defaultdict[tuple[int, int], list[int]] = defaultdict(list)
+
+        for channum, chan in enumerate(self.channels):
+            if chan.bank != consts.BANK_NOT_SET and not chan.hide_channel:
+                banks_pos[(chan.bank, chan.bank_pos)].append(channum)
+
+        return set(
+            itertools.chain.from_iterable(
+                chans for chans in banks_pos.values() if len(chans) > 1
+            )
+        )
 
 
 def bitarray2bits(

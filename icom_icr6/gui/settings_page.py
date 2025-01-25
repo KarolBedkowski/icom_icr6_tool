@@ -390,7 +390,7 @@ class SettingsPage(tk.Frame):
         self._var_af_filer_am.set_raw(sett.af_filer_am)
         self._var_charging_type.set_raw(sett.charging_type)
 
-        if self._radio_memory.is_usa_model():
+        if self._radio_memory.region == consts.Region.USA:
             self._create_wx()
             self._var_wx_alert.set(sett.wx_alert)
             self._var_wx_channel.set_raw(sett.wx_channel)
@@ -436,7 +436,7 @@ class SettingsPage(tk.Frame):
         sett.af_filer_am = self._var_af_filer_am.get_raw()
         sett.charging_type = self._var_charging_type.get_raw()
 
-        if self._radio_memory.is_usa_model():
+        if self._radio_memory.region == consts.Region.USA:
             sett.wx_alert = self._var_wx_alert.get_raw()
             sett.wx_channel = self._var_wx_channel.get_raw()
 
