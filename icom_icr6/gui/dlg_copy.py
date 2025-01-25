@@ -27,11 +27,15 @@ class CopyChannelsDialog(simpledialog.Dialog):
         cm: change_manager.ChangeManeger,
         channels: list[model.Channel],
         *,
-        aw_channels: bool,
+        ro: bool = False,
     ) -> None:
+        """
+        Copy channels dialog.
+        ro = read-only source channels (i.e. awchannels)
+        """
         self._cm = cm
         self._channels = channels
-        self._aw_channels = aw_channels
+        self._ro = ro
         self._dst_group = tk.StringVar()
         self._dst_bank = tk.StringVar()
         self._remove_after_copy = tk.IntVar()
@@ -56,7 +60,7 @@ class CopyChannelsDialog(simpledialog.Dialog):
             frame, 1, 0, "Set bank:", self._dst_bank, self._banks_names
         )
 
-        if not self._aw_channels:
+        if not self._ro:
             widgets.new_checkbox(
                 frame,
                 2,
@@ -190,7 +194,7 @@ class CopyChannelsDialog(simpledialog.Dialog):
         return self._groups_names.index(group)
 
     def _get_banks_names(self) -> ty.Iterable[str]:
-        if not self._aw_channels:
+        if not self._ro:
             yield "Set original bank and position"
 
         for idx in range(consts.NUM_BANKS):
@@ -201,7 +205,7 @@ class CopyChannelsDialog(simpledialog.Dialog):
         if not bank:
             return None
 
-        if self._aw_channels:
+        if self._ro:
             return self._banks_names.index(bank)
 
         return self._banks_names.index(bank) - 1

@@ -118,7 +118,7 @@ class AutoWriteChannelsPage(tk.Frame):
             return
 
         dlg_copy.CopyChannelsDialog(
-            self, self._change_manager, channels, aw_channels=True
+            self, self._change_manager, channels, ro=True
         )
 
     def _show_stats(self) -> None:

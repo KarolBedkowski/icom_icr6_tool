@@ -611,9 +611,7 @@ class BanksPage(tk.Frame):
         if not channels:
             return
 
-        if dlg_copy.CopyChannelsDialog(
-            self, self._change_manager, channels, aw_channels=False
-        ):
+        if dlg_copy.CopyChannelsDialog(self, self._change_manager, channels):
             self._update_chan_list()
             self._update_banks_list()
 
