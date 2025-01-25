@@ -14,7 +14,7 @@ from icom_icr6 import config, consts, expimp, fixers, model
 from icom_icr6.change_manager import ChangeManeger
 from icom_icr6.radio_memory import RadioMemory
 
-from . import channels_list, gui_model, widgets
+from . import channels_list, dlg_copy, gui_model, widgets
 
 _LOG = logging.getLogger(__name__)
 
@@ -125,6 +125,14 @@ class ChannelsPage(tk.Frame):
             state="disabled",
         )
         self._btn_fill.pack(side=tk.LEFT, padx=6)
+
+        self._btn_copy = ttk.Button(
+            fields,
+            text="Copy channels...",
+            command=self._on_btn_copy,
+            state="disabled",
+        )
+        self._btn_copy.pack(side=tk.LEFT, padx=6)
 
         fields.pack(side=tk.TOP, fill=tk.X)
 
@@ -296,6 +304,7 @@ class ChannelsPage(tk.Frame):
         btn_state = "normal" if len(rows) > 1 else "disabled"
         self._btn_sort["state"] = btn_state
         self._btn_fill["state"] = btn_state
+        self._btn_copy["state"] = "normal" if rows else "disabled"
 
         # remember selected position in group
         chan = rows[0].obj
@@ -638,6 +647,19 @@ class ChannelsPage(tk.Frame):
                 for idx, row in enumerate(sel_rows[1:], 1)
             ),
         )
+
+    def _on_btn_copy(self) -> None:
+        channels = [
+            r.obj for r in self._chan_list.selected_rows_data() if r.obj
+        ]
+        if not channels:
+            return
+
+        if dlg_copy.CopyChannelsDialog(
+            self, self._change_manager, channels, aw_channels=False
+        ):
+            self._update_chan_list()
+            self._update_groups_list()
 
     def _do_close_popup_menu(self, _evt: tk.Event | None = None) -> None:  # type: ignore
         if self._popup_menu:

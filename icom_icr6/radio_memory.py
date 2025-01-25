@@ -186,6 +186,14 @@ class RadioMemory:
             if not chan.hide_channel:
                 yield chan
 
+    def get_hidden_channels_in_group(self, group: int) -> list[model.Channel]:
+        start = group * 100
+        return [
+            chan
+            for chan in self.channels[start : start + 100]
+            if chan.hide_channel
+        ]
+
     def get_bank_channels(self, bank_idx: int) -> model.BankChannels:
         """this return only first channel on bank position."""
         _LOG.debug("get_bank_channels %d", bank_idx)
@@ -201,6 +209,18 @@ class RadioMemory:
         for chan in self.channels:
             if chan.bank == bank and not chan.hide_channel:
                 yield chan
+
+    def get_bank_free_pos(self, bank: int) -> list[int]:
+        used = {
+            chan.bank_pos
+            for chan in self.channels
+            if chan.bank == bank and not chan.hide_channel
+        }
+
+        if len(used) == 100:  # noqa: PLR2004
+            return []
+
+        return [pos for pos in range(100) if pos not in used]
 
     def get_dupicated_bank_pos(self) -> set[int]:
         """Return list of channels that occupy one position in bank."""

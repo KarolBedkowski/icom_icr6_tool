@@ -121,6 +121,21 @@ class Channel:
         self.bank = consts.BANK_NOT_SET
         self.bank_pos = 0
 
+    def copy_from(self, chan: Channel) -> None:
+        for key, val in chan.__dict__.items():
+            if key not in (
+                "bank",
+                "bank_pos",
+                "debug_info",
+                "updated",
+                "hide_channel",
+                "number",
+            ):
+                setattr(self, key, val)
+
+        if self.debug_info:
+            self.debug_info["cloned_from"] = chan.number
+
     def __str__(self) -> str:
         try:
             bank = f"{consts.BANK_NAMES[self.bank]}/{self.bank_pos}"
