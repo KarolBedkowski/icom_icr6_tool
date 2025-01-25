@@ -12,7 +12,7 @@ import tkinter as tk
 import typing as ty
 from tkinter import messagebox, ttk
 
-from icom_icr6 import consts, expimp, fixers, model, validators
+from icom_icr6 import config, consts, expimp, fixers, model, validators
 from icom_icr6.change_manager import ChangeManeger
 from icom_icr6.radio_memory import RadioMemory
 
@@ -31,6 +31,7 @@ class BanksPage(tk.Frame):
         self._last_selected_bank = 0
         self._last_selected_pos = [0] * consts.NUM_BANKS
         self._banks_labels: list[str] = []
+        self._geometry_change_binded = False
 
         self._bank_name = tk.StringVar()
         self._bank_name.trace("w", self._on_bank_name_changed)  # type: ignore
@@ -40,9 +41,9 @@ class BanksPage(tk.Frame):
 
         self._popup_menu: tk.Menu | None = None
 
-        pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
+        self._pw = pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
         banks = self._banks_list = tk.Listbox(
-            pw, selectmode=tk.SINGLE, width=15, listvariable=self._banks
+            pw, selectmode=tk.SINGLE, listvariable=self._banks
         )
 
         banks.bind("<<ListboxSelect>>", self._on_bank_select)
@@ -71,6 +72,8 @@ class BanksPage(tk.Frame):
             bank_pos = self._last_selected_pos[bank]
 
         self.select(bank, bank_pos, force=True)
+
+        self._update_geometry()
 
     def select(
         self, bank: int, bank_pos: int | None = None, *, force: bool = False
@@ -208,6 +211,19 @@ class BanksPage(tk.Frame):
             selected_bank, bank.name, active
         )
         self._banks.set(self._banks_labels)  # type: ignore
+
+    def _update_geometry(self) -> None:
+        pos = config.CONFIG.main_window_banks_tab_pane_pos
+        if pos != self._pw.sashpos(0):
+            self._pw.sashpos(0, pos)
+
+        if not self._geometry_change_binded:
+            self._geometry_change_binded = True
+            self._banks_list.bind("<Configure>", self._store_geometry)
+
+    def _store_geometry(self, _event: tk.Event | None = None) -> None:  # type: ignore
+        if pos := self._pw.sashpos(0):
+            config.CONFIG.main_window_banks_tab_pane_pos = pos
 
     def _on_bank_name_changed(self, _var: str, _idx: str, _op: str) -> None:
         bank = self._radio_memory.banks[self._last_selected_bank]

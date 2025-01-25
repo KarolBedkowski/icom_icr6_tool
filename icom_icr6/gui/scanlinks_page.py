@@ -9,7 +9,7 @@ import tkinter as tk
 import typing as ty
 from tkinter import messagebox, ttk
 
-from icom_icr6 import consts, expimp, fixers, validators
+from icom_icr6 import config, consts, expimp, fixers, validators
 from icom_icr6.change_manager import ChangeManeger
 from icom_icr6.radio_memory import RadioMemory
 
@@ -28,8 +28,9 @@ class ScanLinksPage(tk.Frame):
         self._sl_name.trace("w", self._on_sl_name_changed)  # type: ignore
         self._last_selected_sl = 0
         self._in_paste = False
+        self._geometry_change_binded = False
 
-        pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
+        self._pw = pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
         self._scan_links_list = tk.Listbox(pw, selectmode=tk.SINGLE, width=10)
 
         self._scan_links_list.bind(
@@ -50,6 +51,8 @@ class ScanLinksPage(tk.Frame):
         self._update_scan_edges()
         self._scan_links_list.selection_set(self._last_selected_sl)
         self._on_select_scan_link()
+
+        self._update_geometry()
 
     def reset(self) -> None:
         self._update_scan_links_list()
@@ -124,6 +127,19 @@ class ScanLinksPage(tk.Frame):
         ]
 
         self._scan_links_edges.set_data(data)
+
+    def _update_geometry(self) -> None:
+        pos = config.CONFIG.main_window_sl_tab_pane_pos
+        if pos != self._pw.sashpos(0):
+            self._pw.sashpos(0, pos)
+
+        if not self._geometry_change_binded:
+            self._geometry_change_binded = True
+            self._scan_links_list.bind("<Configure>", self._store_geometry)
+
+    def _store_geometry(self, _event: tk.Event | None = None) -> None:  # type: ignore
+        if pos := self._pw.sashpos(0):
+            config.CONFIG.main_window_sl_tab_pane_pos = pos
 
     def _on_select_scan_link(self, event: tk.Event | None = None) -> None:  # type: ignore
         sel_sl = self._scan_links_list.curselection()

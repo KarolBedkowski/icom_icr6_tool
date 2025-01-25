@@ -23,6 +23,9 @@ class Config:
     hispeed: bool = True
 
     main_window_geometry: str = "1024x768"
+    main_window_channels_tab_pane_pos: int = 100
+    main_window_banks_tab_pane_pos: int = 150
+    main_window_sl_tab_pane_pos: int = 100
 
     find_window_geometry: str = "600x300"
     reports_window_geometry: str = "800x600"
@@ -67,6 +70,27 @@ def load(file: Path) -> Config:
         cfg.get("main_wnd", "geometry", fallback="")
         or CONFIG.main_window_geometry
     )
+    CONFIG.main_window_channels_tab_pane_pos = max(
+        int(
+            cfg.get("main_wnd", "channels_tab_pane_pos", fallback="")
+            or CONFIG.main_window_channels_tab_pane_pos
+        ),
+        50,
+    )
+    CONFIG.main_window_banks_tab_pane_pos = max(
+        int(
+            cfg.get("main_wnd", "banks_tab_pane_pos", fallback="")
+            or CONFIG.main_window_banks_tab_pane_pos
+        ),
+        50,
+    )
+    CONFIG.main_window_sl_tab_pane_pos = max(
+        int(
+            cfg.get("main_wnd", "sl_tab_pane_pos", fallback="")
+            or CONFIG.main_window_sl_tab_pane_pos
+        ),
+        50,
+    )
     CONFIG.find_window_geometry = (
         cfg.get("find_wnd", "geometry", fallback="")
         or CONFIG.find_window_geometry
@@ -99,7 +123,12 @@ def save(file: Path) -> None:
         "last_port": CONFIG.last_port,
         "hispeed": "yes" if CONFIG.hispeed else "no",
     }
-    cfg["main_wnd"] = {"geometry": CONFIG.main_window_geometry}
+    cfg["main_wnd"] = {
+        "geometry": CONFIG.main_window_geometry,
+        "channels_tab_pane_pos": str(CONFIG.main_window_channels_tab_pane_pos),
+        "banks_tab_pane_pos": str(CONFIG.main_window_banks_tab_pane_pos),
+        "sl_tab_pane_pos": str(CONFIG.main_window_sl_tab_pane_pos),
+    }
     cfg["find_wnd"] = {"geometry": CONFIG.find_window_geometry}
 
     if CONFIG.gui_scaling:

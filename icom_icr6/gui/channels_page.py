@@ -32,6 +32,7 @@ class ChannelsPage(tk.Frame):
         self._last_selected_group = 0
         # keep selection per group
         self._last_selected_pos = [0] * len(gui_model.CHANNEL_RANGES)
+        self._geometry_change_binded = False
 
         self._popup_menu: tk.Menu | None = None
 
@@ -42,9 +43,9 @@ class ChannelsPage(tk.Frame):
         self._group_name = tk.StringVar()
         self._group_name.trace("w", self._on_group_name_change)  # type: ignore
 
-        pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
+        self._pw = pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
         self._groups_list = tk.Listbox(
-            pw, selectmode=tk.SINGLE, width=10, listvariable=self._groups
+            pw, selectmode=tk.SINGLE, listvariable=self._groups
         )
         self._groups_list.bind("<<ListboxSelect>>", self._on_group_select)
         pw.add(self._groups_list, weight=0)
@@ -69,6 +70,8 @@ class ChannelsPage(tk.Frame):
             )
 
         self.select(channel_number, force=True)
+
+        self._update_geometry()
 
     def select(self, channel_number: int, *, force: bool = False) -> None:
         group, chanpos = divmod(channel_number, 100)
@@ -135,6 +138,19 @@ class ChannelsPage(tk.Frame):
         self._chan_list.pack(side=tk.TOP, expand=True, fill=tk.BOTH, pady=6)
         self._chan_list.sheet.bind("<Control-c>", self._on_channel_copy)
         self._chan_list.sheet.bind("<Control-v>", self._on_channel_paste)
+
+    def _update_geometry(self) -> None:
+        pos = config.CONFIG.main_window_channels_tab_pane_pos
+        if pos != self._pw.sashpos(0):
+            self._pw.sashpos(0, pos)
+
+        if not self._geometry_change_binded:
+            self._geometry_change_binded = True
+            self._groups_list.bind("<Configure>", self._store_geometry)
+
+    def _store_geometry(self, _event: tk.Event | None = None) -> None:  # type: ignore
+        if pos := self._pw.sashpos(0):
+            config.CONFIG.main_window_channels_tab_pane_pos = pos
 
     def _on_group_select(self, _event: tk.Event) -> None:  # type: ignore
         sel_group = self._selected_group
