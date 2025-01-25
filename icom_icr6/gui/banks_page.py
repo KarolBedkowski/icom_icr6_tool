@@ -16,11 +16,7 @@ from icom_icr6 import consts, expimp, fixers, model, validators
 from icom_icr6.change_manager import ChangeManeger
 from icom_icr6.radio_memory import RadioMemory
 
-from . import banks_channelslist, gui_model
-from .widgets import (
-    new_checkbox,
-    new_entry,
-)
+from . import banks_channelslist, gui_model, widgets
 
 _LOG = logging.getLogger(__name__)
 
@@ -113,12 +109,22 @@ class BanksPage(tk.Frame):
         fields = tk.Frame(frame)
 
         validator = self.register(validate_bank_name)
-        self._field_bank_name = new_entry(
-            fields, 0, 0, "Bank name: ", self._bank_name, validator=validator
+        self._field_bank_name = widgets.new_entry_pack(
+            fields, "Bank name: ", self._bank_name, validator=validator
         )
-        self._field_bank_link = new_checkbox(
-            fields, 0, 2, "Bank link", self._bank_link
+        self._field_bank_link = widgets.new_checkbox_pack(
+            fields, "Bank link", self._bank_link
         )
+
+        widgets.new_vertical_separator(fields)
+
+        self._btn_sort = ttk.Button(
+            fields,
+            text="Sort...",
+            command=self._on_btn_sort,
+            state="disabled",
+        )
+        self._btn_sort.pack(side=tk.LEFT, padx=12)
 
         fields.pack(side=tk.TOP, fill=tk.X)
 
@@ -132,17 +138,6 @@ class BanksPage(tk.Frame):
         self._chan_list.on_record_update = self._on_channel_update
         self._chan_list.sheet.bind("<Control-c>", self._on_channel_copy)
         self._chan_list.sheet.bind("<Control-v>", self._on_channel_paste)
-
-        bframe = tk.Frame(frame)
-        self._btn_sort = ttk.Button(
-            bframe,
-            text="Sort...",
-            command=self._on_btn_sort,
-            state="disabled",
-        )
-        self._btn_sort.pack(side=tk.LEFT)
-
-        bframe.pack(side=tk.BOTTOM, fill=tk.X)
 
     def _on_bank_select(self, _event: tk.Event) -> None:  # type: ignore
         if sel_bank := self._banks_list.curselection():

@@ -101,9 +101,27 @@ class ChannelsPage(tk.Frame):
     def _create_fields(self, frame: tk.Frame) -> None:
         fields = tk.Frame(frame)
 
-        self._field_bank_name = widgets.new_entry(
-            fields, 0, 0, "Local group name: ", self._group_name
+        self._field_bank_name = widgets.new_entry_pack(
+            fields, "Local group name: ", self._group_name
         )
+
+        widgets.new_vertical_separator(fields)
+
+        self._btn_sort = ttk.Button(
+            fields,
+            text="Sort...",
+            command=self._on_btn_sort,
+            state="disabled",
+        )
+        self._btn_sort.pack(side=tk.LEFT, padx=6)
+
+        self._btn_fill = ttk.Button(
+            fields,
+            text="Fill values...",
+            command=self._on_btn_fill,
+            state="disabled",
+        )
+        self._btn_fill.pack(side=tk.LEFT, padx=6)
 
         fields.pack(side=tk.TOP, fill=tk.X)
 
@@ -117,25 +135,6 @@ class ChannelsPage(tk.Frame):
         self._chan_list.pack(side=tk.TOP, expand=True, fill=tk.BOTH, pady=6)
         self._chan_list.sheet.bind("<Control-c>", self._on_channel_copy)
         self._chan_list.sheet.bind("<Control-v>", self._on_channel_paste)
-
-        bframe = tk.Frame(frame)
-        self._btn_sort = ttk.Button(
-            bframe,
-            text="Sort...",
-            command=self._on_btn_sort,
-            state="disabled",
-        )
-        self._btn_sort.pack(side=tk.LEFT)
-
-        self._btn_fill = ttk.Button(
-            bframe,
-            text="Fill values...",
-            command=self._on_btn_fill,
-            state="disabled",
-        )
-        self._btn_fill.pack(side=tk.LEFT)
-
-        bframe.pack(side=tk.BOTTOM, fill=tk.X)
 
     def _on_group_select(self, _event: tk.Event) -> None:  # type: ignore
         sel_group = self._selected_group

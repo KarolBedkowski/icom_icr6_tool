@@ -42,6 +42,28 @@ def new_entry(  # noqa: PLR0913
     return entry
 
 
+def new_entry_pack(
+    parent: tk.Widget,
+    label: str,
+    var: tk.Variable,
+    validator: str | None = None,
+) -> ttk.Entry:
+    frame = tk.Frame(parent)
+
+    ttk.Label(frame, text=label).pack(side=tk.LEFT, ipadx=3)
+
+    entry = ttk.Entry(frame, textvariable=var)
+    entry.pack(side=tk.LEFT, ipadx=6)
+
+    if validator:
+        entry.configure(validate="all")
+        entry.configure(validatecommand=(validator, "%P"))
+
+    frame.pack(side=tk.LEFT, padx=6, pady=6)
+
+    return entry
+
+
 def new_combo(  # noqa: PLR0913
     parent: tk.Widget,
     row: int,
@@ -101,3 +123,26 @@ def new_checkbox(  # noqa:PLR0913
     )
 
     return cbox
+
+
+def new_checkbox_pack(
+    parent: tk.Widget,
+    label: str,
+    var: tk.Variable,
+) -> ttk.Checkbutton:
+    cbox = ttk.Checkbutton(
+        parent,
+        text=label,
+        variable=var,
+        onvalue=1,
+        offvalue=0,
+    )
+    cbox.pack(side=tk.LEFT, padx=6, pady=6)
+
+    return cbox
+
+
+def new_vertical_separator(parent: tk.Widget) -> None:
+    ttk.Separator(parent, orient=tk.VERTICAL).pack(
+        side=tk.LEFT, padx=12, fill=tk.Y
+    )
