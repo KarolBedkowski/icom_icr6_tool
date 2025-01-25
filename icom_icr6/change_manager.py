@@ -81,8 +81,10 @@ class _UndoManager:
         self.changes_cnt += 1
         self._signal_changes()
 
-    def abort(self) -> None:
-        self._tmp_queue.clear()
+    def abort(self) -> list[UndoItem]:
+        tmp = self._tmp_queue
+        self._tmp_queue = []
+        return tmp
 
     def pop_undo(self) -> list[UndoItem] | None:
         """Get last action from undo queue."""
@@ -142,8 +144,9 @@ class ChangeManeger:
         self._undo_manager.commit()
 
     def abort(self) -> None:
-        """Clean temporary undo queue."""
-        self._undo_manager.abort()
+        """Rollback changes.  Clean temporary undo queue."""
+        if actions := self._undo_manager.abort():
+            self._apply_undo_redo((a.kind, a.old_item) for a in actions)
 
     def set_channel(self, *channels: model.Channel) -> bool:
         """Set channel(s). Return True when other channels are also changed."""
@@ -166,7 +169,11 @@ class ChangeManeger:
 
             current_channel = self.rm.channels[chan.number]
             if current_channel == chan:
-                _LOG.debug("set_channel: skip unchanged: %r", chan)
+                if current_channel is chan:
+                    _LOG.error("set_channel: channel not cloned: %r", chan)
+                else:
+                    _LOG.debug("set_channel: skip unchanged: %r", chan)
+
                 continue
 
             self._undo_manager.push("channel", current_channel, chan)
