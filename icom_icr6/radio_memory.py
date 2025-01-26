@@ -40,23 +40,6 @@ def region_from_etcdata(etcdata: str) -> consts.Region:
     return consts.Region.GLOBAL
 
 
-def etcdata_from_region(region: consts.Region) -> str:
-    """Map region to etcdata; this may be inaccurate as i.e. Japan uses
-    probably more that one etcdata code; also there are also unknown flags.
-    """
-    match region:
-        case consts.Region.GLOBAL2:
-            return "002A"
-        case consts.Region.JAPAN:
-            return "0003"
-        case consts.Region.USA:
-            return "00AB"
-        case consts.Region.FRANCE:
-            return "01D2"
-
-    return "001A"
-
-
 class RadioMemory:
     def __init__(self) -> None:
         self.mem = bytearray(consts.MEM_SIZE)
@@ -149,7 +132,7 @@ class RadioMemory:
         else:
             self.region = self._guess_region()
             _LOG.debug("region: %r (guess)", self.region)
-            self.file_etcdata = etcdata_from_region(self.region)
+            self.file_etcdata = self.region.etcdata()
 
     def commit(self) -> None:
         """Write data to mem."""
@@ -241,20 +224,8 @@ class RadioMemory:
             )
             raise ValueError(errmsg)
 
-    def get_bands_range(self) -> list[int]:
-        # TODO: don't know how to detect other regions
-        # for US and EUR/Global is the same
-        # there is only difference in WFM minimal frequency for Japan (guess)
-        match self.region:
-            case consts.Region.FRANCE:
-                return consts.BANDS_FRANCE
-            case consts.Region.JAPAN:
-                return consts.BANDS_JAP
-
-        return consts.BANDS_DEFAULT
-
     def get_band_for_freq(self, freq: int) -> model.BandDefaults:
-        bands = self.get_bands_range()
+        bands = self.region.bands()
 
         for idx, max_freq in enumerate(bands):
             if freq < max_freq:

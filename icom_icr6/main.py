@@ -17,7 +17,7 @@ import sys
 import typing as ty
 from pathlib import Path
 
-from . import consts, expimp, ic_io, model, reports
+from . import expimp, ic_io, model, reports
 
 _LOG = logging.getLogger()
 
@@ -254,14 +254,7 @@ def main_print_bands(args: argparse.Namespace) -> None:
     args: <icf file>
     """
     mem = ic_io.load_icf_file(args.icf_file)
-
-    match mem.region:
-        case consts.Region.FRANCE:
-            bands = consts.BANDS_FRANCE
-        case consts.Region.JAPAN:
-            bands = consts.BANDS_JAP
-        case _:
-            bands = consts.BANDS_DEFAULT
+    bands = mem.region.bands()
 
     print("Bands")
     if args.verbose > 2:

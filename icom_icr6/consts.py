@@ -27,6 +27,34 @@ class Region(StrEnum):
     def is_japan(self) -> bool:
         return self == Region.JAPAN
 
+    def etcdata(self) -> str:
+        """Map region to etcdata; this may be inaccurate as i.e. Japan uses
+        probably more that one etcdata code; also there are also unknown flags.
+        """
+        match self:
+            case Region.GLOBAL2:
+                return "002A"
+            case Region.JAPAN:
+                return "0003"
+            case Region.USA:
+                return "00AB"
+            case Region.FRANCE:
+                return "01D2"
+
+        return "001A"
+
+    def bands(self) -> list[int]:
+        # TODO: don't know how to detect other regions
+        # for US and EUR/Global is the same
+        # there is only difference in WFM minimal frequency for Japan (guess)
+        match self:
+            case Region.FRANCE:
+                return _BANDS_FRANCE
+            case Region.JAPAN:
+                return _BANDS_JAP
+
+        return _BANDS_DEFAULT
+
 
 MEM_SIZE = 0x6E60
 MEM_FOOTER = "IcomCloneFormat3"
@@ -308,7 +336,7 @@ def default_tuning_step_for_freq(freq: int) -> int:
 
 # predefined bands
 # Japan, Brazil
-BANDS_JAP: ty.Final = [
+_BANDS_JAP: ty.Final = [
     495_000,
     1_625_000,
     30_000_000,
@@ -324,7 +352,7 @@ BANDS_JAP: ty.Final = [
 
 # predefined bands
 # France probably
-BANDS_FRANCE: ty.Final = [
+_BANDS_FRANCE: ty.Final = [
     495_000,
     1_625_000,
     30_000_000,
@@ -339,7 +367,7 @@ BANDS_FRANCE: ty.Final = [
 ]
 
 # Americas
-BANDS_DEFAULT: ty.Final = [
+_BANDS_DEFAULT: ty.Final = [
     495_000,
     1_625_000,
     30_000_000,
