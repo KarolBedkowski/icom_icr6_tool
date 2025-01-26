@@ -1,6 +1,45 @@
 Changelog
 =========
 
+v1.4.0 2024-01-26
+-----------------
+
+Bug Fixes
+~~~~~~~~~
+
+- Fix pyproject - missing data files
+- Fix selecting channels/banks from find dialog
+- Abort changes on failed paste channels in channels/banks page
+- Fix selecting/deselecting all scan links
+- Refresh channels list on change other channels in bank page
+- Add closing popup menu on esc and lost focus
+- Fix missing unhide channel on paste
+- Fix parsing frequency/offset from pasted data
+- Fix parsing offset (floats)
+- Rollback changes on abort (i.e. error)
+
+Features
+~~~~~~~~
+
+- Add validate command - validate icf file
+- Show message on statusbar after clone from/to radio
+- Local name for channels groups
+- Pack buttons and entries in one row in channels and banks page
+- Store sash position in channels/banks/scanlinks tabs
+- Copy dialog - copy channels to given group / bank
+- Clear autowrite channels
+
+Miscellaneous Tasks
+~~~~~~~~~~~~~~~~~~~
+
+- Add simple raw memory files differ
+
+Refactor
+~~~~~~~~
+- Clean & simpliffy code
+
+
+
 v1.3.0 2025-01-12
 -----------------
 

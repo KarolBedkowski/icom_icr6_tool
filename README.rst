@@ -7,10 +7,10 @@ Features:
 
 - Load and save ICF file
 - Clone data from and to radio
-- Edit channels, banks, scan links / edges; reordering, ctrl-c/ctrl-v
+- Edit channels, banks, scan links / edges; reordering, CTRL-C/CTRL-V
   operations.
-- Display autowrite channels
-- Change settings
+- Display autowrite channels, clear entries.
+- Change radio settings
 - Export data in csv format
 - Find channels by frequency, name; find duplicated channels.
 
