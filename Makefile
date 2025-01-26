@@ -38,7 +38,7 @@ clean:
 ## Format files using black & isort
 format:
 	ruff check --select I --fix icom_icr6
-	ruff format icom_icr6
+	ruff format icom_icr6 tests
 #	black .
 
 
