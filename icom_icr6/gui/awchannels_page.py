@@ -9,7 +9,7 @@ Notebook page containing auto written channels.
 import logging
 import tkinter as tk
 import typing as ty
-from tkinter import ttk
+from tkinter import messagebox, ttk
 
 from icom_icr6 import expimp
 from icom_icr6.change_manager import ChangeManeger
@@ -70,6 +70,13 @@ class AutoWriteChannelsPage(tk.Frame):
         )
         self._btn_copy.pack(side=tk.LEFT, padx=6)
 
+        self._btn_copy = ttk.Button(
+            fields,
+            text="Remove all...",
+            command=self._on_btn_clear,
+        )
+        self._btn_copy.pack(side=tk.LEFT, padx=6)
+
         fields.pack(side=tk.TOP, fill=tk.X)
 
     def _update_channels_list(
@@ -120,6 +127,15 @@ class AutoWriteChannelsPage(tk.Frame):
         dlg_copy.CopyChannelsDialog(
             self, self._change_manager, channels, ro=True
         )
+
+    def _on_btn_clear(self) -> None:
+        if messagebox.askyesno(
+            "Remove autowrite channels",
+            "Remove all autowrite channels?\nThis can't be undone.",
+            icon=messagebox.WARNING,
+        ):
+            self._change_manager.rm.clear_awchannels()
+            self._update_channels_list()
 
     def _show_stats(self) -> None:
         active = sum(

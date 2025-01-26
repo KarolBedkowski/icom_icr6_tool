@@ -49,7 +49,7 @@ seq:
 
   - id: aw_channels_pos_hidden
     size: 1
-    doc: probably bit set to 1 when aw channel is hidden; pos 0x6a10 - 0x6a28
+    doc: 1 bit per awchannel - when 1 channel is hidden; pos 0x6a10 - 0x6a28
     repeat: expr
     repeat-expr: 25
 

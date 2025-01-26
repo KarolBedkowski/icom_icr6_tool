@@ -317,6 +317,18 @@ class RadioMemory:
                 freq = key[0] * div
                 yield freq, num, channels
 
+    def clear_awchannels(self) -> None:
+        mv = memoryview(self.mem)
+        # set hidden flags
+        num = consts.NUM_AUTOWRITE_CHANNELS // 8
+        mv[0x6A10 : 0x6A10 + num] = bytes([255] * num)
+        # set position
+        mv[0x6A30 : 0x6A30 + consts.NUM_AUTOWRITE_CHANNELS] = bytes(
+            [255] * consts.NUM_AUTOWRITE_CHANNELS
+        )
+        self.awchannels.clear()
+
+    ########################
     # Loading and Writing
 
     def _load_channels(self, mv: memoryview) -> None:
