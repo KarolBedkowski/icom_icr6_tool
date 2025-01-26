@@ -163,7 +163,6 @@ class ChannelsPage(tk.Frame):
     def _on_group_select(self, _event: tk.Event) -> None:  # type: ignore
         sel_group = self._selected_group
         if sel_group is None:
-            self._group_name.set("")
             return
 
         self._last_selected_group = sel_group
