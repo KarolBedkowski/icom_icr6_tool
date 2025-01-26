@@ -55,6 +55,17 @@ class Region(StrEnum):
 
         return _BANDS_DEFAULT
 
+    def blocked_freq(self) -> list[tuple[int, int]]:
+        match self:
+            case Region.FRANCE:
+                return _BLOCKED_FREQ_FR
+            case Region.USA:
+                return _BLOCKED_FREQ_USA
+            case Region.JAPAN:
+                return _BLOCKED_FREQ_JAP
+
+        return []
+
 
 MEM_SIZE = 0x6E60
 MEM_FOOTER = "IcomCloneFormat3"
@@ -249,12 +260,12 @@ WX_CHANNELS = list(map(str, range(1, 11)))
 
 # exclusive; used only when unprotected_frequency_flag is False; so for now
 # can be ignored
-USA_FREQ_UNAVAIL_RANGES: ty.Final = [
+_BLOCKED_FREQ_USA: ty.Final = [
     (823_995_000, 851_000_000),
     (866_995_000, 896_000_000),
 ]
 
-FR_FREQ_UNAVAIL_RANGES: ty.Final = [
+_BLOCKED_FREQ_FR: ty.Final = [
     (30000000, 50199999),
     (51200001, 87499999),
     (108000000, 143999999),
@@ -263,7 +274,7 @@ FR_FREQ_UNAVAIL_RANGES: ty.Final = [
     (1300000001, 1310000000),
 ]
 
-JAP_FREQ_UNAVAIL_RANGE: ty.Final = [
+_BLOCKED_FREQ_JAP: ty.Final = [
     (252900000, 255099999),
     (261900000, 266099999),
     (270900000, 275099999),

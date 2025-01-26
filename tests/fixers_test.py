@@ -9,7 +9,7 @@
 
 import pytest
 
-from icom_icr6 import fixers
+from icom_icr6 import fixers, consts
 
 
 @pytest.mark.parametrize(
@@ -40,7 +40,9 @@ from icom_icr6 import fixers
     ],
 )
 def test_fix_freq(inp, usa, exp):
-    freq = fixers.fix_frequency(inp, usa_model=usa)
+    freq = fixers.fix_frequency(
+        inp, blocked_freq=consts.Region.USA.blocked_freq() if usa else None
+    )
     assert freq == exp
 
 

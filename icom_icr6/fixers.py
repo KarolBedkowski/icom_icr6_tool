@@ -58,13 +58,16 @@ def _fix_frequency(freq: int, base_freq: int) -> int:
     return int(_first_min_diff(freq, nfreqs))
 
 
-def fix_frequency(freq: int, *, usa_model: bool = False) -> int:
+def fix_frequency(
+    freq: int, *, blocked_freq: list[tuple[int, int]] | None = None
+) -> int:
+    # FIXME: usa_model not used
     freq = max(freq, consts.MIN_FREQUENCY)
     freq = min(freq, consts.MAX_FREQUENCY)
 
-    if usa_model:
+    if blocked_freq:
         # if freq is forbidden range; set freq to nearest valid freq.
-        for fmin, fmax in consts.USA_FREQ_UNAVAIL_RANGES:
+        for fmin, fmax in blocked_freq:
             if fmin < freq < fmax:
                 freq = fmin if (freq - fmin) < (fmax - freq) else fmax
                 break
