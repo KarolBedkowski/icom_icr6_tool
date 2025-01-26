@@ -285,7 +285,11 @@ class App(tk.Frame):
             return
 
         try:
+            if config.CONFIG.create_backups:
+                ic_io.create_backup(self._last_file)
+
             ic_io.save_icf_file(self._last_file, self._radio_memory)
+
         except Exception as err:
             _LOG.exception("_on_menu_file_save_as error")
             messagebox.showerror("Save file error", str(err))
@@ -311,8 +315,13 @@ class App(tk.Frame):
         )
 
         if fname:
+            file = Path(fname)
             try:
-                ic_io.save_icf_file(Path(fname), self._radio_memory)
+                if config.CONFIG.create_backups:
+                    ic_io.create_backup(file)
+
+                ic_io.save_icf_file(file, self._radio_memory)
+
             except Exception as err:
                 _LOG.exception("_on_menu_file_save_as error")
                 messagebox.showerror("Save file error", str(err))

@@ -649,3 +649,9 @@ def save_raw_memory(file: Path, mem: RadioMemory) -> None:
     """Write RadioMemory to binary file."""
     with file.open("wb") as out:
         out.write(mem.mem)
+
+
+def create_backup(file: Path) -> None:
+    if file.is_file():
+        bakfile = file.with_suffix(f"{file.suffix}.bak")
+        file.rename(bakfile)

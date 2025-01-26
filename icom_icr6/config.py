@@ -22,6 +22,8 @@ class Config:
     last_port: str = "/dev/ttyUSB0"
     hispeed: bool = True
 
+    create_backups: bool = True
+
     main_window_geometry: str = "1024x768"
     main_window_channels_tab_pane_pos: int = 100
     main_window_banks_tab_pane_pos: int = 150
@@ -65,6 +67,9 @@ def load(file: Path) -> Config:
         cfg.get("main", "last_port", fallback="") or CONFIG.last_port
     )
     CONFIG.hispeed = cfg.getboolean("main", "hispeed", fallback=True)
+    CONFIG.create_backups = cfg.getboolean(
+        "main", "create_backups", fallback=True
+    )
 
     CONFIG.main_window_geometry = (
         cfg.get("main_wnd", "geometry", fallback="")
@@ -122,6 +127,7 @@ def save(file: Path) -> None:
         "last_files": ";".join(CONFIG.last_files),
         "last_port": CONFIG.last_port,
         "hispeed": "yes" if CONFIG.hispeed else "no",
+        "create_backups": "yes" if CONFIG.create_backups else "no",
     }
     cfg["main_wnd"] = {
         "geometry": CONFIG.main_window_geometry,
