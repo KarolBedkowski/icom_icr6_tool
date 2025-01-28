@@ -73,7 +73,13 @@ def export_channel_str(
 
 def import_channels_str(data: str) -> ty.Iterable[dict[str, object]]:
     inp = io.StringIO(data)
-    reader = csv.DictReader(inp)
+
+    try:
+        dialect = csv.Sniffer().sniff(data, delimiters="\t;,|")
+    except csv.Error:
+        dialect = "excel"  # type: ignore
+
+    reader = csv.DictReader(inp, dialect=dialect)
     if "freq" not in (reader.fieldnames or ()):
         raise ValueError
 
@@ -192,7 +198,13 @@ def export_scan_edges_str(ses: ty.Iterable[model.ScanEdge]) -> str:
 
 def import_scan_edges_str(data: str) -> ty.Iterable[dict[str, object]]:
     inp = io.StringIO(data)
-    reader = csv.DictReader(inp)
+
+    try:
+        dialect = csv.Sniffer().sniff(data, delimiters="\t;,|")
+    except csv.Error:
+        dialect = "excel"  # type: ignore
+
+    reader = csv.DictReader(inp, dialect=dialect)
     fields = reader.fieldnames or ()
     if not fields or "start" not in fields or "end" not in fields:
         raise ValueError
