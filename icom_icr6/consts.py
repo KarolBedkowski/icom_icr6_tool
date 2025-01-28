@@ -66,6 +66,12 @@ class Region(StrEnum):
 
         return []
 
+    def modes(self) -> list[str]:
+        if self == Region.JAPAN:
+            return _MODES_JAP
+
+        return _MODES_NON_JAP
+
 
 MEM_SIZE = 0x6E60
 MEM_FOOTER = "IcomCloneFormat3"
@@ -85,8 +91,8 @@ MAX_OFFSET: ty.Final[int] = 159_995_000
 TONE_MODES: ty.Final = ["", "TSQL", "TSQL-R", "DTCS", "DTCS-R"]
 DUPLEX_DIRS: ty.Final = ["", "-", "+"]
 MODES: ty.Final = ["FM", "WFM", "AM", "Auto"]
-MODES_NON_JAP: ty.Final = ["FM", "WFM", "AM"]
-MODES_JAP: ty.Final = ["FM", "WFM", "AM", "Auto"]
+_MODES_NON_JAP: ty.Final = ["FM", "WFM", "AM"]
+_MODES_JAP: ty.Final = ["FM", "WFM", "AM", "Auto"]
 # auto is probably not used
 # "-" is used only in scanedge
 MODES_SCAN_EDGES: ty.Final = ["FM", "WFM", "AM", "Auto", "-"]

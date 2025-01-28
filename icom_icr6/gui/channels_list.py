@@ -235,11 +235,7 @@ class ChannelsList2(genericlist.GenericList2[model.Channel | None]):
 
             elif colname == "mode":
                 # mode depend on market
-                vals = (
-                    consts.MODES_JAP
-                    if self._region.is_japan
-                    else consts.MODES_NON_JAP
-                )
+                vals = self._region.modes()
                 span.dropdown(values=vals, set_value=data_row[idx])
 
             elif colname == "ts":
