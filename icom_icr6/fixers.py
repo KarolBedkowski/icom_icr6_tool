@@ -113,15 +113,33 @@ def fix_comment(name: str) -> str:
     return name[:16]
 
 
-def fix_tuning_step(freq: int, tuning_step: int) -> int:
+def fix_tuning_step(
+    freq: int,
+    tuning_step: int,
+    region: consts.Region | None = None,
+    *,
+    allow_minus: bool = False,
+) -> int:
+    """Fix tuning step for given `freq` and optionally for `region`.
+    TS=9kHz is available only in broadcast band
+    TS=8.33kHz is available only in air band
+    TS=Auto is available only in Japan region.
+    TS=- can be used only in scan-edges
+    """
     if not freq:
         return tuning_step
 
-    ts = consts.STEPS[tuning_step]
-    if ts == "9" and not consts.is_broadcast_band(freq):
-        return consts.default_tuning_step_for_freq(freq)
+    match consts.STEPS[tuning_step]:
+        case "Auto" if region and region != consts.Region.JAPAN:
+            return consts.default_tuning_step_for_freq(freq)
 
-    if ts == "8.33" and not consts.is_air_band(freq):
-        return consts.default_tuning_step_for_freq(freq)
+        case "9" if not consts.is_broadcast_band(freq):
+            return consts.default_tuning_step_for_freq(freq)
+
+        case "8.33" if not consts.is_air_band(freq):
+            return consts.default_tuning_step_for_freq(freq)
+
+        case "-" if not allow_minus:
+            return consts.default_tuning_step_for_freq(freq)
 
     return tuning_step
