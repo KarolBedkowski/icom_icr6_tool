@@ -132,7 +132,7 @@ class RadioMemory:
         else:
             self.region = self._guess_region()
             _LOG.debug("region: %r (guess)", self.region)
-            self.file_etcdata = self.region.etcdata()
+            self.file_etcdata = self.region.etcdata
 
     def commit(self) -> None:
         """Write data to mem."""
@@ -225,9 +225,7 @@ class RadioMemory:
             raise ValueError(errmsg)
 
     def get_band_for_freq(self, freq: int) -> model.BandDefaults:
-        bands = self.region.bands()
-
-        for idx, max_freq in enumerate(bands):
+        for idx, max_freq in enumerate(self.region.bands):
             if freq < max_freq:
                 # band configuration is loaded from radio memory (bands)
                 band = self.bands[idx]

@@ -41,7 +41,7 @@ from icom_icr6 import fixers, consts
 )
 def test_fix_freq(inp, usa, exp):
     freq = fixers.fix_frequency(
-        inp, blocked_freq=consts.Region.USA.blocked_freq() if usa else None
+        inp, blocked_freq=consts.Region.USA.blocked_freq if usa else None
     )
     assert freq == exp
 

@@ -6,72 +6,11 @@
 Constants used in app.
 """
 
+from __future__ import annotations
+
 import typing as ty
-from enum import StrEnum
-
-
-class Region(StrEnum):
-    # global model, no restrictions
-    GLOBAL = "global"
-    # unknown
-    GLOBAL2 = "global2"
-    # gaps 30-50.2 51.2-87.5 108-144 146-430 440-1240 1300-1310
-    FRANCE = "france"
-    # gaps: 824-851, 867-896
-    USA = "usa"
-    # other? Japan - 253-255, 262-266, 271-275, 380-382, 412-415, 810-834,
-    # 860-889, 915-950
-    JAPAN = "japan"
-
-    @property
-    def is_japan(self) -> bool:
-        return self == Region.JAPAN
-
-    def etcdata(self) -> str:
-        """Map region to etcdata; this may be inaccurate as i.e. Japan uses
-        probably more that one etcdata code; also there are also unknown flags.
-        """
-        match self:
-            case Region.GLOBAL2:
-                return "002A"
-            case Region.JAPAN:
-                return "0003"
-            case Region.USA:
-                return "00AB"
-            case Region.FRANCE:
-                return "01D2"
-
-        return "001A"
-
-    def bands(self) -> list[int]:
-        # TODO: don't know how to detect other regions
-        # for US and EUR/Global is the same
-        # there is only difference in WFM minimal frequency for Japan (guess)
-        match self:
-            case Region.FRANCE:
-                return _BANDS_FRANCE
-            case Region.JAPAN:
-                return _BANDS_JAP
-
-        return _BANDS_DEFAULT
-
-    def blocked_freq(self) -> list[tuple[int, int]]:
-        match self:
-            case Region.FRANCE:
-                return _BLOCKED_FREQ_FR
-            case Region.USA:
-                return _BLOCKED_FREQ_USA
-            case Region.JAPAN:
-                return _BLOCKED_FREQ_JAP
-
-        return []
-
-    def modes(self) -> list[str]:
-        if self == Region.JAPAN:
-            return _MODES_JAP
-
-        return _MODES_NON_JAP
-
+from dataclasses import dataclass
+from enum import Enum
 
 MEM_SIZE = 0x6E60
 MEM_FOOTER = "IcomCloneFormat3"
@@ -133,7 +72,7 @@ STEPS_KHZ: ty.Final = [
     0,
     0,
 ]
-AVAIL_STEPS_NORMAL = [
+_AVAIL_STEPS_NORMAL = [
     "5",
     "6.25",
     "10",
@@ -147,8 +86,8 @@ AVAIL_STEPS_NORMAL = [
     "125",
     "200",
 ]
-AVAIL_STEPS_NORMAL_JAP = [*AVAIL_STEPS_NORMAL, "Auto"]
-AVAIL_STEPS_AIR = [
+_AVAIL_STEPS_NORMAL_JAP = [*_AVAIL_STEPS_NORMAL, "Auto"]
+_AVAIL_STEPS_AIR = [
     "5",
     "6.25",
     "8.33",  # added
@@ -163,8 +102,8 @@ AVAIL_STEPS_AIR = [
     "125",
     "200",
 ]
-AVAIL_STEPS_AIR_JAP = [*AVAIL_STEPS_AIR, "Auto"]
-AVAIL_STEPS_BROADCAST = [
+_AVAIL_STEPS_AIR_JAP = [*_AVAIL_STEPS_AIR, "Auto"]
+_AVAIL_STEPS_BROADCAST = [
     "5",
     "6.25",
     "9",  # added
@@ -179,7 +118,7 @@ AVAIL_STEPS_BROADCAST = [
     "125",
     "200",
 ]
-AVAIL_STEPS_BROADCAST_JAP = [*AVAIL_STEPS_BROADCAST, "Auto"]
+_AVAIL_STEPS_BROADCAST_JAP = [*_AVAIL_STEPS_BROADCAST, "Auto"]
 
 
 # hack; skips on two bits (skip type (S/P) and skip enable (0/1))
@@ -292,22 +231,18 @@ _BLOCKED_FREQ_JAP: ty.Final = [
 ]
 
 
-def tuning_steps_for_freq(
-    freq: int, region: Region = Region.GLOBAL
-) -> list[str]:
+def tuning_steps_for_freq(freq: int, region: Region) -> list[str]:
     """From manual: additional steps become selectable in only the
     VHF Air band (8.33 kHz) and in the AM broadcast band (9 kHz).
     For Japan is available "Auto" tuning step.
     """
-    is_japan = region == Region.JAPAN
-
     if 500_000 <= freq <= 1_620_000:
-        return AVAIL_STEPS_BROADCAST_JAP if is_japan else AVAIL_STEPS_BROADCAST
+        return region.ts_broadcast
 
     if 118_000_000 <= freq <= 135_995_000:
-        return AVAIL_STEPS_AIR_JAP if is_japan else AVAIL_STEPS_AIR
+        return region.ts_air
 
-    return AVAIL_STEPS_NORMAL_JAP if is_japan else AVAIL_STEPS_NORMAL
+    return region.ts_other
 
 
 def default_mode_for_freq(freq: int) -> int:
@@ -397,3 +332,74 @@ _BANDS_DEFAULT: ty.Final = [
     960_100_000,
     1310_000_000,
 ]
+
+
+@dataclass
+class RegionDataMixin:
+    # Map region to etcdata; this may be inaccurate as i.e. Japan uses
+    # probably more that one etcdata code; also there are also unknown flags.
+    etcdata: str
+    bands: list[int]
+    blocked_freq: list[tuple[int, int]]
+    modes: list[str]
+    # tuning step
+    ts_broadcast: list[str]
+    ts_air: list[str]
+    ts_other: list[str]
+
+
+class Region(RegionDataMixin, Enum):
+    # global model, no restrictions
+    GLOBAL = (  # type: ignore
+        "001A",
+        _BANDS_DEFAULT,
+        [],
+        _MODES_NON_JAP,
+        _AVAIL_STEPS_BROADCAST,
+        _AVAIL_STEPS_AIR,
+        _AVAIL_STEPS_NORMAL,
+    )
+    # unknown
+    GLOBAL2 = (  # type: ignore
+        "002A",
+        _BANDS_DEFAULT,
+        [],
+        _MODES_NON_JAP,
+        _AVAIL_STEPS_BROADCAST,
+        _AVAIL_STEPS_AIR,
+        _AVAIL_STEPS_NORMAL,
+    )
+    # gaps 30-50.2 51.2-87.5 108-144 146-430 440-1240 1300-1310
+    FRANCE = (
+        "01D2",
+        _BANDS_FRANCE,
+        _BLOCKED_FREQ_FR,
+        _MODES_NON_JAP,
+        _AVAIL_STEPS_BROADCAST,
+        _AVAIL_STEPS_AIR,
+        _AVAIL_STEPS_NORMAL,
+    )
+    # gaps: 824-851, 867-896
+    USA = (
+        "00AB",
+        _BANDS_DEFAULT,
+        _BLOCKED_FREQ_USA,
+        _MODES_NON_JAP,
+        _AVAIL_STEPS_BROADCAST,
+        _AVAIL_STEPS_AIR,
+        _AVAIL_STEPS_NORMAL,
+    )
+    # other? Japan - 253-255, 262-266, 271-275, 380-382, 412-415, 810-834,
+    # 860-889, 915-950
+    JAPAN = (
+        "0003",
+        _BANDS_JAP,
+        _BLOCKED_FREQ_JAP,
+        _MODES_JAP,
+        _AVAIL_STEPS_BROADCAST_JAP,
+        _AVAIL_STEPS_AIR_JAP,
+        _AVAIL_STEPS_NORMAL_JAP,
+    )
+
+    def __repr__(self) -> str:
+        return f"<Region:{self.name}>"

@@ -254,7 +254,7 @@ def main_print_bands(args: argparse.Namespace) -> None:
     args: <icf file>
     """
     mem = ic_io.load_icf_file(args.icf_file)
-    bands = mem.region.bands()
+    bands = mem.region.bands
 
     print("Bands")
     if args.verbose > 2:

@@ -79,7 +79,7 @@ def _get_data_channels(rm: RadioMemory) -> ty.Iterable[str]:
 
 def _get_data_bands(rm: RadioMemory) -> ty.Iterable[str]:
     prev_band = 100_000
-    for band in rm.region.bands():
+    for band in rm.region.bands:
         cnt = sum(
             1 for c in rm.get_active_channels() if prev_band <= c.freq < band
         )
