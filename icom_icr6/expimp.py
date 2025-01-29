@@ -91,6 +91,9 @@ def import_channels_str(data: str) -> ty.Iterable[dict[str, object]]:
         if not row.get("freq"):
             raise ValueError
 
+        if "channel" in row:
+            del row["channel"]
+
         yield row
 
 
@@ -215,6 +218,9 @@ def import_scan_edges_str(data: str) -> ty.Iterable[dict[str, object]]:
 
         if not all(f in row for f in SCAN_EDGE_FIELDS):
             raise ValueError
+
+        if "idx" in row:
+            del row["idx"]
 
         yield row
 
