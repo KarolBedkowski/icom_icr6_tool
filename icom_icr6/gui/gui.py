@@ -39,7 +39,7 @@ class TabWidget(ty.Protocol):
 
 
 class App(tk.Frame):
-    def __init__(self, master: tk.Tk, file: Path | None) -> None:
+    def __init__(self, master: tk.Tk) -> None:
         super().__init__(master)
         self.master = master
 
@@ -82,10 +82,7 @@ class App(tk.Frame):
             fill=tk.X,
         )
 
-        if file:
-            self._load_icf(file)
-        else:
-            self._set_loaded_filename(None)
+        self._set_loaded_filename(None)
 
         self.bind("<Destroy>", self.__on_destroy)
         master.protocol("WM_DELETE_WINDOW", self.__on_closing)
@@ -271,7 +268,7 @@ class App(tk.Frame):
         )
 
         if fname:
-            self._load_icf(Path(fname))
+            self.load_icf(Path(fname))
 
     def _on_menu_file_save(self, _event: tk.Event | None = None) -> None:  # type: ignore
         if not self._last_file:
@@ -500,7 +497,7 @@ class App(tk.Frame):
 
     def _on_menu_last_file(self, fname: str) -> None:
         """Callback for last file menu item."""
-        self._load_icf(Path(fname))
+        self.load_icf(Path(fname))
 
     ##  window callbacks
 
@@ -557,7 +554,7 @@ class App(tk.Frame):
         ) as icf_file:
             return ic_io.load_icf_file(icf_file)
 
-    def _load_icf(self, file: Path) -> None:
+    def load_icf(self, file: Path) -> None:
         try:
             mem = ic_io.load_icf_file(file)
             mem.validate()
@@ -616,10 +613,12 @@ def start_gui(cfg_file: Path | None, icf_file: Path | None) -> None:
     root.title("ICOM IC-R6 Tool")
     style = ttk.Style()
     style.theme_use("clam")
-    myapp = App(root, icf_file)
+    myapp = App(root)
     root.geometry(config.CONFIG.main_window_geometry)
     root.wait_visibility()
     root.lift()
+    if icf_file:
+        myapp.load_icf(icf_file)
 
     myapp.mainloop()
     config.save(config_path)
