@@ -369,7 +369,8 @@ class ScanLinksPage(tk.Frame):
         if not row.get("start") or not row.get("end"):
             return True
 
-        se = self._radio_memory.scan_edges[se_num].clone()
+        rm = self._change_manager.rm
+        se = rm.scan_edges[se_num].clone()
         try:
             se.from_record(row)
             se.validate()
@@ -381,6 +382,12 @@ class ScanLinksPage(tk.Frame):
 
         se.idx = se_num
         se.unhide()
+        se.tuning_step = fixers.fix_tuning_step(
+            se.start,
+            se.tuning_step,
+            rm.region,
+            allow_minus=True,
+        )
         self._change_manager.set_scan_edge(se)
 
         return True

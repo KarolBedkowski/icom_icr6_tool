@@ -432,7 +432,8 @@ class ChannelsPage(tk.Frame):
             _LOG.debug("paste empty row to not empty")
             return True
 
-        chan = self._radio_memory.channels[chan_num].clone()
+        rm = self._change_manager.rm
+        chan = rm.channels[chan_num].clone()
 
         try:
             chan.from_record(row)
@@ -446,6 +447,9 @@ class ChannelsPage(tk.Frame):
         # do not set bank on paste
         chan.bank = consts.BANK_NOT_SET
         chan.bank_pos = 0
+        chan.tuning_step = fixers.fix_tuning_step(
+            chan.freq, chan.tuning_step, rm.region
+        )
         self._change_manager.set_channel(chan)
 
         return True

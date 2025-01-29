@@ -516,11 +516,13 @@ class BanksPage(tk.Frame):
         if not row.get("freq"):
             return True
 
+        rm = self._change_manager.rm
+
         chan_num = bank_channels[pos]
         if chan_num:
-            chan = self._radio_memory.channels[chan_num]
+            chan = rm.channels[chan_num]
         else:
-            chan = self._radio_memory.find_first_hidden_channel()  # type: ignore
+            chan = rm.find_first_hidden_channel()  # type: ignore
             if not chan:
                 _LOG.warning("no hidden channel found")
                 return False
@@ -541,6 +543,9 @@ class BanksPage(tk.Frame):
         chan.bank = selected_bank
         chan.bank_pos = pos
         chan.hide_channel = False
+        chan.tuning_step = fixers.fix_tuning_step(
+            chan.freq, chan.tuning_step, rm.region
+        )
         self._change_manager.set_channel(chan)
 
         return True

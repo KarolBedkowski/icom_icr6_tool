@@ -9,7 +9,7 @@ import tkinter as tk
 import typing as ty
 from tkinter import messagebox
 
-from icom_icr6 import consts, expimp, model
+from icom_icr6 import consts, expimp, fixers, model
 from icom_icr6.change_manager import ChangeManeger
 from icom_icr6.radio_memory import RadioMemory
 
@@ -266,7 +266,8 @@ class ScanEdgesPage(tk.Frame):
         if not row.get("start") or not row.get("end"):
             return True
 
-        se = self._radio_memory.scan_edges[se_num].clone()
+        rm = self._change_manager.rm
+        se = rm.scan_edges[se_num].clone()
 
         try:
             se.from_record(row)
@@ -279,6 +280,12 @@ class ScanEdgesPage(tk.Frame):
 
         se.idx = se_num
         se.unhide()
+        se.tuning_step = fixers.fix_tuning_step(
+            se.start,
+            se.tuning_step,
+            rm.region,
+            allow_minus=True,
+        )
         self._change_manager.set_scan_edge(se)
 
         return True
