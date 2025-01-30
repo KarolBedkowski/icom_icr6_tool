@@ -1,6 +1,35 @@
 Changelog
 =========
 
+v1.4.1 2024-01-30
+-----------------
+
+Bug Fixes
+~~~~~~~~~
+
+- Do not clear group name on tab switch
+- Detect dialect when import channels/scanedges from clipboard
+- Load file after fully initialized main window
+- Fix tuning step on pasted channels/scan edges
+- Skip channel number and scan edge idx when importing data
+
+Features
+~~~~~~~~
+
+- Create backup when overwrite file
+
+Miscellaneous Tasks
+~~~~~~~~~~~~~~~~~~~
+
+- Update Makefile - format tests
+
+Refactor
+~~~~~~~~
+
+- Move most region-related consts to Region enum
+
+
+
 v1.4.0 2024-01-26
 -----------------
 
