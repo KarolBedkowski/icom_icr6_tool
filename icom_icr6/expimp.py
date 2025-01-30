@@ -8,6 +8,7 @@ import csv
 import io
 import typing as ty
 from pathlib import Path
+import itertools
 
 from . import model
 
@@ -242,3 +243,40 @@ BANDS_FIELDS = (
     "af_filter",
     "attenuator",
 )
+
+
+
+class Importer:
+    def __init__(self, fields: list[str]) -> None:
+        # fields to import
+        self.fields = fields
+        self.file : Path | None = None
+        # map file column -> field
+        self.mapping : dict[int, str] = {}
+        self.file_has_header: bool = False
+
+        # header loaded from file if `file_has_header`
+        self.file_headers: list[str] = []
+
+        self.fields_delimiter: str = ";"
+
+    def load_preview(self, sample: int=5) -> list[list[str]]:
+        assert self.file
+
+        with self.file.open() as csvfile:
+            data = csv.reader(csvfile, delimiter=self.fields_delimiter)
+            if self.file_has_header:
+                self.file_header = next(data)
+
+            return list(itertools.islice(data, sample))
+
+
+    def load_file(self) -> ty.Iterable[dict[str, str]]:
+        assert self.file
+
+        mapping = list(self.mapping.items())
+        with self.file.open() as csvfile:
+            data = csv.reader(csvfile, delimiter=self.fields_delimiter)
+
+            for row in data:
+                yield {key: row[idx] for idx, key in mapping}
