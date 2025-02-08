@@ -6,9 +6,9 @@
 
 import csv
 import io
+import itertools
 import typing as ty
 from pathlib import Path
-import itertools
 
 from . import model
 
@@ -245,38 +245,44 @@ BANDS_FIELDS = (
 )
 
 
-
 class Importer:
     def __init__(self, fields: list[str]) -> None:
         # fields to import
         self.fields = fields
-        self.file : Path | None = None
+        self.file: Path | None = None
         # map file column -> field
-        self.mapping : dict[int, str] = {}
+        self.mapping: dict[str, int] = {}
         self.file_has_header: bool = False
 
         # header loaded from file if `file_has_header`
         self.file_headers: list[str] = []
 
-        self.fields_delimiter: str = ";"
+        self.fields_delimiter: str = ","
 
-    def load_preview(self, sample: int=5) -> list[list[str]]:
+    def load_preview(self, sample: int = 5) -> list[list[str]]:
         assert self.file
 
         with self.file.open() as csvfile:
             data = csv.reader(csvfile, delimiter=self.fields_delimiter)
             if self.file_has_header:
-                self.file_header = next(data)
+                self.file_headers = next(data)
 
-            return list(itertools.islice(data, sample))
+            res = list(itertools.islice(data, sample))
 
+            if not self.file_has_header and res:
+                self.file_headers = [f"col{i + 1}" for i in range(len(res[0]))]
 
-    def load_file(self) -> ty.Iterable[dict[str, str]]:
+            return res
+
+    def load_file(self) -> ty.Iterable[dict[str, object]]:
         assert self.file
-
+        # TODO: header
         mapping = list(self.mapping.items())
         with self.file.open() as csvfile:
             data = csv.reader(csvfile, delimiter=self.fields_delimiter)
 
+            if self.file_has_header:
+                next(data)
+
             for row in data:
-                yield {key: row[idx] for idx, key in mapping}
+                yield {key: row[idx] for key, idx in mapping}

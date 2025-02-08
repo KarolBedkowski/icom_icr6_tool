@@ -22,6 +22,7 @@ from . import (
     channels_page,
     dlg_clone,
     dlg_find,
+    dlg_import,
     dlg_reports,
     gui_model,
     scanedges_page,
@@ -141,6 +142,10 @@ class App(tk.Frame):
 
         export_menu = self._create_menu_export(file_menu)
         file_menu.add_cascade(label="Export...", menu=export_menu)
+        file_menu.add_command(
+            label="Import...",
+            command=self._on_menu_file_import,
+        )
 
         file_menu.add_separator()
 
@@ -327,6 +332,10 @@ class App(tk.Frame):
             self._change_manager.reset_changes_cnt()
             self._set_loaded_filename(Path(fname))
             self.set_status(f"File {fname} saved")
+
+    def _on_menu_file_import(self, _event: tk.Event | None = None) -> None:  # type: ignore
+        dlg_import.ImportDialog(self, self._change_manager)
+        self._update_tab_content()
 
     def _on_menu_undo(self, _event: tk.Event | None = None) -> None:  # type: ignore
         _LOG.info("_on_menu_undo")
@@ -613,6 +622,7 @@ def start_gui(cfg_file: Path | None, icf_file: Path | None) -> None:
     root.title("ICOM IC-R6 Tool")
     style = ttk.Style()
     style.theme_use("clam")
+    style.configure("pad.TEntry", padding="1 1 1 1")
     myapp = App(root)
     root.geometry(config.CONFIG.main_window_geometry)
     root.wait_visibility()

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import logging
 import tkinter as tk
+import typing as ty
 from tkinter import ttk
 
 _LOG = logging.getLogger(__name__)
@@ -22,6 +23,8 @@ def new_entry(  # noqa: PLR0913
     label: str,
     var: tk.Variable,
     validator: str | None = None,
+    *,
+    colspan: int = 1,
 ) -> ttk.Entry:
     ttk.Label(parent, text=label).grid(
         row=row, column=col, sticky=tk.N + tk.W + tk.S, padx=6, pady=6
@@ -34,6 +37,7 @@ def new_entry(  # noqa: PLR0913
         sticky=tk.N + tk.W + tk.E,
         padx=6,
         pady=6,
+        columnspan=colspan,
     )
     if validator:
         entry.configure(validate="all")
@@ -146,3 +150,32 @@ def new_vertical_separator(parent: tk.Widget) -> None:
     ttk.Separator(parent, orient=tk.VERTICAL).pack(
         side=tk.LEFT, padx=12, fill=tk.Y
     )
+
+
+class ComboboxPopup(ttk.Combobox):
+    def __init__(
+        self,
+        parent: ttk.Treeview,
+        cell_id: object,
+        text: str,
+        items: list[str] | tuple[str, ...],
+        on_update: ty.Callable[[object, str], None],
+        **kw: object,
+    ) -> None:
+        super().__init__(
+            parent,
+            values=items,
+            exportselection=False,
+            state="readonly",
+            **kw,  # type: ignore
+        )
+        self.cell_id = cell_id
+        self.on_update = on_update
+        self.set(text)
+        self.focus_force()
+        self.bind("<Return>", self.on_return)
+        self.bind("<KP_Enter>", self.on_return)
+        self.bind("<Escape>", lambda *_ignore: self.destroy())
+
+    def on_return(self, _event: tk.Event | None) -> None:  # type: ignore
+        self.on_update(self.cell_id, self.get())
