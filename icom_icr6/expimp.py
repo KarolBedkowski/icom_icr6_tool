@@ -269,10 +269,12 @@ class Importer:
 
             res = list(itertools.islice(data, sample))
 
-            if not self.file_has_header and res:
-                self.file_headers = [f"col{i + 1}" for i in range(len(res[0]))]
+        if self.file_has_header:
+            self.guess_mapping()
+        elif res:
+            self.file_headers = [f"col{i + 1}" for i in range(len(res[0]))]
 
-            return res
+        return res
 
     def load_file(self) -> ty.Iterable[dict[str, object]]:
         assert self.file
@@ -286,3 +288,23 @@ class Importer:
 
             for row in data:
                 yield {key: row[idx] for key, idx in mapping}
+
+    def guess_mapping(self) -> None:
+        if self.mapping:
+            return
+
+        mapping: dict[str, int] = {}
+        for idx, field in enumerate(self.file_headers):
+            field = field.lower()  # noqa:PLW2901
+
+            if field in mapping:
+                # skip columns with the same name
+                continue
+
+            if field not in self.fields:
+                # skip unknown fields
+                continue
+
+            mapping[field] = idx
+
+        self.mapping = mapping

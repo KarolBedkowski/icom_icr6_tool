@@ -187,7 +187,9 @@ class _PageMapping(tk.Frame):
 
         frame.pack(expand=True, fill=tk.BOTH)
 
-    def set_columns(self, file_columns: list[str]) -> None:
+    def set_columns(
+        self, file_columns: list[str], mapping: dict[str, int]
+    ) -> None:
         table = self.table
         # delete all children
         table.delete(*table.get_children())
@@ -198,9 +200,11 @@ class _PageMapping(tk.Frame):
             table.column(column=key, width=100, stretch=tk.YES)
             table.heading(key, text=key, anchor=tk.CENTER)
 
-        table.insert(
-            "", tk.END, text="Mapping", values=["-"] * len(file_columns)
-        )
+        fields = ["-"] * len(file_columns)
+        for field, idx in mapping.items():
+            fields[idx] = field
+
+        table.insert("", tk.END, text="Mapping", values=fields)
 
     def set_preview(self, data: list[list[str]]) -> None:
         table = self.table
@@ -340,12 +344,14 @@ class ImportDialog(tk.Toplevel):
         ttk.Button(frame, text="Close", command=self._on_close).pack(
             side=tk.RIGHT, padx=6
         )
-        ttk.Button(frame, text="Next", command=self._on_next_page).pack(
-            side=tk.RIGHT, padx=6
+        self._btn_next = ttk.Button(
+            frame, text="Next", command=self._on_next_page
         )
-        ttk.Button(frame, text="Back", command=self._on_prev_page).pack(
-            side=tk.RIGHT, padx=6
+        self._btn_next.pack(side=tk.RIGHT, padx=6)
+        self._btn_back = ttk.Button(
+            frame, text="Back", command=self._on_prev_page
         )
+        self._btn_back.pack(side=tk.RIGHT, padx=6)
 
         return frame
 
@@ -423,7 +429,7 @@ class ImportDialog(tk.Toplevel):
             case 1:
                 pm = self._page_mapping
                 preview = imp.load_preview()
-                pm.set_columns(imp.file_headers)
+                pm.set_columns(imp.file_headers, imp.mapping)
                 pm.set_preview(preview)
                 pm.pack(expand=True, fill=tk.BOTH)
 
@@ -433,6 +439,9 @@ class ImportDialog(tk.Toplevel):
 
             case 3:
                 self._page_log.pack(expand=True, fill=tk.BOTH)
+
+        self._btn_next["state"] = "disabled" if self._page == 3 else "normal"  # noqa: PLR2004
+        self._btn_back["state"] = "disabled" if self._page == 0 else "normal"
 
     def _do_import(self) -> str:
         dest = self._page_dest.dest.get()
