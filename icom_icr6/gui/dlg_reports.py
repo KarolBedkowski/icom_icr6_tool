@@ -33,7 +33,7 @@ class ReportsDialog(tk.Toplevel):
         radio_memory: RadioMemory,
     ) -> None:
         super().__init__(parent)
-        self.title("Find")
+        self.title("Reports")
 
         self._radio_memory = radio_memory
         self._sel_report = tk.StringVar()
