@@ -36,6 +36,11 @@ class Config:
 
     chan_group_names: list[str] = field(default_factory=lambda: [""] * 13)
 
+    import_file: str = ""
+    import_mapping: str = ""
+    import_delimiter = ","
+    import_header: bool = True
+
     def push_last_file(self, file: str) -> None:
         if not file:
             return
@@ -46,6 +51,18 @@ class Config:
         self.last_files.insert(0, file)
         if len(self.last_files) > _MAX_LAST_FILES:
             self.last_files.pop()
+
+    def import_mapping_as_dict(self) -> dict[str, int]:
+        res = {}
+        for part in self.import_mapping.split(","):
+            col, _, idx = part.partition(":")
+            if col and idx:
+                res[col] = int(idx)
+
+        return res
+
+    def set_import_mapping(self, mapping: dict[str, int]) -> None:
+        self.import_mapping = ",".join(f"{k}:{v}" for k, v in mapping.items())
 
 
 CONFIG = Config()
@@ -114,8 +131,19 @@ def load(file: Path) -> Config:
         for idx in range(13)
     ]
 
+    _load_import_settings(cfg)
+
     _LOG.debug("config %r", CONFIG)
     return CONFIG
+
+
+def _load_import_settings(cfg: configparser.ConfigParser) -> None:
+    CONFIG.import_file = cfg.get("import", "file", fallback="")
+    CONFIG.import_mapping = cfg.get("import", "mapping", fallback="")
+    CONFIG.import_delimiter = (
+        cfg.get("import", "delimiter", fallback="") or CONFIG.import_delimiter
+    )
+    CONFIG.import_header = cfg.getboolean("import", "heading", fallback=True)
 
 
 def save(file: Path) -> None:
@@ -144,6 +172,13 @@ def save(file: Path) -> None:
         f"group{idx}": name
         for idx, name in enumerate(CONFIG.chan_group_names)
         if name
+    }
+
+    cfg["import"] = {
+        "file": CONFIG.import_file,
+        "mapping": CONFIG.import_mapping,
+        "delimiter": CONFIG.import_delimiter,
+        "header": "yes" if CONFIG.import_header else "no",
     }
 
     file.parent.mkdir(parents=True, exist_ok=True)
