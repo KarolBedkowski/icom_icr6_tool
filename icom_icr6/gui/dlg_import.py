@@ -30,6 +30,8 @@ class _PageFile(tk.Frame):
         self.filename = tk.StringVar()
         self.delimiter = tk.StringVar()
         self.has_header = tk.IntVar()
+        self.guess_map = tk.IntVar()
+        self.guess_map.set(1)
 
         frame = ttk.LabelFrame(self, text="Input file")
 
@@ -68,9 +70,16 @@ class _PageFile(tk.Frame):
         widgets.new_entry(
             frame, 1, 0, "Delimiter: ", self.delimiter, colspan=2
         )
-
         widgets.new_checkbox(
             frame, 2, 0, "File has header", self.has_header, colspan=3
+        )
+        widgets.new_checkbox(
+            frame,
+            3,
+            0,
+            "Guess mapping from file header",
+            self.guess_map,
+            colspan=3,
         )
 
         frame.pack(side=tk.TOP, expand=True, fill=tk.BOTH)
@@ -87,7 +96,7 @@ class _PageFile(tk.Frame):
 class _MappingTreeView(ttk.Treeview):
     def __init__(self, parent: tk.Widget, map_col_names: list[str]) -> None:
         self._map_col_names = map_col_names
-        super().__init__(parent)
+        super().__init__(parent, selectmode="browse")
 
         self._entry_popup: tk.Widget | None = None
         self.bind("<Double-1>", self._on_double_click)
@@ -185,6 +194,9 @@ class _PageMapping(tk.Frame):
 
         frame.pack(expand=True, fill=tk.BOTH)
 
+        self.table.tag_configure("map", foreground="#0000FF")
+        self.table.tag_configure("sample", foreground="#666666")
+
     def set_columns(
         self, file_columns: list[str], mapping: dict[str, int]
     ) -> None:
@@ -204,12 +216,14 @@ class _PageMapping(tk.Frame):
             if idx < num_columns:
                 fields[idx] = field
 
-        table.insert("", tk.END, text="Mapping", values=fields)
+        table.insert("", tk.END, text="Mapping", values=fields, tags=("map",))
 
     def set_preview(self, data: list[list[str]]) -> None:
         table = self.table
         for idx, row in enumerate(data, 1):
-            table.insert("", tk.END, text=f"Row {idx}", values=row)
+            table.insert(
+                "", tk.END, text=f"Row {idx}", values=row, tags=("sample",)
+            )
 
     def get_mapping(self) -> dict[str, int]:
         self.table.remove_editor()
@@ -454,6 +468,9 @@ class ImportDialog(tk.Toplevel):
                 pf.has_header.set(1 if imp.file_has_header else 0)
 
             case 1:
+                if self._page_file.guess_map.get():
+                    imp.mapping = {}
+
                 try:
                     preview = imp.load_preview()
                 except Exception as err:
