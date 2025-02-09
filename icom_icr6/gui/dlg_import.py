@@ -459,12 +459,7 @@ class ImportDialog(tk.Toplevel):
                 pf = self._page_file
                 pf.pack(fill=tk.BOTH, expand=True)
                 pf.delimiter.set(imp.fields_delimiter)
-                pf.filename.set(
-                    str(
-                        imp.file
-                        or "/home/k/src/python/icom_icr6/testy/channels.csv"
-                    )
-                )
+                pf.filename.set(str(imp.file))
                 pf.has_header.set(1 if imp.file_has_header else 0)
 
             case 1:
