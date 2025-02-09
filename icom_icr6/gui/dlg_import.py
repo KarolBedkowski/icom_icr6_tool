@@ -91,7 +91,7 @@ class _MappingTreeView(ttk.Treeview):
 
         self._entry_popup: tk.Widget | None = None
         self.bind("<Double-1>", self._on_double_click)
-        self.bind("<<TreeviewSelect>>", self._on_select)
+        self.bind("<<TreeviewSelect>>", self.remove_editor)
 
     def _on_double_click(self, event: tk.Event) -> None:  # type: ignore
         if self._entry_popup:
@@ -134,19 +134,11 @@ class _MappingTreeView(ttk.Treeview):
             return None
 
         return widgets.ComboboxPopup(
-            self, (iid, column), value, self._map_col_names, self.update_cell
+            self, (iid, column), value, self._map_col_names, self._update_cell
         )
 
-    def _on_select(self, _event: tk.Event) -> None:  # type: ignore
-        if self._entry_popup:
-            with suppress(KeyError):
-                self._entry_popup.on_return(None)  # type: ignore
-
-            self._entry_popup.destroy()
-            self._entry_popup = None
-
-    def update_cell(self, cell_id: object, value: str | None) -> None:
-        _LOG.debug("update_cell: %r = %r", cell_id, value)
+    def _update_cell(self, cell_id: object, value: str | None) -> None:
+        _LOG.debug("_update_cell: %r = %r", cell_id, value)
 
         iid: str
         column: int
@@ -161,8 +153,11 @@ class _MappingTreeView(ttk.Treeview):
             values[column] = value
             self.item(iid, values=values)
 
-    def remove_editor(self) -> None:
+    def remove_editor(self, _event: tk.Event | None = None) -> None:  # type: ignore
         if self._entry_popup:
+            with suppress(KeyError, tk.TclError):
+                self._entry_popup.on_return(None)  # type: ignore
+
             self._entry_popup.destroy()
             self._entry_popup = None
 
@@ -217,6 +212,8 @@ class _PageMapping(tk.Frame):
             table.insert("", tk.END, text=f"Row {idx}", values=row)
 
     def get_mapping(self) -> dict[str, int]:
+        self.table.remove_editor()
+
         iid = self.table.get_children()[0]
         values = self.table.item(iid, "values")
 
