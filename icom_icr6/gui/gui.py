@@ -335,7 +335,7 @@ class App(tk.Frame):
 
     def _on_menu_file_import(self, _event: tk.Event | None = None) -> None:  # type: ignore
         dlg_import.ImportDialog(self, self._change_manager)
-        self._update_tab_content()
+        self._reset_tab_content()
 
     def _on_menu_undo(self, _event: tk.Event | None = None) -> None:  # type: ignore
         _LOG.info("_on_menu_undo")
