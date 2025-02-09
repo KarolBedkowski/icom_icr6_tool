@@ -316,8 +316,12 @@ class ImportDialog(tk.Toplevel):
         super().__init__(parent)
         self.title("Import channels")
 
+        if parent is not None and parent.winfo_viewable():
+            self.transient(parent)  # type: ignore
+
         self._cm = cm
         self._page = 0
+        self._result = False
         self._importer = expimp.Importer(list(expimp.CHANNEL_FIELDS_W_BANKS))
 
         cfg = config.CONFIG
@@ -346,8 +350,12 @@ class ImportDialog(tk.Toplevel):
 
         self.bind("<Escape>", self._on_close)
         self.bind("<Destroy>", self._on_destroy)
-        # self.bind("<Return>", self._on_search)
-        # self.geometry(config.CONFIG.find_window_geometry)
+
+    def run(self) -> bool:
+        self.wait_visibility()
+        self.grab_set()
+        self.wait_window(self)
+        return self._result
 
     def _create_body(self) -> None:
         self._page_file = _PageFile(self._frame_body)
@@ -393,6 +401,7 @@ class ImportDialog(tk.Toplevel):
     def _on_prev_page(self) -> None:
         if page := self._page:
             self._switch_to_page(page - 1)
+            self._result = False
 
     def _on_next_page(self) -> None:
         imp = self._importer
@@ -470,6 +479,7 @@ class ImportDialog(tk.Toplevel):
                 self._page_log.pack(expand=True, fill=tk.BOTH)
                 res = self._do_import()
                 self._page_log.set_result(res)
+                self._result = True
 
         if self._page != page:
             # hide current page
