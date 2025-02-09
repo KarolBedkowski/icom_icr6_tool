@@ -11,13 +11,16 @@ import tkinter as tk
 import typing as ty
 from contextlib import suppress
 from pathlib import Path
-from tkinter import filedialog, ttk
+from tkinter import filedialog, messagebox, ttk
 
-from icom_icr6 import change_manager, expimp, model
+from icom_icr6 import change_manager, expimp, fixers, model
 
 from . import widgets
 
 _LOG = logging.getLogger(__name__)
+
+
+# TODO: remember last mapping
 
 
 class _PageFile(tk.Frame):
@@ -225,8 +228,14 @@ class _PageMapping(tk.Frame):
             else:
                 res[val] = col
 
+        errmsg = None
+
         if duplicated:
             errmsg = f"duplicated columns: {', '.join(duplicated)}"
+        elif "freq" not in res:
+            errmsg = "frequency column not specified"
+
+        if errmsg:
             raise ValueError(errmsg)
 
         return res
@@ -376,6 +385,9 @@ class ImportDialog(tk.Toplevel):
                     filepage = self._page_file
                     fname = filepage.filename.get()
                     if not fname:
+                        messagebox.showerror(
+                            "Import channels", "Missing file name"
+                        )
                         return
 
                     imp.file = Path(fname)
@@ -386,33 +398,25 @@ class ImportDialog(tk.Toplevel):
 
                 case 1:
                     pm = self._page_mapping
-                    self._importer.mapping = pm.get_mapping()
-                    # TODO: validate
+                    try:
+                        self._importer.mapping = pm.get_mapping()
+                    except Exception as err:
+                        messagebox.showerror(
+                            "Import channels", f"Invalid mapping:\n{err}"
+                        )
+                        return
+
                     self._switch_to_page(2)
 
                 case 2:
-                    if res := self._do_import():
-                        self._switch_to_page(3)
-                        self._page_log.set_result(res)
+                    self._switch_to_page(3)
 
         except Exception:
             _LOG.exception("_on_next_page")
 
     def _switch_to_page(self, page: int) -> None:
-        if self._page != page:
-            match self._page:
-                case 0:
-                    self._page_file.pack_forget()
-                case 1:
-                    self._page_mapping.pack_forget()
-                case 2:
-                    self._page_dest.pack_forget()
-                case 3:
-                    self._page_log.pack_forget()
-
         imp = self._importer
 
-        self._page = page
         match page:
             case 0:
                 pf = self._page_file
@@ -427,8 +431,16 @@ class ImportDialog(tk.Toplevel):
                 pf.has_header.set(1 if imp.file_has_header else 0)
 
             case 1:
+                try:
+                    preview = imp.load_preview()
+                except Exception as err:
+                    _LOG.exception("load preview error")
+                    messagebox.showerror(
+                        "Import channels", f"Load preview error:\n{err}"
+                    )
+                    return
+
                 pm = self._page_mapping
-                preview = imp.load_preview()
                 pm.set_columns(imp.file_headers, imp.mapping)
                 pm.set_preview(preview)
                 pm.pack(expand=True, fill=tk.BOTH)
@@ -439,7 +451,19 @@ class ImportDialog(tk.Toplevel):
 
             case 3:
                 self._page_log.pack(expand=True, fill=tk.BOTH)
+                res = self._do_import()
+                self._page_log.set_result(res)
 
+        if self._page != page:
+            # hide current page
+            (
+                self._page_file,
+                self._page_mapping,
+                self._page_dest,
+                self._page_log,
+            )[self._page].pack_forget()
+
+        self._page = page
         self._btn_next["state"] = "disabled" if self._page == 3 else "normal"  # noqa: PLR2004
         self._btn_back["state"] = "disabled" if self._page == 0 else "normal"
 
@@ -449,6 +473,7 @@ class ImportDialog(tk.Toplevel):
         result = []
         mod_channels = []
         chan_gen = self._dest_channel_generator(dest, start_at)
+        region = self._cm.rm.region
 
         for idx, record in enumerate(self._importer.load_file()):
             try:
@@ -457,6 +482,12 @@ class ImportDialog(tk.Toplevel):
                 chan.from_record(record)
                 chan.validate()
                 chan.hide_channel = chan.freq == 0
+                chan.tuning_step = fixers.fix_tuning_step(
+                    chan.freq, chan.tuning_step, region
+                )
+
+            except (StopIteration, IndexError, KeyError):
+                result.append(f"can't find channel for record {idx + 1}")
             except Exception as err:
                 _LOG.exception("load record %r into %r error", record, chan)
                 result.append(f"import record {idx + 1} error: {err}")
@@ -488,8 +519,7 @@ class ImportDialog(tk.Toplevel):
             case "use_number":
 
                 def func(data: dict[str, object]) -> model.Channel:
-                    num = int(data["channel"])  # type: ignore
-                    return channels[num]  # type: ignore
+                    return channels[int(data["channel"])]  # type: ignore
 
                 return func
 
