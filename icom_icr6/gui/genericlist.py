@@ -82,8 +82,8 @@ class Row(UserList[object], ty.Generic[T]):
 
         super().__setitem__(idx, val)
 
-    def __hash__(self) -> int:
-        return hash(f"row-{id(self.obj)}-{self.data[0]}")
+    def __hash__(self) -> int:  # type: ignore
+        return hash((self.obj, self.data[0]))
 
     def map_changes(
         self, cols: ty.Sequence[Column], *, do_not_filter: bool = False
