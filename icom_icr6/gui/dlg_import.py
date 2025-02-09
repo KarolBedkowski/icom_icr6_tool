@@ -13,7 +13,7 @@ from contextlib import suppress
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
-from icom_icr6 import change_manager, expimp, fixers, model
+from icom_icr6 import change_manager, config, expimp, fixers, model
 
 from . import widgets
 
@@ -203,9 +203,11 @@ class _PageMapping(tk.Frame):
             table.column(column=key, width=100, stretch=tk.YES)
             table.heading(key, text=key, anchor=tk.CENTER)
 
-        fields = ["-"] * len(file_columns)
+        num_columns = len(file_columns)
+        fields = ["-"] * num_columns
         for field, idx in mapping.items():
-            fields[idx] = field
+            if idx < num_columns:
+                fields[idx] = field
 
         table.insert("", tk.END, text="Mapping", values=fields)
 
@@ -312,11 +314,19 @@ class ImportDialog(tk.Toplevel):
         self, parent: tk.Widget, cm: change_manager.ChangeManeger
     ) -> None:
         super().__init__(parent)
-        self.title("Find")
+        self.title("Import channels")
 
         self._cm = cm
         self._page = 0
         self._importer = expimp.Importer(list(expimp.CHANNEL_FIELDS_W_BANKS))
+
+        cfg = config.CONFIG
+        if f := cfg.import_file:
+            self._importer.file = Path(f)
+
+        self._importer.mapping = cfg.import_mapping_as_dict()
+        self._importer.fields_delimiter = cfg.import_delimiter
+        self._importer.file_has_header = cfg.import_header
 
         frame = tk.Frame(self)
 
@@ -365,9 +375,16 @@ class ImportDialog(tk.Toplevel):
         return frame
 
     def _on_destroy(self, event: tk.Event) -> None:  # type: ignore
-        pass
-        # if event.widget == self:
-        #     config.CONFIG.find_window_geometry = self.geometry()
+        if event.widget != self:
+            return
+
+        cfg = config.CONFIG
+        if self._importer.file:
+            cfg.import_file = str(self._importer.file)
+
+        cfg.set_import_mapping(self._importer.mapping)
+        cfg.import_delimiter = self._importer.fields_delimiter
+        cfg.import_header = self._importer.file_has_header
 
     def _on_close(self, _event: tk.Event | None = None) -> None:  # type:ignore
         self.grab_release()
