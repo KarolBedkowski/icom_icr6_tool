@@ -334,8 +334,13 @@ class App(tk.Frame):
             self.set_status(f"File {fname} saved")
 
     def _on_menu_file_import(self, _event: tk.Event | None = None) -> None:  # type: ignore
-        dlg_import.ImportDialog(self, self._change_manager)
-        self._reset_tab_content()
+        dlg = dlg_import.ImportDialog(self, self._change_manager)
+
+        def _on_close(event: tk.Event) -> None:  # type:ignore
+            if event.widget == dlg:
+                self._reset_tab_content()
+
+        dlg.bind("<Destroy>", _on_close)
 
     def _on_menu_undo(self, _event: tk.Event | None = None) -> None:  # type: ignore
         _LOG.info("_on_menu_undo")
