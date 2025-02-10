@@ -565,7 +565,7 @@ class App(tk.Frame):
 
     def _load_default_icf(self) -> RadioMemory:
         with importlib.resources.path(
-            "icom_icr6.data", "default_global.icf"
+            "icom_icr6.data", "default_global.icf.gz"
         ) as icf_file:
             return ic_io.load_icf_file(icf_file)
 
