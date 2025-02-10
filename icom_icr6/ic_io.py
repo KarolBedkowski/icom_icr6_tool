@@ -4,6 +4,7 @@
 
 """ """
 
+import gzip
 import itertools
 import logging
 import time
@@ -570,7 +571,13 @@ def load_icf_file(file: Path) -> RadioMemory:
     _LOG.info("loading %s", file)
     mem = RadioMemory()
 
-    with memoryview(mem.mem) as mv, file.open("rt") as inp:
+    inpfile = (
+        gzip.open(file, mode="rt")  # noqa: SIM115
+        if file.suffix == ".gz"
+        else file.open(mode="rt")
+    )
+
+    with memoryview(mem.mem) as mv, inpfile as inp:
         try:
             # check header == model in hex
             if next(inp).strip() != "32500001":
@@ -606,8 +613,14 @@ def load_icf_file(file: Path) -> RadioMemory:
 
 def load_raw_memory(file: Path) -> RadioMemory:
     mem = RadioMemory()
-    with file.open("rb") as inp:
-        mem.mem = bytearray(inp.read())
+
+    if file.suffix == ".gz":
+        with gzip.open(file, "rb") as inp:
+            mem.mem = bytearray(inp.read())
+
+    else:
+        with file.open("rb") as inp:
+            mem.mem = bytearray(inp.read())
 
     mem.validate()
     mem.load_memory()
@@ -630,7 +643,13 @@ def save_icf_file(file: Path, mem: RadioMemory) -> None:
     _LOG.info("write %s", file)
     mem.commit()
 
-    with file.open("wt") as out:
+    outfile = (
+        gzip.open(file, mode="wt")  # noqa: SIM115
+        if file.suffix == ".gz"
+        else file.open(mode="wt")
+    )
+
+    with outfile as out:
         # header
         out.write("32500001\r\n")
         out.write(f"#Comment={mem.file_comment}\r\n")
@@ -647,11 +666,31 @@ def save_icf_file(file: Path, mem: RadioMemory) -> None:
 
 def save_raw_memory(file: Path, mem: RadioMemory) -> None:
     """Write RadioMemory to binary file."""
-    with file.open("wb") as out:
-        out.write(mem.mem)
+    if file.suffix == ".gz":
+        with gzip.open(file, "wb") as out:
+            out.write(mem.mem)
+
+    else:
+        with file.open("wb") as out:
+            out.write(mem.mem)
 
 
 def create_backup(file: Path) -> None:
     if file.is_file():
         bakfile = file.with_suffix(f"{file.suffix}.bak")
         file.rename(bakfile)
+
+
+def load_file(file: Path) -> RadioMemory:
+    if file.name.endswith((".raw", ".raw.gz")):
+        return load_raw_memory(file)
+
+    return load_icf_file(file)
+
+
+def save_file(file: Path, mem: RadioMemory) -> None:
+    if file.name.endswith((".raw", ".raw.gz")):
+        save_raw_memory(file, mem)
+        return
+
+    save_icf_file(file, mem)

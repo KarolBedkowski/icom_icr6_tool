@@ -31,6 +31,11 @@ from . import (
 )
 
 _LOG = logging.getLogger(__name__)
+_FILETYPES = (
+    ("ICF files", ("*.icf", "*.icf.gz")),
+    ("Raw memory", ("*.raw", "*.raw.gz")),
+    ("All files", "*.*"),
+)
 
 
 @ty.runtime_checkable
@@ -267,7 +272,7 @@ class App(tk.Frame):
     def _on_menu_file_open(self, _event: tk.Event | None = None) -> None:  # type: ignore
         fname = filedialog.askopenfilename(
             parent=self,
-            filetypes=[("Supported files", ".icf"), ("All files", "*.*")],
+            filetypes=_FILETYPES,
             initialdir=str(self._last_file.parent) if self._last_file else ".",
             defaultextension=".icf",
         )
@@ -290,7 +295,7 @@ class App(tk.Frame):
             if config.CONFIG.create_backups:
                 ic_io.create_backup(self._last_file)
 
-            ic_io.save_icf_file(self._last_file, self._radio_memory)
+            ic_io.save_file(self._last_file, self._radio_memory)
 
         except Exception as err:
             _LOG.exception("_on_menu_file_save_as error")
@@ -310,7 +315,7 @@ class App(tk.Frame):
 
         fname = filedialog.asksaveasfilename(
             parent=self,
-            filetypes=[("Supported files", ".icf"), ("All files", "*.*")],
+            filetypes=_FILETYPES,
             initialdir=str(self._last_file.parent) if self._last_file else ".",
             initialfile=self._last_file.name if self._last_file else "",
             defaultextension=".icf",
@@ -322,7 +327,7 @@ class App(tk.Frame):
                 if config.CONFIG.create_backups:
                     ic_io.create_backup(file)
 
-                ic_io.save_icf_file(file, self._radio_memory)
+                ic_io.save_file(file, self._radio_memory)
 
             except Exception as err:
                 _LOG.exception("_on_menu_file_save_as error")
@@ -566,7 +571,7 @@ class App(tk.Frame):
 
     def load_icf(self, file: Path) -> None:
         try:
-            mem = ic_io.load_icf_file(file)
+            mem = ic_io.load_file(file)
             mem.validate()
             self._radio_memory.update_from(mem)
 
