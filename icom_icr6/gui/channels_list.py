@@ -174,7 +174,7 @@ class ChannelsList2(genericlist.GenericList2[model.Channel | None]):
     def _validate_bank(
         self, value: str, row: genericlist.Row[model.Channel]
     ) -> object:
-        value = value.strip()
+        value = value.strip().upper()
         chan = row.obj
         assert chan
 
