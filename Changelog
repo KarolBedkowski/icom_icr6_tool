@@ -1,6 +1,29 @@
 Changelog
 =========
 
+v1.5.0 2024-02-14
+-----------------
+
+Bug Fixes
+~~~~~~~~~
+
+- Fix not storing mapping when editor was not closed
+- Fix reports dialog title
+- Uppercase entered bank names in combo box
+
+Features
+~~~~~~~~
+
+- Import channels from csv file (with dialog to configure mapping and options)
+- Open and save raw memory files and gzip-ed icf files
+
+Miscellaneous Tasks
+~~~~~~~~~~~~~~~~~~~
+
+- Compress default icf files
+
+
+
 v1.4.1 2024-01-30
 -----------------
 
