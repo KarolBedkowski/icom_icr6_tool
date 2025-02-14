@@ -69,6 +69,23 @@ requirements.txt: pyproject.toml
 pip-compile: requirements-extra.txt requirements.txt requirements-dev.txt
 
 
+.PHONY: install
+## Install for production
+install:
+	python -m pip install -e .
+
+.PHONY: install-dev
+## Install for development
+install-dev: install
+	python -m pip install -e ".[dev]"
+
+
+.PHONY: pip-sync-dev
+## Synchronize venv with pip-sync
+pip-sync-dev: requirements.txt requirements-dev.txt
+	pip-sync requirements-dev.txt requirements.txt
+
+
 .PHONY: build
 ## build packages
 build: clean pip-compile
