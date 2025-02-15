@@ -359,7 +359,7 @@ class ImportDialog(tk.Toplevel):
 
         self._switch_to_page(0)
 
-        self.bind("<Escape>", self._on_close)
+        # self.bind("<Escape>", self._on_close)
         self.bind("<Destroy>", self._on_destroy)
 
     def run(self) -> bool:

@@ -175,7 +175,11 @@ class ComboboxPopup(ttk.Combobox):
         self.focus_force()
         self.bind("<Return>", self.on_return)
         self.bind("<KP_Enter>", self.on_return)
-        self.bind("<Escape>", lambda *_ignore: self.destroy())
+        self.bind("<Escape>", self.close)
+        self.bind("<FocusOut>", self.on_return)
 
     def on_return(self, _event: tk.Event | None) -> None:  # type: ignore
         self.on_update(self.cell_id, self.get())
+
+    def close(self, _event: tk.Event | None) -> None:  # type: ignore
+        self.destroy()
