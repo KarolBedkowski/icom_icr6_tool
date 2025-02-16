@@ -711,11 +711,11 @@ class RadioStatus:
     antenna: int
     volume: int
     squelch: int
-    squelch_status: int
+    squelch_status: bool
     smeter: int
     tone_mode: int
     vcs: bool
-    receiver_id: bytes
+    receiver_id: str
     tone: int
     dtcs_code: int
     dtcs_polarity: int
@@ -782,7 +782,7 @@ class Commands:
         res = self._sent_get(0x14, b"\x03")
         return decode_squelch(res.payload[1:])
 
-    def get_squelch_status(self) -> int:
+    def get_squelch_status(self) -> bool:
         res = self._sent_get(0x15, b"\x01")
         return res.payload[1] == 0x01
 
@@ -815,9 +815,9 @@ class Commands:
         res = self._sent_get(0x16, b"\x4c")
         return res.payload[1] == 0x01
 
-    def get_receiver_id(self) -> bytes:
+    def get_receiver_id(self) -> str:
         res = self._sent_get(0x19, b"\x00")
-        return res.payload[1:]
+        return hex(int(res.payload[1]))
 
     def get_affilter(self) -> int:
         res = self._sent_get(0x1A, b"\x00")
@@ -839,6 +839,17 @@ class Commands:
         res = self._sent_get(0x1B, b"\x02")
         f = res.payload[1:]
         return (f[0], (+(f[1] & 0xF) * 100 + (f[2] >> 4) * 10 + (f[2] & 0xF)))
+
+    def monitor(self) -> ty.Iterator[RadioStatus]:
+        step = 0
+        while True:
+            if step % 10 == 0:
+                status = self.get_status()
+            else:
+                status.smeter = self.get_smeter()
+
+            yield status
+            step += 1
 
     def _sent_get(self, cmd: int, payload: bytes = b"") -> Frame:
         for res in self.radio.write_read(cmd, payload):
