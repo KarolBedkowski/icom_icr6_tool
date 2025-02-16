@@ -403,3 +403,52 @@ class Region(RegionDataMixin, Enum):
 
     def __repr__(self) -> str:
         return f"<Region:{self.name}>"
+
+
+MONITOR_VOLUME_STEPS = [
+    5,
+    12,
+    18,
+    25,
+    31,
+    37,
+    44,
+    50,
+    57,
+    63,
+    69,
+    76,
+    82,
+    89,
+    95,
+    101,
+    108,
+    114,
+    121,
+    127,
+    133,
+    140,
+    146,
+    153,
+    159,
+    165,
+    172,
+    178,
+    185,
+    191,
+    197,
+    204,
+    210,
+    217,
+    223,
+    229,
+    236,
+    242,
+    249,
+    255,
+]
+
+MONITOR_SQUELCH_STEPS = [22, 45, 69, 92, 115, 139, 162, 185, 208, 231, 255]
+MONITOR_SQUELCH_LEVEL = ["OPEN", "AUTO", *(f"LEVEL{i}" for i in range(1, 10))]
+MONITOR_SMETER_STEPS = [0, 16, 48, 80, 112, 144, 160]
+MONITOR_SMETER_LEVEL = ["-", "1", "3", "5", "7", "9", "FULL"]

@@ -701,3 +701,195 @@ def save_file(file: Path, mem: radio_memory.RadioMemory) -> None:
         return
 
     save_icf_file(file, mem)
+
+
+@dataclass
+class RadioStatus:
+    frequency: int
+    mode: int
+    attenuator: bool
+    antenna: int
+    volume: int
+    squelch: int
+    squelch_status: int
+    smeter: int
+    tone_mode: int
+    vcs: bool
+    receiver_id: bytes
+    tone: int
+    dtcs_code: int
+    dtcs_polarity: int
+
+
+class Commands:
+    def __init__(self, radio: Radio) -> None:
+        self.radio = radio
+
+    def set_frequency(self) -> int:
+        return 0
+
+    def get_status(self) -> RadioStatus:
+        dtcs_polarity, dtcs_code = self.get_dtcs()
+        return RadioStatus(
+            frequency=self.get_frequency(),
+            mode=self.get_mode(),
+            attenuator=self.get_attenuator(),
+            antenna=self.get_antenna(),
+            volume=self.get_volume(),
+            squelch=self.get_squelch(),
+            squelch_status=self.get_squelch_status(),
+            smeter=self.get_smeter(),
+            tone_mode=self.get_tone_mode(),
+            vcs=self.get_vcs(),
+            receiver_id=self.get_receiver_id(),
+            tone=self.get_tone_freq(),
+            dtcs_code=dtcs_code,
+            dtcs_polarity=dtcs_polarity,
+        )
+
+    def get_frequency(self) -> int:
+        """Read operating frequency"""
+        res = self._sent_get(3)
+        return decode_freq(res.payload)
+
+        raise RuntimeError
+
+    def get_mode(self) -> int:
+        res = self._sent_get(4)
+        match res.payload[0]:
+            case 0x2:
+                return 2
+            case 0x5:
+                return 0
+            case 0x6:
+                return 1
+
+        raise RuntimeError
+
+    def get_attenuator(self) -> bool:
+        res = self._sent_get(0x11)
+        return res.payload[0] == 0x10  # noqa: PLR2004
+
+    def get_antenna(self) -> int:
+        res = self._sent_get(0x12)
+        return res.payload[0]
+
+    def get_volume(self) -> int:
+        res = self._sent_get(0x14, b"\x01")
+        return decode_volume(res.payload[1:])
+
+    def get_squelch(self) -> int:
+        res = self._sent_get(0x14, b"\x03")
+        return decode_squelch(res.payload[1:])
+
+    def get_squelch_status(self) -> int:
+        res = self._sent_get(0x15, b"\x01")
+        return res.payload[1] == 0x01
+
+    def get_smeter(self) -> int:
+        res = self._sent_get(0x15, b"\x02")
+        return decode_smeter(res.payload[1:])
+
+    def get_tone_mode(self) -> int:
+        # read the tone squelch setting
+        res = self._sent_get(0x16, b"\x43")
+        match res.payload[1]:
+            case 0x01:
+                return 1
+            case 0x02:
+                return 2
+
+        # read the DTCS squelch setting
+        res = self._sent_get(0x16, b"\x4b")
+        match res.payload[1]:
+            case 0x01:
+                return 3
+            case 0x02:
+                return 4
+            case 0:
+                return 0
+
+        raise ValueError
+
+    def get_vcs(self) -> bool:
+        res = self._sent_get(0x16, b"\x4c")
+        return res.payload[1] == 0x01
+
+    def get_receiver_id(self) -> bytes:
+        res = self._sent_get(0x19, b"\x00")
+        return res.payload[1:]
+
+    def get_affilter(self) -> int:
+        res = self._sent_get(0x1A, b"\x00")
+        return res.payload[1] == 0x01
+
+    def get_tone_freq(self) -> int:
+        """freq * 10"""
+        res = self._sent_get(0x1B, b"\x01")
+        f = res.payload[1:]
+        return (
+            (f[1] >> 4) * 1_000
+            + (f[1] & 0xF) * 100
+            + (f[2] >> 4) * 10
+            + (f[2] & 0xF)
+        )
+
+    def get_dtcs(self) -> tuple[int, int]:
+        """Return polarity, code"""
+        res = self._sent_get(0x1B, b"\x02")
+        f = res.payload[1:]
+        return (f[0], (+(f[1] & 0xF) * 100 + (f[2] >> 4) * 10 + (f[2] & 0xF)))
+
+    def _sent_get(self, cmd: int, payload: bytes = b"") -> Frame:
+        for res in self.radio.write_read(cmd, payload):
+            if res.src == ADDR_PC:
+                continue
+
+            if res.cmd != cmd:
+                raise ValueError
+
+            return res
+
+        raise RuntimeError
+
+
+def decode_freq(inp: bytes) -> int:
+    return (
+        (inp[4] >> 4) * 1_000_000_000
+        + (inp[4] & 0x0F) * 100_000_000
+        + (inp[3] >> 4) * 10_000_000
+        + (inp[3] & 0x0F) * 1_000_000
+        + (inp[2] >> 4) * 100_000
+        + (inp[2] & 0x0F) * 10_000
+        + (inp[1] >> 4) * 1_000
+        + (inp[1] & 0x0F) * 100
+        + (inp[0] >> 4) * 10
+        + (inp[0] & 0x0F)
+    )
+
+
+def decode_volume(volume: bytes) -> int:
+    v = volume[0] * 100 + (volume[1] >> 4) * 10 + (volume[1] & 0xF)
+    for idx, value in enumerate(consts.MONITOR_VOLUME_STEPS):
+        if v <= value:
+            return idx
+
+    raise ValueError
+
+
+def decode_squelch(squelch: bytes) -> int:
+    v = squelch[0] * 100 + (squelch[1] >> 4) * 10 + (squelch[1] & 0xF)
+    for idx, value in enumerate(consts.MONITOR_SQUELCH_STEPS):
+        if v <= value:
+            return idx
+
+    raise ValueError
+
+
+def decode_smeter(data: bytes) -> int:
+    v = data[0] * 100 + (data[1] >> 4) * 10 + (data[1] & 0xF)
+    for idx, value in enumerate(consts.MONITOR_SMETER_STEPS):
+        if v <= value:
+            return idx
+
+    raise ValueError
