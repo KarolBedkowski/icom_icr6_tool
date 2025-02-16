@@ -352,9 +352,34 @@ def test_civ_decode_dec_bytes(inp, exp):
 @pytest.mark.parametrize(
     ("inp", "exp"),
     [
+        (127, "0127"),
+        (34, "0034"),
+        (9, "0009"),
+        (3242, "3242"),
+        (3010, "3010"),
+    ],
+)
+def test_civ_encode_dec_bytes(inp, exp):
+    assert coding.civ_encode_dec_bytes(inp) == bytes.fromhex(exp)
+
+
+@pytest.mark.parametrize(
+    ("inp", "exp"),
+    [
         ("1234567890", 9078563412),
         ("0987654321", 2143658709),
     ],
 )
 def test_civ_decode_freq(inp, exp):
     assert coding.civ_decode_freq(bytes.fromhex(inp)) == exp
+
+
+@pytest.mark.parametrize(
+    ("inp", "exp"),
+    [
+        (9078563412, "1234567890"),
+        (2143658709, "0987654321"),
+    ],
+)
+def test_civ_encode_freq(inp, exp):
+    assert coding.civ_encode_freq(inp) == bytes.fromhex(exp)

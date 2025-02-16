@@ -236,6 +236,17 @@ def civ_decode_freq(inp: bytes) -> int:
     )
 
 
+def civ_encode_freq(freq: int) -> bytes:
+    res = []
+    t = freq
+    for _ in range(5):
+        t, v1 = divmod(t, 10)
+        t, v2 = divmod(t, 10)
+        res.append((v2 << 4) | v1)
+
+    return bytes(res)
+
+
 def civ_decode_dec_bytes(data: bytes) -> int:
     """decode 2 bytes in bcd encoding into int."""
     return (
@@ -244,3 +255,12 @@ def civ_decode_dec_bytes(data: bytes) -> int:
         + (data[1] >> 4) * 10
         + (data[1] & 0xF)
     )
+
+
+def civ_encode_dec_bytes(inp: int) -> bytes:
+    """decode 2 bytes in bcd encoding into int."""
+    t, v1 = divmod(inp, 10)
+    t, v2 = divmod(t, 10)
+    t, v3 = divmod(t, 10)
+    t, v4 = divmod(t, 10)
+    return bytes([(v4 << 4) | v3, (v2 << 4) | v1])
