@@ -290,7 +290,6 @@ class Radio:
         if len(data) < 5:  # noqa: PLR2004
             return None
 
-        # ic(data)
         return Frame(cmd=data[4], payload=data[5:-1], src=data[3], dst=data[2])
 
     def _start_clone(self, s: Serial, cmd: int) -> None:
@@ -725,9 +724,6 @@ class Commands:
     def __init__(self, radio: Radio) -> None:
         self.radio = radio
 
-    def set_frequency(self) -> int:
-        return 0
-
     def get_status(self) -> RadioStatus:
         dtcs_polarity, dtcs_code = self.get_dtcs()
         return RadioStatus(
@@ -752,6 +748,12 @@ class Commands:
         res = self._sent_get(3)
         return coding.civ_decode_freq(res.payload)
 
+    def set_frequency(self, freq: int) -> None:
+        # TODO: validate
+        data = coding.civ_encode_freq(freq)
+        res = self._sent_get(0x05, data)
+        _LOG.debug("res=%r", res)
+
     def get_mode(self) -> int:
         res = self._sent_get(4)
         match res.payload[0]:
@@ -764,13 +766,26 @@ class Commands:
 
         raise RuntimeError
 
+    def set_mode(self, mode: int) -> None:
+        data = [0x5, 0x6, 0x2][mode]
+        res = self._sent_get(0x06, bytes([data]))
+        _LOG.debug("res=%r", res)
+
     def get_attenuator(self) -> bool:
         res = self._sent_get(0x11)
         return res.payload[0] == 0x10  # noqa: PLR2004
 
+    def set_attenuator(self, att: bool) -> None:  # noqa: FBT001
+        res = self._sent_get(0x11, b"\0x10" if att else b"\x00")
+        _LOG.debug("res=%r", res)
+
     def get_antenna(self) -> int:
         res = self._sent_get(0x12)
         return res.payload[0]
+
+    def set_antenna(self, antenna: int) -> None:
+        res = self._sent_get(0x12, b"\0x01" if antenna else b"\x00")
+        _LOG.debug("res=%r", res)
 
     def get_volume(self) -> int:
         res = self._sent_get(0x14, b"\x01")
@@ -781,6 +796,11 @@ class Commands:
 
         raise ValueError
 
+    def set_volume(self, volume: int) -> None:
+        vol = consts.MONITOR_VOLUME_STEPS[volume]
+        res = self._sent_get(0x14, bytes([0x01, vol]))
+        _LOG.debug("res=%r", res)
+
     def get_squelch(self) -> int:
         res = self._sent_get(0x14, b"\x03")
         v = coding.civ_decode_dec_bytes(res.payload[1:])
@@ -789,6 +809,11 @@ class Commands:
                 return idx
 
         raise ValueError
+
+    def set_squelch(self, squelch: int) -> None:
+        val = consts.MONITOR_SQUELCH_STEPS[squelch]
+        res = self._sent_get(0x14, bytes([0x03, val]))
+        _LOG.debug("res=%r", res)
 
     def get_squelch_status(self) -> bool:
         res = self._sent_get(0x15, b"\x01")
@@ -824,34 +849,65 @@ class Commands:
 
         raise ValueError
 
+    def set_tone_mode(self, mode: int) -> None:
+        match mode:
+            case 0:
+                res = self._sent_get(0x16, b"\x43\x00")
+                res = self._sent_get(0x16, b"\x4b\x00")
+            case 1:
+                res = self._sent_get(0x16, b"\x43\x01")
+            case 2:
+                res = self._sent_get(0x16, b"\x43\x02")
+            case 3:
+                res = self._sent_get(0x16, b"\x4b\x01")
+            case 4:
+                res = self._sent_get(0x16, b"\x4b\x02")
+            case _:
+                raise ValueError
+
+        _LOG.debug("res=%r", res)
+
     def get_vcs(self) -> bool:
         res = self._sent_get(0x16, b"\x4c")
         return res.payload[1] == 0x01
 
+    def set_vcs(self, vcs: bool) -> None:  # noqa: FBT001
+        res = self._sent_get(0x16, b"\x4c\x01" if vcs else b"\x4c\x00")
+        _LOG.debug("res=%r", res)
+
     def get_receiver_id(self) -> str:
         res = self._sent_get(0x19, b"\x00")
-        return hex(int(res.payload[1]))
+        return hex(res.payload[1])
 
     def get_affilter(self) -> int:
         res = self._sent_get(0x1A, b"\x00")
         return res.payload[1] == 0x01
 
+    def set_affilter(self, af: bool) -> None:  # noqa: FBT001
+        res = self._sent_get(0x1A, b"\x00\x01" if af else b"\x00\x00")
+        _LOG.debug("res=%r", res)
+
     def get_tone_freq(self) -> int:
         """freq * 10"""
         res = self._sent_get(0x1B, b"\x01")
-        f = res.payload[1:]
-        return (
-            (f[1] >> 4) * 1_000
-            + (f[1] & 0xF) * 100
-            + (f[2] >> 4) * 10
-            + (f[2] & 0xF)
-        )
+        return coding.civ_decode_dec_bytes(res.payload[2:])
+
+    def set_tone_freq(self, tone_freq: int) -> None:
+        data = coding.civ_encode_dec_bytes(tone_freq)
+        res = self._sent_get(0x1B, b"\x01" + data)
+        _LOG.debug("res=%r", res)
 
     def get_dtcs(self) -> tuple[int, int]:
         """Return polarity, code"""
         res = self._sent_get(0x1B, b"\x02")
         f = res.payload[1:]
-        return (f[0], (+(f[1] & 0xF) * 100 + (f[2] >> 4) * 10 + (f[2] & 0xF)))
+        return (f[0], coding.civ_decode_dec_bytes(f[1:]))
+
+    def set_dtsc(self, polarity: int, code: int) -> None:
+        pol = b"\x01" if polarity else b"\x00"
+        data = coding.civ_encode_dec_bytes(code)
+        res = self._sent_get(0x1B, b"\x02" + pol + data)
+        _LOG.debug("res=%r", res)
 
     def monitor(self) -> ty.Iterator[RadioStatus]:
         step = 0
