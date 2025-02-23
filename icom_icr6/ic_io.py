@@ -707,6 +707,7 @@ class RadioStatus:
     frequency: int
     mode: int
     attenuator: bool
+    affilter: bool
     antenna: int
     volume: int
     squelch: int
@@ -730,6 +731,7 @@ class Commands:
             frequency=self.get_frequency(),
             mode=self.get_mode(),
             attenuator=self.get_attenuator(),
+            affilter=self.get_affilter(),
             antenna=self.get_antenna(),
             volume=self.get_volume(),
             squelch=self.get_squelch(),
@@ -879,7 +881,7 @@ class Commands:
         res = self._sent_get(0x19, b"\x00")
         return hex(res.payload[1])
 
-    def get_affilter(self) -> int:
+    def get_affilter(self) -> bool:
         res = self._sent_get(0x1A, b"\x00")
         return res.payload[1] == 0x01
 
