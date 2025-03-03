@@ -423,7 +423,12 @@ class Radio:
                         self._send_abort(s)
                         raise AbortError
 
-            return mem
+        etcdata = radio_memory.etcdata_from_region(
+            model.region, model.etcdata_flags
+        )
+        mem.file_etcdata = f"{etcdata:04x}"
+
+        return mem
 
     def clone_to(
         self,

@@ -32,7 +32,7 @@ class RadioModel:
     serial: str
 
     region: int
-    etc_data_flags: int
+    etcdata_flags: int
 
     debug_info: dict[str, object] | None = None
 
@@ -64,7 +64,7 @@ class RadioModel:
             comment=bytes(data[6:22]).decode(),
             serial=serial_decoded,
             region=data[22],
-            etc_data_flags=data[24],
+            etcdata_flags=data[24],
             debug_info=debug_info,
         )
 
