@@ -15,8 +15,7 @@ from pathlib import Path
 
 import serial
 
-from . import consts, model
-from .radio_memory import RadioMemory
+from . import consts, model, radio_memory
 
 if ty.TYPE_CHECKING:
     import io
@@ -342,7 +341,7 @@ class Radio:
         return None
 
     def _process_clone_from_frame(
-        self, idx: int, frame: Frame, mem: RadioMemory
+        self, idx: int, frame: Frame, mem: radio_memory.RadioMemory
     ) -> tuple[bool, int]:
         if frame.src == ADDR_PC:
             # echo, skip - for clone addresses are swapped
@@ -393,8 +392,10 @@ class Radio:
 
     def clone_from(
         self, cb: ty.Callable[[int], bool] | None = None
-    ) -> RadioMemory:
-        self._check_radio()
+    ) -> radio_memory.RadioMemory:
+        model = self._check_radio()
+        if not model:
+            raise UnsupportedDeviceError
 
         total_length = 0
 
@@ -406,7 +407,7 @@ class Radio:
                 self._send_abort(s)
                 raise AbortError
 
-            mem = RadioMemory()
+            mem = radio_memory.RadioMemory()
             for idx in itertools.count():
                 if frame := self.read_frame(s):
                     _LOG.debug("read: %d: %r", idx, frame)
@@ -426,7 +427,7 @@ class Radio:
 
     def clone_to(
         self,
-        mem: RadioMemory,
+        mem: radio_memory.RadioMemory,
         cb: ty.Callable[[int], bool] | None = None,
     ) -> bool:
         self._check_radio()
@@ -513,9 +514,9 @@ class Radio:
 
         return result_frame.payload[0] == 0
 
-    def _check_radio(self) -> None:
+    def _check_radio(self) -> model.RadioModel | None:
         if not self._port:
-            return
+            return None
 
         radio_model = self.get_model()
         if not radio_model:
@@ -524,6 +525,8 @@ class Radio:
         if not radio_model.is_icr6():
             _LOG.error("unsupported model: %r", radio_model)
             raise UnsupportedDeviceError
+
+        return radio_model
 
 
 class UnsupportedDeviceError(Exception):
@@ -566,10 +569,10 @@ def _update_from_icf_file(mv: memoryview, line: str) -> None:
     mv[addr : addr + size] = data
 
 
-def load_icf_file(file: Path) -> RadioMemory:
+def load_icf_file(file: Path) -> radio_memory.RadioMemory:
     """Load icf file as RadioMemory."""
     _LOG.info("loading %s", file)
-    mem = RadioMemory()
+    mem = radio_memory.RadioMemory()
 
     inpfile = (
         gzip.open(file, mode="rt")  # noqa: SIM115
@@ -611,8 +614,8 @@ def load_icf_file(file: Path) -> RadioMemory:
     return mem
 
 
-def load_raw_memory(file: Path) -> RadioMemory:
-    mem = RadioMemory()
+def load_raw_memory(file: Path) -> radio_memory.RadioMemory:
+    mem = radio_memory.RadioMemory()
 
     if file.suffix == ".gz":
         with gzip.open(file, "rb") as inp:
@@ -638,7 +641,7 @@ def _dump_memory(mem: bytearray, step: int = 16) -> ty.Iterator[str]:
             yield res.upper()
 
 
-def save_icf_file(file: Path, mem: RadioMemory) -> None:
+def save_icf_file(file: Path, mem: radio_memory.RadioMemory) -> None:
     """Write RadioMemory to icf file."""
     _LOG.info("write %s", file)
     mem.commit()
@@ -664,7 +667,7 @@ def save_icf_file(file: Path, mem: RadioMemory) -> None:
     _LOG.info("write %s done", file)
 
 
-def save_raw_memory(file: Path, mem: RadioMemory) -> None:
+def save_raw_memory(file: Path, mem: radio_memory.RadioMemory) -> None:
     """Write RadioMemory to binary file."""
     if file.suffix == ".gz":
         with gzip.open(file, "wb") as out:
@@ -681,14 +684,14 @@ def create_backup(file: Path) -> None:
         file.rename(bakfile)
 
 
-def load_file(file: Path) -> RadioMemory:
+def load_file(file: Path) -> radio_memory.RadioMemory:
     if file.name.endswith((".raw", ".raw.gz")):
         return load_raw_memory(file)
 
     return load_icf_file(file)
 
 
-def save_file(file: Path, mem: RadioMemory) -> None:
+def save_file(file: Path, mem: radio_memory.RadioMemory) -> None:
     if file.name.endswith((".raw", ".raw.gz")):
         save_raw_memory(file, mem)
         return
