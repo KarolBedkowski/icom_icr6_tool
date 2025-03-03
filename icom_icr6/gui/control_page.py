@@ -54,18 +54,11 @@ class ControlPage(tk.Frame):
         self._var_label_squelch.set("xxxxxx")
 
     def _create_body(self) -> None:
-        # freq
-        # mode
-        # attenuator
         # antenna
-        # volume
-        # squelch
         # smeter
         # tsql mode / freq
         # dtcs mode / freq
-        # vcs
         # receiver id
-        # af filter
 
         frame = tk.Frame(self)
         self._create_body_port(frame).pack(
@@ -183,6 +176,7 @@ class ControlPage(tk.Frame):
             to=len(consts.MONITOR_VOLUME_STEPS) - 1,
             variable=self._var_volume,
             command=self._on_set_volume,
+            length=300,
         ).pack(side=tk.LEFT, padx=12)
         ttk.Label(frame, textvariable=self._var_label_volume).pack(
             side=tk.LEFT
@@ -200,6 +194,7 @@ class ControlPage(tk.Frame):
             to=len(consts.MONITOR_SQUELCH_STEPS) - 1,
             variable=self._var_squelch,
             command=self._on_set_squelch,
+            length=300,
         ).pack(side=tk.LEFT, padx=12)
         ttk.Label(frame, textvariable=self._var_label_squelch).pack(
             side=tk.LEFT
