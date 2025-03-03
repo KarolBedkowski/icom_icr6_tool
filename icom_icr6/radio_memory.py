@@ -40,6 +40,27 @@ def region_from_etcdata(etcdata: str) -> consts.Region:
     return consts.Region.GLOBAL
 
 
+def etcdata_from_region(region: int, flags: int) -> int:
+    # format in `region_from_etcdata`
+    # there are 2 flags
+    flag1 = flags & 1
+    flag2 = (flags > 1) & 1  # this is always 0?
+
+    # checksum is number of 1 in region and flags - only 3 bits
+    cs = flag2 + flag1 + sum((region >> i & 1) for i in range(6))
+    cs = cs & 0b111
+
+    return (
+        (((region >> 2) & 0b111) << 7)
+        | ((cs >> 2) << 6)
+        | ((region & 0b11) << 4)
+        | (((cs >> 1) & 1) << 3)
+        | (flag2 << 2)
+        | (flag1 << 1)
+        | (cs & 1)
+    )
+
+
 class RadioMemory:
     def __init__(self) -> None:
         self.mem = bytearray(consts.MEM_SIZE)

@@ -16,10 +16,12 @@ from . import _support
 class RadioModel:
     # Data format - 39B
     # model: 4B
-    # unknown: 1B - is this mapped to region?
+    # unknown: 1B
     # rev: 1B
     # comment: 16B
-    # unknown: 3B
+    # region: 1B
+    # unknown: 1B = 0?
+    # region flags: 1B (usable lower 1 or 2 bits?)
     # serial 14B (hex)
     #    4B
     #    1B unknown
@@ -28,6 +30,9 @@ class RadioModel:
     rev: int
     comment: str
     serial: str
+
+    region: int
+    etc_data_flags: int
 
     debug_info: dict[str, object] | None = None
 
@@ -46,7 +51,7 @@ class RadioModel:
             {
                 "raw": data.hex(" ", -8),
                 "unk1": data[4],
-                "unk2": data[22:25],
+                "unk2": data[23],
                 "unk_serial": serial[4],
             }
             if _support.DEBUG
@@ -58,6 +63,8 @@ class RadioModel:
             rev=data[5],
             comment=bytes(data[6:22]).decode(),
             serial=serial_decoded,
+            region=data[22],
+            etc_data_flags=data[24],
             debug_info=debug_info,
         )
 

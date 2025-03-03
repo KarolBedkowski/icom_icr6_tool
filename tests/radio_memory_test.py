@@ -23,3 +23,17 @@ from icom_icr6 import consts, radio_memory as rm
 )
 def test_region_from_etcdata(inp, exp):
     assert rm.region_from_etcdata(inp) == exp
+
+
+@pytest.mark.parametrize(
+    ("region", "flags", "exp"),
+    [
+        (0, 1, 0x03),
+        (1, 1, 0x1A),
+        (2, 1, 0x2A),
+        (6, 1, 0xAB),
+        (13, 1, 0x01D2),
+    ],
+)
+def test_etcdata_from_region(region, flags, exp):
+    assert rm.etcdata_from_region(region, flags) == exp
