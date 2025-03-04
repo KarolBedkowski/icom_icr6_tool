@@ -25,9 +25,8 @@ def region_from_etcdata(etcdata: str) -> consts.Region:
         fedcba98 76543210
         ------rr rCrrCffC
     """
-    etc = int(etcdata, 16)
-    area = ((etc & 0b1110000000) >> 5) | ((etc & 0b110000) >> 4)
-    match area:
+    region, _ = etcdata_to_region_flags(etcdata)
+    match region:
         case 0 | 14 | 15:
             return consts.Region.JAPAN
         case 2:
@@ -40,23 +39,35 @@ def region_from_etcdata(etcdata: str) -> consts.Region:
     return consts.Region.GLOBAL
 
 
+def etcdata_to_region_flags(etcdata: str | int) -> tuple[int, int]:
+    etc = int(etcdata, 16) if isinstance(etcdata, str) else etcdata
+
+    region = ((etc & 0b1110000000) >> 5) | ((etc & 0b110000) >> 4)
+    flags = (etc & 0b110) >> 1
+
+    # check checksum
+    cs = ((etc >> 4) & 0b100) | ((etc >> 2) & 0b10) | (etc & 1)
+    ccs = (flags.bit_count() + region.bit_count()) & 0b111
+    if cs != ccs:
+        raise ValueError
+
+    return region, flags
+
+
 def etcdata_from_region(region: int, flags: int) -> int:
     # format in `region_from_etcdata`
     # there are 2 flags
-    flag1 = flags & 1
-    flag2 = (flags > 1) & 1  # this is always 0?
+    flags = flags & 0b11
 
     # checksum is number of 1 in region and flags - only 3 bits
-    cs = flag2 + flag1 + sum((region >> i & 1) for i in range(6))
-    cs = cs & 0b111
+    cs = (flags.bit_count() + region.bit_count()) & 0b111
 
     return (
-        (((region >> 2) & 0b111) << 7)
-        | ((cs >> 2) << 6)
+        ((region & 0b11100) << 5)
+        | ((cs & 0b100) << 4)
         | ((region & 0b11) << 4)
-        | (((cs >> 1) & 1) << 3)
-        | (flag2 << 2)
-        | (flag1 << 1)
+        | ((cs & 0b010) << 2)
+        | (flags << 1)
         | (cs & 1)
     )
 
