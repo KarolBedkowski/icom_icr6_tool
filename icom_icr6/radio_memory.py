@@ -18,13 +18,7 @@ DEBUG = True
 
 
 def region_from_etcdata(etcdata: str) -> consts.Region:
-    """Looks like etcdata contain 5 bits of "region",
-    there are also some unknown flags at last two bit. Rest is some
-    checksum - seems to checksum is arithmetic sum of all "1" in region and
-    flags & 7. Bits: (r=market, C=checksum, f=some flag)
-        fedcba98 76543210
-        ------rr rCrrCffC
-    """
+    """Get region for etcdata."""
     region, _ = etcdata_to_region_flags(etcdata)
     match region:
         case 0 | 14 | 15:
@@ -40,6 +34,16 @@ def region_from_etcdata(etcdata: str) -> consts.Region:
 
 
 def etcdata_to_region_flags(etcdata: str | int) -> tuple[int, int]:
+    """Etcdata contain 5 bits of "region" + unknown flags (two bit).
+    Rest is checksum - arithmetic sum of all "1" in region and
+    flags & 7. Bits: (r=region, C=checksum, f=some flag)
+        fedcba98 76543210
+        000000rr rCrrCffC
+
+    Return: (region, flags)
+    Raise: ValueError on invalid checksum
+
+    """
     etc = int(etcdata, 16) if isinstance(etcdata, str) else etcdata
 
     region = ((etc & 0b1110000000) >> 5) | ((etc & 0b110000) >> 4)
@@ -55,12 +59,12 @@ def etcdata_to_region_flags(etcdata: str | int) -> tuple[int, int]:
 
 
 def etcdata_from_region(region: int, flags: int) -> int:
-    # format in `region_from_etcdata`
+    """Encode region and flags into etcdata."""
     # there are 2 flags
     flags = flags & 0b11
 
     # checksum is number of 1 in region and flags - only 3 bits
-    cs = (flags.bit_count() + region.bit_count()) & 0b111
+    cs = flags.bit_count() + region.bit_count()
 
     return (
         ((region & 0b11100) << 5)

@@ -19,9 +19,10 @@ class RadioModel:
     # unknown: 1B
     # rev: 1B
     # comment: 16B
-    # region: 1B
-    # unknown: 1B = 0?
-    # region flags: 1B (usable lower 1 or 2 bits?)
+    # region:
+    #    region: 1B (4 lower bits)
+    #    unknown: 1B = 0?
+    #    region flags: 1B (2 lower bits)
     # serial 14B (hex)
     #    4B
     #    1B unknown
