@@ -12,9 +12,8 @@ import typing as ty
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
-from icom_icr6 import VERSION, config, expimp, ic_io, reports
+from icom_icr6 import VERSION, config, expimp, ic_io, radio_memory, reports
 from icom_icr6.change_manager import ChangeManeger
-from icom_icr6.radio_memory import RadioMemory
 
 from . import (
     awchannels_page,
@@ -386,6 +385,7 @@ class App(tk.Frame):
 
             self._radio_memory.update_from(mem)
             self._safe_for_clone = True
+            config.CONFIG.last_etcdata = mem.file_etcdata
             self._set_loaded_filename(None)
             self._reset_tab_content()
             self._change_manager.reset()
@@ -563,10 +563,17 @@ class App(tk.Frame):
         for page in self._pages:
             page.reset()
 
-    def _load_default_icf(self) -> RadioMemory:
-        with importlib.resources.path(
-            "icom_icr6.data", "default_global.icf.gz"
-        ) as icf_file:
+    def _load_default_icf(self) -> radio_memory.RadioMemory:
+        region = radio_memory.region_from_etcdata(
+            config.CONFIG.last_etcdata or "0x1A"
+        )
+
+        filename = f"default_{region.name.lower()}.icf.gz"
+        if not importlib.resources.is_resource("icom_icr6.data", filename):
+            _LOG.warning("no default file for region %s", region.name)
+            filename = "default_global.icf.gz"
+
+        with importlib.resources.path("icom_icr6.data", filename) as icf_file:
             return ic_io.load_icf_file(icf_file)
 
     def load_icf(self, file: Path) -> None:
@@ -586,6 +593,7 @@ class App(tk.Frame):
 
         self._set_loaded_filename(file)
         self._reset_tab_content()
+        config.CONFIG.last_etcdata = mem.file_etcdata
         self.set_status(f"File {file} loaded")
         self._safe_for_clone = True
         self._change_manager.reset()

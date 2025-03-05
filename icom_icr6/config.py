@@ -19,6 +19,7 @@ _MAX_LAST_FILES: ty.Final = 10
 @dataclass
 class Config:
     last_files: list[str] = field(default_factory=list)
+    last_etcdata: str = ""
     last_port: str = "/dev/ttyUSB0"
     hispeed: bool = True
 
@@ -80,6 +81,7 @@ def load(file: Path) -> Config:
     CONFIG.last_files = list(
         filter(None, cfg.get("main", "last_files", fallback="").split(";"))
     )
+    CONFIG.last_etcdata = cfg.get("main", "last_etcdata", fallback="")
     CONFIG.last_port = (
         cfg.get("main", "last_port", fallback="") or CONFIG.last_port
     )
@@ -154,6 +156,7 @@ def save(file: Path) -> None:
     cfg["main"] = {
         "last_files": ";".join(CONFIG.last_files),
         "last_port": CONFIG.last_port,
+        "last_etcdata": CONFIG.last_etcdata,
         "hispeed": "yes" if CONFIG.hispeed else "no",
         "create_backups": "yes" if CONFIG.create_backups else "no",
     }
