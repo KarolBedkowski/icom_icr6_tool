@@ -19,11 +19,11 @@ class RadioModel:
     # unknown: 1B
     # rev: 1B
     # comment: 16B
-    # region:
+    # region: 3B
     #    region: 1B (4 lower bits)
     #    unknown: 1B = 0?
     #    region flags: 1B (2 lower bits)
-    # serial 14B (hex)
+    # serial 14B (hex -> 7B)
     #    4B
     #    1B unknown
     #    2B
@@ -51,9 +51,9 @@ class RadioModel:
         debug_info = (
             {
                 "raw": data.hex(" ", -8),
-                "unk1": data[4],
-                "unk2": data[23],
-                "unk_serial": serial[4],
+                "unk_4": data[4],
+                "unk_23": data[23],
+                "unk_serial_4": serial[4],
             }
             if _support.DEBUG
             else None
