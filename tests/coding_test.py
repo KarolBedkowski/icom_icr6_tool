@@ -312,3 +312,23 @@ def test_encode_decode_name(inp, encoded):
 
     dec = coding.decode_name(encoded)
     assert dec == inp
+
+
+@pytest.mark.parametrize(
+    ("region", "flags", "exp"),
+    [
+        (0, 1, 0x03),
+        (1, 1, 0x1A),
+        (1, 2, 0b00000000_00011100),
+        (1, 3, 0b00000000_00011111),
+        (2, 1, 0x2A),
+        (6, 1, 0xAB),
+        (13, 1, 0x01D2),
+        (13, 2, 0b00000001_11010100),
+        (13, 3, 0b00000001_11010111),
+    ],
+)
+def test_etcdata_from_region(region, flags, exp):
+    etcdata = coding.region_to_etcdata(region, flags)
+    assert etcdata == exp
+    assert coding.etcdata_to_region(etcdata) == (region, flags)

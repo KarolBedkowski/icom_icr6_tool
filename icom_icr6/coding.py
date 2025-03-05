@@ -176,3 +176,46 @@ def encode_freq(freq: int, offset: int) -> EncodedFreq:
         _div_freq(freq, freq_div),
         _div_freq(offset, offset_div),
     )
+
+
+def etcdata_to_region(etcdata: str | int) -> tuple[int, int]:
+    """Etcdata contain 5 bits of "region" + unknown flags (two bit).
+    Rest is checksum - arithmetic sum of all "1" in region and
+    flags & 7. Bits: (r=region, C=checksum, f=some flag)
+        fedcba98 76543210
+        000000rr rCrrCffC
+
+    Return: (region, flags)
+    Raise: ValueError on invalid checksum
+
+    """
+    etc = int(etcdata, 16) if isinstance(etcdata, str) else etcdata
+
+    region = ((etc & 0b1110000000) >> 5) | ((etc & 0b110000) >> 4)
+    flags = (etc & 0b110) >> 1
+
+    # check checksum
+    cs = ((etc >> 4) & 0b100) | ((etc >> 2) & 0b10) | (etc & 1)
+    ccs = (flags.bit_count() + region.bit_count()) & 0b111
+    if cs != ccs:
+        raise ValueError
+
+    return region, flags
+
+
+def region_to_etcdata(region: int, flags: int) -> int:
+    """Encode region and flags into etcdata."""
+    # there are 2 flags
+    flags = flags & 0b11
+
+    # checksum is number of 1 in region and flags - only 3 bits
+    cs = flags.bit_count() + region.bit_count()
+
+    return (
+        ((region & 0b11100) << 5)
+        | ((cs & 0b100) << 4)
+        | ((region & 0b11) << 4)
+        | ((cs & 0b010) << 2)
+        | (flags << 1)
+        | (cs & 1)
+    )

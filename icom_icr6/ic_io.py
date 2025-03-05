@@ -15,7 +15,7 @@ from pathlib import Path
 
 import serial
 
-from . import consts, model, radio_memory
+from . import coding, consts, model, radio_memory
 
 if ty.TYPE_CHECKING:
     import io
@@ -423,10 +423,8 @@ class Radio:
                         self._send_abort(s)
                         raise AbortError
 
-        etcdata = radio_memory.etcdata_from_region(
-            model.region, model.etcdata_flags
-        )
-        mem.file_etcdata = f"{etcdata:04x}"
+        etcdata = coding.region_to_etcdata(model.region, model.etcdata_flags)
+        mem.file_etcdata = f"{etcdata:04X}"
 
         return mem
 
