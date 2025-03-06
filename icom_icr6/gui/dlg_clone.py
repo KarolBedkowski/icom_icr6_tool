@@ -12,10 +12,9 @@ import tkinter as tk
 from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
-from tkinter import simpledialog, ttk
+from tkinter import messagebox, simpledialog, ttk
 
-from icom_icr6 import config, consts, ic_io, model
-from icom_icr6.radio_memory import RadioMemory
+from icom_icr6 import coding, config, consts, ic_io, model, radio_memory
 
 _LOG = logging.getLogger(__name__)
 
@@ -50,10 +49,13 @@ class _CloneTask(threading.Thread):
 
 
 class _CloneDialog(simpledialog.Dialog):
-    def __init__(self, parent: tk.Widget, title: str) -> None:
+    def __init__(
+        self, parent: tk.Widget, title: str, expected_etcdata: str
+    ) -> None:
         self._working = False
         self._bg_task_queue: queue.Queue[_Result] = queue.Queue()
         self._bg_task: _CloneTask | None = None
+        self._expected_etcdata = int(expected_etcdata or "0", 16)
         super().__init__(parent, title)
 
     def body(self, master: tk.Widget) -> None:
@@ -181,11 +183,27 @@ class _CloneDialog(simpledialog.Dialog):
 
         return port, True
 
+    def _check_model(self, port: str) -> bool:
+        model = ic_io.Radio(port).get_model()
+        if not model or not model.is_icr6():
+            raise ic_io.UnsupportedDeviceError
+
+        etcdata = coding.region_to_etcdata(model.region, model.etcdata_flags)
+
+        if etcdata == self._expected_etcdata:
+            return True
+
+        return messagebox.askyesno(
+            "Clone error",
+            "Radio region not match current data. Continue?",
+            icon=messagebox.WARNING,
+        )
+
 
 class CloneFromRadioDialog(_CloneDialog):
-    def __init__(self, parent: tk.Widget) -> None:
-        self.radio_memory: RadioMemory | None = None
-        super().__init__(parent, "Clone from radio")
+    def __init__(self, parent: tk.Widget, expected_etcdata: str) -> None:
+        self.radio_memory: radio_memory.RadioMemory | None = None
+        super().__init__(parent, "Clone from radio", expected_etcdata)
 
     def _on_ok(self, _event: tk.Event | None = None) -> None:  # type: ignore
         if self._working:
@@ -193,6 +211,9 @@ class CloneFromRadioDialog(_CloneDialog):
 
         port, ok = self._check_port()
         if not ok:
+            return
+
+        if not self._check_model(port):
             return
 
         self._start_working()
@@ -206,7 +227,7 @@ class CloneFromRadioDialog(_CloneDialog):
         self.after(250, self._monitor_bg_task)
 
     def _on_success(self, result: object) -> None:
-        assert isinstance(result, RadioMemory)
+        assert isinstance(result, radio_memory.RadioMemory)
         self.radio_memory = result
 
 
@@ -228,10 +249,12 @@ class _CloneFromTask(_CloneTask):
 
 
 class CloneToRadioDialog(_CloneDialog):
-    def __init__(self, parent: tk.Widget, radio_memory: RadioMemory) -> None:
+    def __init__(
+        self, parent: tk.Widget, radio_memory: radio_memory.RadioMemory
+    ) -> None:
         self._radio_memory = radio_memory
         self.result = False
-        super().__init__(parent, "Clone to radio")
+        super().__init__(parent, "Clone to radio", radio_memory.file_etcdata)
 
     def _on_ok(self, _event: tk.Event | None = None) -> None:  # type: ignore
         if self._working:
@@ -239,6 +262,9 @@ class CloneToRadioDialog(_CloneDialog):
 
         port, ok = self._check_port()
         if not ok:
+            return
+
+        if not self._check_model(port):
             return
 
         self._start_working()
@@ -264,7 +290,7 @@ class _CloneToTask(_CloneTask):
         result_queue: queue.Queue[_Result],
         port: str,
         hispeed: bool,  # noqa: FBT001
-        radio_memory: RadioMemory,
+        radio_memory: radio_memory.RadioMemory,
     ) -> None:
         super().__init__(result_queue, port, hispeed)
         self._radio_memory = radio_memory
@@ -288,7 +314,7 @@ class _CloneToTask(_CloneTask):
 class RadioInfoDialog(_CloneDialog):
     def __init__(self, parent: tk.Widget) -> None:
         self.result: model.RadioModel | None = None
-        super().__init__(parent, "Radio info")
+        super().__init__(parent, "Radio info", "0")
 
     def _on_ok(self, _event: tk.Event | None = None) -> None:  # type: ignore
         port, ok = self._check_port()

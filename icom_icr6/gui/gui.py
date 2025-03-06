@@ -369,7 +369,9 @@ class App(tk.Frame):
         self,
         _event: tk.Event | None = None,  # type: ignore
     ) -> None:
-        dlg = dlg_clone.CloneFromRadioDialog(self)
+        dlg = dlg_clone.CloneFromRadioDialog(
+            self, self._radio_memory.file_etcdata
+        )
         if dlg.radio_memory:
             self.set_status("Clone from radio finished.")
 
