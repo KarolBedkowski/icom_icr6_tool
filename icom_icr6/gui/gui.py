@@ -387,8 +387,8 @@ class App(tk.Frame):
 
             self._radio_memory.update_from(mem)
             self._safe_for_clone = True
-            config.CONFIG.last_etcdata = mem.file_etcdata
             self._set_loaded_filename(None)
+            self._set_loaded_etcdata(mem.file_etcdata)
             self._reset_tab_content()
             self._change_manager.reset()
 
@@ -548,6 +548,15 @@ class App(tk.Frame):
         self._last_file = fname
         self._update_window_title()
 
+    def _set_loaded_etcdata(self, etcdata: str) -> None:
+        if config.CONFIG.last_etcdata == etcdata:
+            return
+
+        if config.CONFIG.last_etcdata:
+            messagebox.showwarning("Warning", "Data region was changed.")
+
+        config.CONFIG.last_etcdata = etcdata
+
     def _update_window_title(self) -> None:
         fname = self._last_file
         title = f" [{fname.name}]" if fname else ""
@@ -594,8 +603,8 @@ class App(tk.Frame):
             return
 
         self._set_loaded_filename(file)
+        self._set_loaded_etcdata(mem.file_etcdata)
         self._reset_tab_content()
-        config.CONFIG.last_etcdata = mem.file_etcdata
         self.set_status(f"File {file} loaded")
         self._safe_for_clone = True
         self._change_manager.reset()
