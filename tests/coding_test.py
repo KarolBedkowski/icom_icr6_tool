@@ -329,6 +329,7 @@ def test_encode_decode_name(inp, encoded):
     ],
 )
 def test_etcdata_from_region(region, flags, exp):
+    exp_etcdata = f"{exp:04X}"
     etcdata = coding.region_to_etcdata(region, flags)
-    assert etcdata == exp
+    assert etcdata == exp_etcdata
     assert coding.etcdata_to_region(etcdata) == (region, flags)

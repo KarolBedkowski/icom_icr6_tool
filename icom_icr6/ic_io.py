@@ -423,8 +423,9 @@ class Radio:
                         self._send_abort(s)
                         raise AbortError
 
-        etcdata = coding.region_to_etcdata(model.region, model.etcdata_flags)
-        mem.file_etcdata = f"{etcdata:04X}"
+        mem.file_etcdata = coding.region_to_etcdata(
+            model.region, model.etcdata_flags
+        )
 
         return mem
 

@@ -55,7 +55,7 @@ class _CloneDialog(simpledialog.Dialog):
         self._working = False
         self._bg_task_queue: queue.Queue[_Result] = queue.Queue()
         self._bg_task: _CloneTask | None = None
-        self._expected_etcdata = int(expected_etcdata or "0", 16)
+        self._expected_etcdata = expected_etcdata
         super().__init__(parent, title)
 
     def body(self, master: tk.Widget) -> None:
