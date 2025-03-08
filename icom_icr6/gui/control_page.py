@@ -8,9 +8,9 @@ import logging
 import tkinter as tk
 import typing as ty
 from pathlib import Path
-from tkinter import ttk
+from tkinter import messagebox, ttk
 
-from icom_icr6 import config, consts, ic_io, model
+from icom_icr6 import config, consts, fixers, ic_io, model
 from icom_icr6.change_manager import ChangeManeger
 from icom_icr6.radio_memory import RadioMemory
 
@@ -51,6 +51,8 @@ class ControlPage(tk.Frame):
         self._var_label_volume.set("xxxxx")
         self._var_label_squelch = tk.StringVar()
         self._var_label_squelch.set("xxxxxx")
+        self._var_step = tk.StringVar()
+        self._var_step.set("10")
 
     def _create_body(self) -> None:
         # antenna
@@ -64,6 +66,9 @@ class ControlPage(tk.Frame):
             side=tk.TOP, fill=tk.X, padx=12, pady=12
         )
         self._create_body_freq(frame).pack(
+            side=tk.TOP, fill=tk.X, padx=12, pady=12
+        )
+        self._create_body_freq_change(frame).pack(
             side=tk.TOP, fill=tk.X, padx=12, pady=12
         )
         self._create_body_mode(frame).pack(
@@ -96,6 +101,16 @@ class ControlPage(tk.Frame):
             textvariable=self._var_port,
         ).pack(side=tk.LEFT, expand=True, padx=6, pady=6)
 
+        self._btn_refresh = ttk.Button(
+            frame,
+            text="Refresh",
+            width=10,
+            command=self._on_refresh_button,
+            default=tk.ACTIVE,
+            state="disabled",
+        )
+        self._btn_refresh.pack(side=tk.RIGHT, padx=5, pady=5)
+
         self._btn_connect = ttk.Button(
             frame,
             text="Connect",
@@ -114,6 +129,37 @@ class ControlPage(tk.Frame):
 
         freq = ttk.Entry(frame, textvariable=self._var_freq)
         freq.pack(side=tk.LEFT, padx=12, pady=6)
+
+        return frame
+
+    def _create_body_freq_change(self, parent: tk.Frame) -> tk.Frame:
+        frame = tk.Frame(parent)
+
+        ttk.Label(frame, text="Step: ").pack(side=tk.LEFT)
+
+        ttk.Combobox(
+            frame,
+            textvariable=self._var_step,
+            exportselection=False,
+            state="readonly",
+            values=consts.STEPS[:-2],
+        ).pack(side=tk.LEFT, padx=6, expand=False)
+
+        ttk.Button(
+            frame,
+            text="Down",
+            width=10,
+            command=self._on_freq_down,
+            default=tk.ACTIVE,
+        ).pack(side=tk.RIGHT, padx=5, pady=5)
+
+        ttk.Button(
+            frame,
+            text="Up",
+            width=10,
+            command=self._on_freq_up,
+            default=tk.ACTIVE,
+        ).pack(side=tk.RIGHT, padx=5, pady=5)
 
         return frame
 
@@ -224,14 +270,34 @@ class ControlPage(tk.Frame):
         )
 
     def _on_connect_button(self) -> None:
-        self._radio = ic_io.Radio(self._var_port.get())
-        self._commands = ic_io.Commands(self._radio)
+        if self._radio:
+            # connected; disconnect
+            self._radio = None
+            self._commands = None
+            self._btn_connect["text"] = "Connect"
+            self._btn_refresh["state"] = "disabled"
+            return
+
+        try:
+            self._radio = ic_io.Radio(self._var_port.get())
+            self._commands = ic_io.DummyCommands(self._radio)
+            self._load_data()
+        except Exception as err:
+            messagebox.showerror("Connect error", f"Error: {err}")
+            self._radio = None
+            self._commands = None
+            return
+
+        self._btn_refresh["state"] = "normal"
+        self._btn_connect["text"] = "Disconnect"
+
+    def _on_refresh_button(self) -> None:
         self._load_data()
 
     def _on_set_freq(self, _var: str, _idx: str, _op: str) -> None:
         if self._commands:
             freq = model.fmt.parse_freq(self._var_freq.get())
-            _LOG.debug("freq: %r", freq)
+            freq = fixers.fix_frequency(freq)
             self._commands.set_frequency(freq)
 
     def _on_set_mode(self) -> None:
@@ -263,3 +329,24 @@ class ControlPage(tk.Frame):
         self._var_label_volume.set(str(volume))
         if self._commands:
             self._commands.set_squelch(volume)
+
+    def _on_freq_down(self) -> None:
+        self._change_freq(-1)
+
+    def _on_freq_up(self) -> None:
+        self._change_freq(1)
+
+    def _change_freq(self, direction: int) -> None:
+        if not self._commands:
+            return
+
+        step = consts.STEPS_KHZ[consts.STEPS.index(self._var_step.get())]
+        if direction < 0:
+            step *= -1
+
+        freq = model.fmt.parse_freq(self._var_freq.get())
+        freq = int(freq + step)
+        freq = fixers.fix_frequency(freq)
+        self._commands.set_frequency(freq)
+        # TODO: read from radio ?
+        self._var_freq.set(model.fmt.format_freq(freq))
