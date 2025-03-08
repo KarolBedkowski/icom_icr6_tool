@@ -750,9 +750,7 @@ class Commands:
     def get_frequency(self) -> int:
         """Read operating frequency"""
         res = self._sent_get(3)
-        return decode_freq(res.payload)
-
-        raise RuntimeError
+        return coding.civ_decode_freq(res.payload)
 
     def get_mode(self) -> int:
         res = self._sent_get(4)
@@ -776,11 +774,21 @@ class Commands:
 
     def get_volume(self) -> int:
         res = self._sent_get(0x14, b"\x01")
-        return decode_volume(res.payload[1:])
+        v = coding.civ_decode_dec_bytes(res.payload[1:])
+        for idx, value in enumerate(consts.MONITOR_VOLUME_STEPS):
+            if v <= value:
+                return idx
+
+        raise ValueError
 
     def get_squelch(self) -> int:
         res = self._sent_get(0x14, b"\x03")
-        return decode_squelch(res.payload[1:])
+        v = coding.civ_decode_dec_bytes(res.payload[1:])
+        for idx, value in enumerate(consts.MONITOR_SQUELCH_STEPS):
+            if v <= value:
+                return idx
+
+        raise ValueError
 
     def get_squelch_status(self) -> bool:
         res = self._sent_get(0x15, b"\x01")
@@ -788,7 +796,12 @@ class Commands:
 
     def get_smeter(self) -> int:
         res = self._sent_get(0x15, b"\x02")
-        return decode_smeter(res.payload[1:])
+        v = coding.civ_decode_dec_bytes(res.payload[1:])
+        for idx, value in enumerate(consts.MONITOR_SMETER_STEPS):
+            if v <= value:
+                return idx
+
+        raise ValueError
 
     def get_tone_mode(self) -> int:
         # read the tone squelch setting
@@ -862,45 +875,3 @@ class Commands:
             return res
 
         raise RuntimeError
-
-
-def decode_freq(inp: bytes) -> int:
-    return (
-        (inp[4] >> 4) * 1_000_000_000
-        + (inp[4] & 0x0F) * 100_000_000
-        + (inp[3] >> 4) * 10_000_000
-        + (inp[3] & 0x0F) * 1_000_000
-        + (inp[2] >> 4) * 100_000
-        + (inp[2] & 0x0F) * 10_000
-        + (inp[1] >> 4) * 1_000
-        + (inp[1] & 0x0F) * 100
-        + (inp[0] >> 4) * 10
-        + (inp[0] & 0x0F)
-    )
-
-
-def decode_volume(volume: bytes) -> int:
-    v = volume[0] * 100 + (volume[1] >> 4) * 10 + (volume[1] & 0xF)
-    for idx, value in enumerate(consts.MONITOR_VOLUME_STEPS):
-        if v <= value:
-            return idx
-
-    raise ValueError
-
-
-def decode_squelch(squelch: bytes) -> int:
-    v = squelch[0] * 100 + (squelch[1] >> 4) * 10 + (squelch[1] & 0xF)
-    for idx, value in enumerate(consts.MONITOR_SQUELCH_STEPS):
-        if v <= value:
-            return idx
-
-    raise ValueError
-
-
-def decode_smeter(data: bytes) -> int:
-    v = data[0] * 100 + (data[1] >> 4) * 10 + (data[1] & 0xF)
-    for idx, value in enumerate(consts.MONITOR_SMETER_STEPS):
-        if v <= value:
-            return idx
-
-    raise ValueError

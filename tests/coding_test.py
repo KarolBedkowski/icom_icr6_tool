@@ -333,3 +333,28 @@ def test_etcdata_from_region(region, flags, exp):
     etcdata = coding.region_to_etcdata(region, flags)
     assert etcdata == exp_etcdata
     assert coding.etcdata_to_region(etcdata) == (region, flags)
+
+
+@pytest.mark.parametrize(
+    ("inp", "exp"),
+    [
+        ("0127", 127),
+        ("0034", 34),
+        ("0009", 9),
+        ("3242", 3242),
+        ("3010", 3010),
+    ],
+)
+def test_civ_decode_dec_bytes(inp, exp):
+    assert coding.civ_decode_dec_bytes(bytes.fromhex(inp)) == exp
+
+
+@pytest.mark.parametrize(
+    ("inp", "exp"),
+    [
+        ("1234567890", 9078563412),
+        ("0987654321", 2143658709),
+    ],
+)
+def test_civ_decode_freq(inp, exp):
+    assert coding.civ_decode_freq(bytes.fromhex(inp)) == exp
