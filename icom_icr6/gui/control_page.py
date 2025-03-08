@@ -8,14 +8,13 @@ import logging
 import tkinter as tk
 import typing as ty
 from pathlib import Path
-from tkinter import messagebox, ttk
+from tkinter import ttk
 
-from icom_icr6 import config, consts, expimp, fixers, ic_io, model
+from icom_icr6 import config, consts, ic_io, model
 from icom_icr6.change_manager import ChangeManeger
 from icom_icr6.radio_memory import RadioMemory
 
-from . import gui_model, scanedges_list
-
+_ = ty
 _LOG = logging.getLogger(__name__)
 
 

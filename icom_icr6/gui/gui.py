@@ -80,7 +80,7 @@ class App(tk.Frame):
             self._nb_scan_links,
             self._nb_aw_channels,
             self._nb_settings,
-            self._nb_controll,
+            self._nb_control,
         )
 
         self._ntb.pack(fill="both", expand=True)
@@ -254,10 +254,8 @@ class App(tk.Frame):
         return self._nb_settings
 
     def _create_nb_control(self) -> tk.Widget:
-        self._nb_controll = control_page.ControlPage(
-            self, self._change_manager
-        )
-        return self._nb_controll
+        self._nb_control = control_page.ControlPage(self, self._change_manager)
+        return self._nb_control
 
     # menu callbacks
 
