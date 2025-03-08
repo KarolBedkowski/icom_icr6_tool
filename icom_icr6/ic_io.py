@@ -933,3 +933,107 @@ class Commands:
             return res
 
         raise RuntimeError
+
+
+class DummyCommands(Commands):
+    def __init__(self, radio: Radio) -> None:
+        super().__init__(radio)
+        self._freq = 123456000
+        self._mode = 0
+        self._att = False
+        self._antenna = 0
+        self._volume = 0
+        self._squelch = 0
+        self._tone_mode = 0
+        self._vcs = False
+        self._affilter = False
+        self._tone_freq = 0
+        self._dtcs = (0, 0)
+
+    def get_frequency(self) -> int:
+        """Read operating frequency"""
+        return self._freq
+
+    def set_frequency(self, freq: int) -> None:
+        _LOG.info("set_frequency=%r", freq)
+        self._freq = freq
+
+    def get_mode(self) -> int:
+        return self._mode
+
+    def set_mode(self, mode: int) -> None:
+        self._mode = mode
+        _LOG.info("set_mode=%r", mode)
+
+    def get_attenuator(self) -> bool:
+        return self._att
+
+    def set_attenuator(self, att: bool) -> None:  # noqa: FBT001
+        _LOG.info("set_attenuator=%r", att)
+        self._att = att
+
+    def get_antenna(self) -> int:
+        return self._antenna
+
+    def set_antenna(self, antenna: int) -> None:
+        _LOG.info("set_antenna", antenna)
+        self._antenna = antenna
+
+    def get_volume(self) -> int:
+        return self._volume
+
+    def set_volume(self, volume: int) -> None:
+        _LOG.info("set_volume", volume)
+        self._volume = volume
+
+    def get_squelch(self) -> int:
+        return self._squelch
+
+    def set_squelch(self, squelch: int) -> None:
+        _LOG.info("set_squelch=%r", squelch)
+        self._squelch = squelch
+
+    def get_squelch_status(self) -> bool:
+        return True
+
+    def get_smeter(self) -> int:
+        return 10
+
+    def get_tone_mode(self) -> int:
+        return self._tone_mode
+
+    def set_tone_mode(self, mode: int) -> None:
+        _LOG.info("set_tone_mode=%r", mode)
+        self._tone_mode = mode
+
+    def get_vcs(self) -> bool:
+        return self._vcs
+
+    def set_vcs(self, vcs: bool) -> None:  # noqa: FBT001
+        _LOG.info("set_vcs=%r", vcs)
+        self._vcs = vcs
+
+    def get_receiver_id(self) -> str:
+        return "fe"
+
+    def get_affilter(self) -> bool:
+        return self._affilter
+
+    def set_affilter(self, af: bool) -> None:  # noqa: FBT001
+        _LOG.info("set_affilter=%r", af)
+        self._affilter = af
+
+    def get_tone_freq(self) -> int:
+        """freq * 10"""
+        return self._tone_freq
+
+    def set_tone_freq(self, tone_freq: int) -> None:
+        _LOG.info("set_tone_freq=%r", tone_freq)
+
+    def get_dtcs(self) -> tuple[int, int]:
+        """Return polarity, code"""
+        return self._dtcs
+
+    def set_dtsc(self, polarity: int, code: int) -> None:
+        _LOG.info("set_dtsc=%r/%r", polarity, code)
+        self._dtcs = (polarity, code)
