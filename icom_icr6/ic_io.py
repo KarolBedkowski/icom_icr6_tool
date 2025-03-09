@@ -980,14 +980,14 @@ class DummyCommands(Commands):
         return self._antenna
 
     def set_antenna(self, antenna: int) -> None:
-        _LOG.info("set_antenna", antenna)
+        _LOG.info("set_antenna=%r", antenna)
         self._antenna = antenna
 
     def get_volume(self) -> int:
         return self._volume
 
     def set_volume(self, volume: int) -> None:
-        _LOG.info("set_volume", volume)
+        _LOG.info("set_volume=%r", volume)
         self._volume = volume
 
     def get_squelch(self) -> int:
