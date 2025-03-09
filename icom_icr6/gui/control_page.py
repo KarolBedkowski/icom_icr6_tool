@@ -1,8 +1,9 @@
 # Copyright © 2024 Karol Będkowski <Karol Będkowski@kkomp>
 #
 # Distributed under terms of the GPLv3 license.
-
 """ """
+
+from __future__ import annotations
 
 import logging
 import tkinter as tk
@@ -11,11 +12,35 @@ from pathlib import Path
 from tkinter import font, messagebox, ttk
 
 from icom_icr6 import config, consts, fixers, ic_io, model
-from icom_icr6.change_manager import ChangeManeger
-from icom_icr6.radio_memory import RadioMemory
+
+if ty.TYPE_CHECKING:
+    from icom_icr6.change_manager import ChangeManeger
+    from icom_icr6.radio_memory import RadioMemory
 
 _ = ty
 _LOG = logging.getLogger(__name__)
+
+
+T = ty.Callable[..., None]
+
+
+def action_decor(method: T) -> T:
+    """Action decorator that handle error and execute decorated function
+    only when connection exists and not busy."""
+
+    def func(self: ControlPage, *args: object, **kwargs: object) -> None:
+        _LOG.debug("call %r(%r, %r) error", method, args, kwargs)
+
+        if not self._commands or self._busy:
+            return
+
+        try:
+            method(self, *args, **kwargs)
+        except Exception as err:
+            _LOG.exception("call %r(%r, %r) error", method, args, kwargs)
+            messagebox.showerror("Connection error", f"Error: {err}")
+
+    return func
 
 
 class ControlPage(tk.Frame):
@@ -467,46 +492,52 @@ class ControlPage(tk.Frame):
         self._var_freq.set(model.fmt.format_freq(channel.freq))
         self._var_mode.set(consts.MODES[channel.mode])
 
+    @action_decor
     def _on_set_freq(self, _var: str, _idx: str, _op: str) -> None:
-        if self._commands and not self._busy:
-            freq = model.fmt.parse_freq(self._var_freq.get())
-            freq = fixers.fix_frequency(freq)
-            self._commands.set_frequency(freq)
+        assert self._commands
+        freq = model.fmt.parse_freq(self._var_freq.get())
+        freq = fixers.fix_frequency(freq)
+        self._commands.set_frequency(freq)
 
+    @action_decor
     def _on_set_mode(self) -> None:
-        if self._commands and not self._busy:
-            mode = self._var_mode.get()
-            mode_id = consts.MODES.index(mode)
-            self._commands.set_mode(mode_id)
+        assert self._commands
+        mode = self._var_mode.get()
+        mode_id = consts.MODES.index(mode)
+        self._commands.set_mode(mode_id)
 
+    @action_decor
     def _on_set_affilter(self) -> None:
-        if self._commands and not self._busy:
-            self._commands.set_affilter(self._var_affilter.get() == 1)
+        assert self._commands
+        self._commands.set_affilter(self._var_affilter.get() == 1)
 
+    @action_decor
     def _on_set_attenuator(self) -> None:
-        if self._commands and not self._busy:
-            self._commands.set_attenuator(self._var_attenuator.get() == 1)
+        assert self._commands
+        self._commands.set_attenuator(self._var_attenuator.get() == 1)
 
+    @action_decor
     def _on_set_vcs(self) -> None:
-        if self._commands and not self._busy:
-            self._commands.set_vcs(self._var_vcs.get() == 1)
+        assert self._commands
+        self._commands.set_vcs(self._var_vcs.get() == 1)
 
+    @action_decor
     def _on_set_squelch(self, _arg: str) -> None:
+        assert self._commands
         sql = self._var_squelch.get()
         self._var_label_squelch.set(consts.MONITOR_SQUELCH_LEVEL[sql])
-        if self._commands and not self._busy:
-            self._commands.set_squelch(sql)
+        self._commands.set_squelch(sql)
 
+    @action_decor
     def _on_set_volume(self, _arg: str) -> None:
+        assert self._commands
         volume = self._var_volume.get()
         self._var_label_volume.set(str(volume))
-        if self._commands and not self._busy:
-            self._commands.set_volume(volume)
+        self._commands.set_volume(volume)
 
+    @action_decor
     def _on_change_tone(self) -> None:
-        if not self._commands or self._busy:
-            return
-
+        assert self._commands
         tone = consts.TONE_MODES.index(self._var_tone.get())
         self._commands.set_tone_mode(tone)
         match tone:
@@ -525,9 +556,9 @@ class ControlPage(tk.Frame):
     def _on_freq_up(self) -> None:
         self._change_freq(1)
 
+    @action_decor
     def _change_freq(self, direction: int) -> None:
-        if not self._commands or self._busy:
-            return
+        assert self._commands
 
         step = consts.STEPS_KHZ[consts.STEPS.index(self._var_step.get())]
         if direction < 0:
@@ -536,8 +567,6 @@ class ControlPage(tk.Frame):
         freq = model.fmt.parse_freq(self._var_freq.get())
         freq = int(freq + step)
         freq = fixers.fix_frequency(freq)
-        self._commands.set_frequency(freq)
-        # TODO: read from radio ?
         self._var_freq.set(model.fmt.format_freq(freq))
 
     def _set_frame_state(self, frame: tk.Widget, state: str) -> None:
