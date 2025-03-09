@@ -10,7 +10,7 @@ import typing as ty
 from pathlib import Path
 from tkinter import font, messagebox, ttk
 
-from icom_icr6 import config, consts, fixers, ic_io, model, validators
+from icom_icr6 import config, consts, fixers, ic_io, model
 from icom_icr6.change_manager import ChangeManeger
 from icom_icr6.radio_memory import RadioMemory
 
@@ -24,8 +24,11 @@ class ControlPage(tk.Frame):
         self._change_manager = cm
         self._radio: ic_io.Radio | None = None
         self._commands: ic_io.Commands | None = None
+        self._busy = False
         self._create_vars()
+        self._frames: list[tk.Widget] = []
         self._create_body()
+        self._set_frames_state("disabled")
 
     def update_tab(self) -> None:
         pass
@@ -69,21 +72,17 @@ class ControlPage(tk.Frame):
         self._create_body_port(frame).pack(
             side=tk.TOP, fill=tk.X, padx=12, pady=12
         )
-        self._create_body_freq(frame).pack(
-            side=tk.TOP, fill=tk.X, padx=12, pady=12
-        )
-        self._create_body_mode(frame).pack(
-            side=tk.TOP, fill=tk.X, padx=12, pady=12
-        )
-        self._create_body_opt(frame).pack(
-            side=tk.TOP, fill=tk.X, padx=12, pady=12
-        )
-        self._create_body_vol(frame).pack(
-            side=tk.TOP, fill=tk.X, padx=12, pady=12
-        )
-        self._create_body_tone(frame).pack(
-            side=tk.TOP, fill=tk.X, padx=12, pady=12
-        )
+
+        self._frames = [
+            self._create_body_freq(frame),
+            self._create_body_mode(frame),
+            self._create_body_opt(frame),
+            self._create_body_vol(frame),
+            self._create_body_tone(frame),
+        ]
+
+        for f in self._frames:
+            f.pack(side=tk.TOP, fill=tk.X, padx=12, pady=12)
 
         frame.pack()
 
@@ -308,12 +307,14 @@ class ControlPage(tk.Frame):
         return frame
 
     def _load_data(self) -> None:
+        _LOG.debug("_load_data")
         if not self._commands:
             return
 
         status = self._commands.get_status()
         _LOG.debug("status: %r", status)
         if not status:
+            self._busy = False
             return
 
         self._var_freq.set(model.fmt.format_freq(status.frequency))
@@ -334,68 +335,91 @@ class ControlPage(tk.Frame):
         self._var_polarity.set(status.dtcs_polarity)
 
     def _on_connect_button(self) -> None:
+        if self._busy:
+            return
+
         if self._radio:
             # connected; disconnect
             self._radio = None
             self._commands = None
             self._btn_connect["text"] = "Connect"
             self._btn_refresh["state"] = "disabled"
+            self._set_frames_state("disabled")
             return
 
+        self._busy = True
+        port = self._var_port.get()
         try:
-            self._radio = ic_io.Radio(self._var_port.get())
-            self._commands = ic_io.DummyCommands(self._radio)
+            self._radio = ic_io.Radio(port)
+            self._commands = (
+                ic_io.Commands(self._radio)
+                if port
+                else ic_io.DummyCommands(self._radio)
+            )
             self._load_data()
         except Exception as err:
-            messagebox.showerror("Connect error", f"Error: {err}")
             self._radio = None
             self._commands = None
+            self._set_frames_state("disabled")
+            messagebox.showerror("Connect error", f"Error: {err}")
+            self._busy = False
             return
 
         self._btn_refresh["state"] = "normal"
         self._btn_connect["text"] = "Disconnect"
+        self._set_frames_state("normal")
+        self._busy = False
 
     def _on_refresh_button(self) -> None:
-        self._load_data()
+        if self._busy:
+            return
+
+        self._busy = True
+        try:
+            self._load_data()
+        except Exception:
+            _LOG.exception("_on_refresh_button load data error")
+
+        self._busy = False
 
     def _on_set_freq(self, _var: str, _idx: str, _op: str) -> None:
-        if self._commands:
+        if self._commands and not self._busy:
             freq = model.fmt.parse_freq(self._var_freq.get())
             freq = fixers.fix_frequency(freq)
             self._commands.set_frequency(freq)
 
     def _on_set_mode(self) -> None:
-        if self._commands:
+        if self._commands and not self._busy:
             mode = self._var_mode.get()
             mode_id = consts.MODES.index(mode)
             self._commands.set_mode(mode_id)
 
     def _on_set_affilter(self) -> None:
-        if self._commands:
+        if self._commands and not self._busy:
             self._commands.set_affilter(self._var_affilter.get() == 1)
 
     def _on_set_attenuator(self) -> None:
-        if self._commands:
+        if self._commands and not self._busy:
             self._commands.set_attenuator(self._var_attenuator.get() == 1)
 
     def _on_set_vcs(self) -> None:
-        if self._commands:
+        if self._commands and not self._busy:
             self._commands.set_vcs(self._var_vcs.get() == 1)
 
     def _on_set_squelch(self, _arg: str) -> None:
         sql = self._var_squelch.get()
         self._var_label_squelch.set(consts.MONITOR_SQUELCH_LEVEL[sql])
-        if self._commands:
+        if self._commands and not self._busy:
             self._commands.set_squelch(sql)
 
     def _on_set_volume(self, _arg: str) -> None:
         volume = self._var_volume.get()
         self._var_label_volume.set(str(volume))
-        if self._commands:
-            self._commands.set_squelch(volume)
+        if self._commands and not self._busy:
+            self._commands.set_volume(volume)
 
     def _on_change_tone(self) -> None:
-        if not self._commands:
+        if not self._commands or self._busy:
             return
 
         tone = consts.TONE_MODES.index(self._var_tone.get())
@@ -417,7 +441,7 @@ class ControlPage(tk.Frame):
         self._change_freq(1)
 
     def _change_freq(self, direction: int) -> None:
-        if not self._commands:
+        if not self._commands or self._busy:
             return
 
         step = consts.STEPS_KHZ[consts.STEPS.index(self._var_step.get())]
@@ -431,8 +455,33 @@ class ControlPage(tk.Frame):
         # TODO: read from radio ?
         self._var_freq.set(model.fmt.format_freq(freq))
 
+    def _set_frame_state(self, frame: tk.Widget, state: str) -> None:
+        for widget in frame.children.values():
+            if isinstance(widget, ttk.Combobox):
+                widget["state"] = "readonly" if state == "normal" else state
+            elif isinstance(
+                widget,
+                (
+                    ttk.Entry,
+                    ttk.Radiobutton,
+                    ttk.Scale,
+                    ttk.Checkbutton,
+                    ttk.Button,
+                ),
+            ):
+                widget["state"] = state
+            elif isinstance(widget, (tk.Frame, ttk.LabelFrame)):
+                self._set_frame_state(widget, state)
+
+    def _set_frames_state(self, state: str) -> None:
+        for frame in self._frames:
+            self._set_frame_state(frame, state)
+
 
 def validate_freq(freq: str) -> bool:
+    if not freq:
+        return False
+
     try:
         nfreq = model.fmt.parse_freq(freq)
 
