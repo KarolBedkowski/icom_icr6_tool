@@ -290,7 +290,6 @@ class Radio:
         if len(data) < 5:  # noqa: PLR2004
             return None
 
-        # ic(data)
         return Frame(cmd=data[4], payload=data[5:-1], src=data[3], dst=data[2])
 
     def _start_clone(self, s: Serial, cmd: int) -> None:
@@ -701,3 +700,344 @@ def save_file(file: Path, mem: radio_memory.RadioMemory) -> None:
         return
 
     save_icf_file(file, mem)
+
+
+@dataclass
+class RadioStatus:
+    frequency: int
+    mode: int
+    attenuator: bool
+    affilter: bool
+    antenna: int
+    volume: int
+    squelch: int
+    squelch_status: bool
+    smeter: int
+    tone_mode: int
+    vsc: bool
+    receiver_id: str
+    tone: int
+    dtcs_code: int
+    dtcs_polarity: int
+
+
+class Commands:
+    def __init__(self, radio: Radio) -> None:
+        self.radio = radio
+
+    def get_status(self) -> RadioStatus:
+        dtcs_polarity, dtcs_code = self.get_dtcs()
+        return RadioStatus(
+            frequency=self.get_frequency(),
+            mode=self.get_mode(),
+            attenuator=self.get_attenuator(),
+            affilter=self.get_affilter(),
+            antenna=self.get_antenna(),
+            volume=self.get_volume(),
+            squelch=self.get_squelch(),
+            squelch_status=self.get_squelch_status(),
+            smeter=self.get_smeter(),
+            tone_mode=self.get_tone_mode(),
+            vsc=self.get_vsc(),
+            receiver_id=self.get_receiver_id(),
+            tone=self.get_tone_freq(),
+            dtcs_code=dtcs_code,
+            dtcs_polarity=dtcs_polarity,
+        )
+
+    def get_frequency(self) -> int:
+        """Read operating frequency"""
+        res = self._sent_get(3)
+        return coding.civ_decode_freq(res.payload)
+
+    def set_frequency(self, freq: int) -> None:
+        # TODO: validate
+        data = coding.civ_encode_freq(freq)
+        res = self._sent_get(0x05, data)
+        _LOG.debug("res=%r", res)
+
+    def get_mode(self) -> int:
+        res = self._sent_get(4)
+        match res.payload[0]:
+            case 0x2:
+                return 2
+            case 0x5:
+                return 0
+            case 0x6:
+                return 1
+
+        raise RuntimeError
+
+    def set_mode(self, mode: int) -> None:
+        data = [0x5, 0x6, 0x2][mode]
+        res = self._sent_get(0x06, bytes([data]))
+        _LOG.debug("res=%r", res)
+
+    def get_attenuator(self) -> bool:
+        res = self._sent_get(0x11)
+        return res.payload[0] == 0x10  # noqa: PLR2004
+
+    def set_attenuator(self, att: bool) -> None:  # noqa: FBT001
+        res = self._sent_get(0x11, b"\x10" if att else b"\x00")
+        _LOG.debug("set_attenuator: att=%r, res=%r", att, res)
+
+    def get_antenna(self) -> int:
+        res = self._sent_get(0x12)
+        return res.payload[0]
+
+    def set_antenna(self, antenna: int) -> None:
+        res = self._sent_get(0x12, b"\x01" if antenna else b"\x00")
+        _LOG.debug("res=%r", res)
+
+    def get_volume(self) -> int:
+        res = self._sent_get(0x14, b"\x01")
+        v = coding.civ_decode_dec_bytes(res.payload[1:])
+        for idx, value in enumerate(consts.MONITOR_VOLUME_STEPS):
+            if v <= value:
+                return idx
+
+        raise ValueError
+
+    def set_volume(self, volume: int) -> None:
+        vol = consts.MONITOR_VOLUME_STEPS[volume]
+        res = self._sent_get(0x14, bytes([0x01, vol]))
+        _LOG.debug("res=%r", res)
+
+    def get_squelch(self) -> int:
+        res = self._sent_get(0x14, b"\x03")
+        v = coding.civ_decode_dec_bytes(res.payload[1:])
+        for idx, value in enumerate(consts.MONITOR_SQUELCH_STEPS):
+            if v <= value:
+                return idx
+
+        raise ValueError
+
+    def set_squelch(self, squelch: int) -> None:
+        val = consts.MONITOR_SQUELCH_STEPS[squelch]
+        res = self._sent_get(0x14, bytes([0x03, val]))
+        _LOG.debug("res=%r", res)
+
+    def get_squelch_status(self) -> bool:
+        res = self._sent_get(0x15, b"\x01")
+        return res.payload[1] == 0x01
+
+    def get_smeter(self) -> int:
+        res = self._sent_get(0x15, b"\x02")
+        v = coding.civ_decode_dec_bytes(res.payload[1:])
+        for idx, value in enumerate(consts.MONITOR_SMETER_STEPS):
+            if v <= value:
+                return idx
+
+        raise ValueError
+
+    def get_tone_mode(self) -> int:
+        # read the tone squelch setting
+        res = self._sent_get(0x16, b"\x43")
+        match res.payload[1]:
+            case 0x01:
+                return 1
+            case 0x02:
+                return 2
+
+        # read the DTCS squelch setting
+        res = self._sent_get(0x16, b"\x4b")
+        match res.payload[1]:
+            case 0x01:
+                return 3
+            case 0x02:
+                return 4
+            case 0:
+                return 0
+
+        raise ValueError
+
+    def set_tone_mode(self, mode: int) -> None:
+        match mode:
+            case 0:
+                res = self._sent_get(0x16, b"\x43\x00")
+                res = self._sent_get(0x16, b"\x4b\x00")
+            case 1:
+                res = self._sent_get(0x16, b"\x43\x01")
+            case 2:
+                res = self._sent_get(0x16, b"\x43\x02")
+            case 3:
+                res = self._sent_get(0x16, b"\x4b\x01")
+            case 4:
+                res = self._sent_get(0x16, b"\x4b\x02")
+            case _:
+                raise ValueError
+
+        _LOG.debug("res=%r", res)
+
+    def get_vsc(self) -> bool:
+        res = self._sent_get(0x16, b"\x4c")
+        return res.payload[1] == 0x01
+
+    def set_vsc(self, vsc: bool) -> None:  # noqa: FBT001
+        res = self._sent_get(0x16, b"\x4c\x01" if vsc else b"\x4c\x00")
+        _LOG.debug("res=%r", res)
+
+    def get_receiver_id(self) -> str:
+        res = self._sent_get(0x19, b"\x00")
+        return hex(res.payload[1])
+
+    def get_affilter(self) -> bool:
+        res = self._sent_get(0x1A, b"\x00")
+        return res.payload[1] == 0x01
+
+    def set_affilter(self, af: bool) -> None:  # noqa: FBT001
+        res = self._sent_get(0x1A, b"\x00\x01" if af else b"\x00\x00")
+        _LOG.debug("res=%r", res)
+
+    def get_tone_freq(self) -> int:
+        """freq * 10"""
+        res = self._sent_get(0x1B, b"\x01")
+        return coding.civ_decode_dec_bytes(res.payload[2:])
+
+    def set_tone_freq(self, tone_freq: int) -> None:
+        data = coding.civ_encode_dec_bytes(tone_freq)
+        res = self._sent_get(0x1B, b"\x01" + data)
+        _LOG.debug("res=%r", res)
+
+    def get_dtcs(self) -> tuple[int, int]:
+        """Return polarity, code"""
+        res = self._sent_get(0x1B, b"\x02")
+        f = res.payload[1:]
+        return (f[0], coding.civ_decode_dec_bytes(f[1:]))
+
+    def set_dtsc(self, polarity: int, code: int) -> None:
+        pol = b"\x01" if polarity else b"\x00"
+        data = coding.civ_encode_dec_bytes(code)
+        res = self._sent_get(0x1B, b"\x02" + pol + data)
+        _LOG.debug("res=%r", res)
+
+    def monitor(self) -> ty.Iterator[RadioStatus]:
+        step = 0
+        while True:
+            if step % 10 == 0:
+                status = self.get_status()
+            else:
+                status.smeter = self.get_smeter()
+
+            yield status
+            step += 1
+
+    def _sent_get(self, cmd: int, payload: bytes = b"") -> Frame:
+        for res in self.radio.write_read(cmd, payload):
+            _LOG.debug(
+                "_sent_get: cmd=%r, payload=%r, res=%r", cmd, payload, res
+            )
+
+            if res.src == ADDR_PC:
+                continue
+
+            if res.cmd in (0xFE, 0):
+                raise ValueError
+
+            return res
+
+        raise RuntimeError
+
+
+class DummyCommands(Commands):
+    def __init__(self, radio: Radio) -> None:
+        super().__init__(radio)
+        self._freq = 123450000
+        self._mode = 0
+        self._att = False
+        self._antenna = 0
+        self._volume = 0
+        self._squelch = 0
+        self._tone_mode = 0
+        self._vsc = False
+        self._affilter = False
+        self._tone_freq = 1413
+        self._dtcs = (0, 454)
+
+    def get_frequency(self) -> int:
+        """Read operating frequency"""
+        return self._freq
+
+    def set_frequency(self, freq: int) -> None:
+        _LOG.info("set_frequency=%r", freq)
+        self._freq = freq
+
+    def get_mode(self) -> int:
+        return self._mode
+
+    def set_mode(self, mode: int) -> None:
+        self._mode = mode
+        _LOG.info("set_mode=%r", mode)
+
+    def get_attenuator(self) -> bool:
+        return self._att
+
+    def set_attenuator(self, att: bool) -> None:  # noqa: FBT001
+        _LOG.info("set_attenuator=%r", att)
+        self._att = att
+
+    def get_antenna(self) -> int:
+        return self._antenna
+
+    def set_antenna(self, antenna: int) -> None:
+        _LOG.info("set_antenna=%r", antenna)
+        self._antenna = antenna
+
+    def get_volume(self) -> int:
+        return self._volume
+
+    def set_volume(self, volume: int) -> None:
+        _LOG.info("set_volume=%r", volume)
+        self._volume = volume
+
+    def get_squelch(self) -> int:
+        return self._squelch
+
+    def set_squelch(self, squelch: int) -> None:
+        _LOG.info("set_squelch=%r", squelch)
+        self._squelch = squelch
+
+    def get_squelch_status(self) -> bool:
+        return True
+
+    def get_smeter(self) -> int:
+        return 10
+
+    def get_tone_mode(self) -> int:
+        return self._tone_mode
+
+    def set_tone_mode(self, mode: int) -> None:
+        _LOG.info("set_tone_mode=%r", mode)
+        self._tone_mode = mode
+
+    def get_vsc(self) -> bool:
+        return self._vsc
+
+    def set_vsc(self, vsc: bool) -> None:  # noqa: FBT001
+        _LOG.info("set_vsc=%r", vsc)
+        self._vsc = vsc
+
+    def get_receiver_id(self) -> str:
+        return "fe"
+
+    def get_affilter(self) -> bool:
+        return self._affilter
+
+    def set_affilter(self, af: bool) -> None:  # noqa: FBT001
+        _LOG.info("set_affilter=%r", af)
+        self._affilter = af
+
+    def get_tone_freq(self) -> int:
+        """freq * 10"""
+        return self._tone_freq
+
+    def set_tone_freq(self, tone_freq: int) -> None:
+        _LOG.info("set_tone_freq=%r", tone_freq)
+
+    def get_dtcs(self) -> tuple[int, int]:
+        """Return polarity, code"""
+        return self._dtcs
+
+    def set_dtsc(self, polarity: int, code: int) -> None:
+        _LOG.info("set_dtsc=%r/%r", polarity, code)
+        self._dtcs = (polarity, code)

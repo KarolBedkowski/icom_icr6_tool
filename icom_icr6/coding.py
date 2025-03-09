@@ -219,3 +219,48 @@ def region_to_etcdata(region: int, flags: int) -> str:
         | (cs & 1)
     )
     return f"{etcdata:04X}"
+
+
+def civ_decode_freq(inp: bytes) -> int:
+    return (
+        (inp[4] >> 4) * 1_000_000_000
+        + (inp[4] & 0x0F) * 100_000_000
+        + (inp[3] >> 4) * 10_000_000
+        + (inp[3] & 0x0F) * 1_000_000
+        + (inp[2] >> 4) * 100_000
+        + (inp[2] & 0x0F) * 10_000
+        + (inp[1] >> 4) * 1_000
+        + (inp[1] & 0x0F) * 100
+        + (inp[0] >> 4) * 10
+        + (inp[0] & 0x0F)
+    )
+
+
+def civ_encode_freq(freq: int) -> bytes:
+    res = []
+    t = freq
+    for _ in range(5):
+        t, v1 = divmod(t, 10)
+        t, v2 = divmod(t, 10)
+        res.append((v2 << 4) | v1)
+
+    return bytes(res)
+
+
+def civ_decode_dec_bytes(data: bytes) -> int:
+    """decode 2 bytes in bcd encoding into int."""
+    return (
+        (data[0] >> 4) * 1000
+        + (data[0] & 0xF) * 100
+        + (data[1] >> 4) * 10
+        + (data[1] & 0xF)
+    )
+
+
+def civ_encode_dec_bytes(inp: int) -> bytes:
+    """decode 2 bytes in bcd encoding into int."""
+    t, v1 = divmod(inp, 10)
+    t, v2 = divmod(t, 10)
+    t, v3 = divmod(t, 10)
+    t, v4 = divmod(t, 10)
+    return bytes([(v4 << 4) | v3, (v2 << 4) | v1])

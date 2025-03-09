@@ -14,10 +14,11 @@ import csv
 import logging
 import pprint
 import sys
+import time
 import typing as ty
 from pathlib import Path
 
-from . import expimp, ic_io, model, reports
+from . import consts, expimp, ic_io, model, reports
 
 _LOG = logging.getLogger()
 
@@ -329,6 +330,149 @@ def main_send_command(args: argparse.Namespace) -> None:
         print("no more data")
 
 
+def main_send_status(args: argparse.Namespace) -> None:
+    """cmd: send
+    args: <port> <command> <payload>
+    """
+    port, ok = _check_port(args)
+    if not ok:
+        return
+
+    r = ic_io.Radio(port)
+    c = ic_io.Commands(r)
+    print("Response: ")
+    try:
+        status = c.get_status()
+        if args.verbose > 2:
+            pprint.pprint(status)
+        else:
+            print("Freq: ", status.frequency)
+            print("Mode: ", consts.MODES[status.mode])
+            print("S-Meter: ", status.smeter)
+            print("Attenuator: ", status.attenuator)
+            print("Antenna: ", consts.MONITOR_ANTENNA[status.antenna])
+            print("Volume: ", status.volume)
+            print(
+                "Squelch: ",
+                status.squelch_status,
+                consts.MONITOR_SQUELCH_LEVEL[status.squelch],
+            )
+            print("VSC: ", status.vsc)
+            print("Tone mode: ", consts.TONE_MODES[status.tone_mode])
+            print("Tone freq: ", status.tone)
+            print("Dtcs code: ", status.dtcs_code)
+            print("Dtcs polarity: ", consts.POLARITY[status.dtcs_polarity])
+            print("Receiver ID: ", status.receiver_id)
+
+    except KeyboardInterrupt:
+        pass
+
+    except ic_io.NoDataError:
+        print("no more data")
+
+
+def main_monitor(args: argparse.Namespace) -> None:
+    """cmd: send
+    args: <port> <command> <payload>
+    """
+    port, ok = _check_port(args)
+    if not ok:
+        return
+
+    r = ic_io.Radio(port)
+    c = ic_io.Commands(r)
+    print("Response: ")
+    try:
+        for status in c.monitor():
+            if args.verbose > 2:
+                pprint.pprint(status)
+            else:
+                print("Freq: ", status.frequency)
+                print("Mode: ", consts.MODES[status.mode])
+                print("S-Meter: ", status.smeter)
+                print("Attenuator: ", status.attenuator)
+                print(
+                    "Antenna: ",
+                    consts.MONITOR_ANTENNA[status.antenna],
+                )
+                print("Volume: ", status.volume)
+                if status.squelch_status:
+                    print(
+                        "Squelch: ",
+                        consts.MONITOR_SQUELCH_LEVEL[status.squelch],
+                    )
+
+                print("VSC: ", status.vsc)
+                if status.tone_mode in (1, 2):
+                    print("Tone mode: ", consts.TONE_MODES[status.tone_mode])
+                    print("Tone freq: ", status.tone)
+                elif status.tone_mode in (3, 4):
+                    print("Dtcs code: ", status.dtcs_code)
+                    print(
+                        "Dtcs polarity: ",
+                        consts.POLARITY[status.dtcs_polarity],
+                    )
+
+                print("Receiver ID: ", status.receiver_id)
+                print("------------------------------------------")
+
+            time.sleep(1)
+
+    except KeyboardInterrupt:
+        pass
+
+    except ic_io.NoDataError:
+        print("no more data")
+
+
+def main_radio_set(args: argparse.Namespace) -> None:  # noqa:PLR0912,C901
+    """cmd: send
+    args: <port> <command> <payload>
+    """
+    port, ok = _check_port(args)
+    if not ok:
+        return
+
+    parameter = args.parameter
+    value = args.value
+    value_bool = value.upper() in ("1", "Y", "YES", "T", "TRUE", "ON")
+
+    r = ic_io.Radio(port)
+    c = ic_io.Commands(r)
+    try:
+        match parameter:
+            case "freq" | "frequency" | "f":
+                c.set_frequency(int(value))
+            case "mode" | "m":
+                mode = consts.MODES.index(value.upper())
+                c.set_mode(mode)
+            case "attenuator" | "att":
+                c.set_attenuator(value_bool)
+            case "antenna" | "ant":
+                c.set_antenna(not value.upper().startswith("EX"))
+            case "volume" | "vol" | "v":
+                c.set_volume(int(value))
+            case "squelch" | "sq":
+                c.set_squelch(int(value))
+            case "tone_mode" | "tmode":
+                c.set_tone_mode(int(value))
+            case "vsc":
+                c.set_vsc(value_bool)
+            case "affilter" | "af":
+                c.set_affilter(value_bool)
+            case "tone":
+                c.set_tone_freq(int(value))
+            case "dtsc":
+                v = int(value)
+                c.set_dtsc(0 if v >= 0 else 1, abs(v))
+
+    except KeyboardInterrupt:
+        pass
+
+    except Exception as err:
+        print("Error: ", err)
+
+
 def main_print_sheet(args: argparse.Namespace) -> None:
     mem = ic_io.load_icf_file(args.icf_file)
     for line in reports.generate_sheet(mem):
@@ -368,6 +512,20 @@ def _parse_args_radio_commands(cmds: argparse._SubParsersAction) -> None:  # typ
         "payload", help="Payload to send in hex string", nargs="?"
     )
     cmd.set_defaults(func=main_send_command)
+
+    cmd = cmds.add_parser("get_radio_status", help="Get radio status")
+    cmd.add_argument("port", help="USB/TTY/COM port")
+    cmd.set_defaults(func=main_send_status)
+
+    cmd = cmds.add_parser("monitor", help="Monitor radio status")
+    cmd.add_argument("port", help="USB/TTY/COM port")
+    cmd.set_defaults(func=main_monitor)
+
+    cmd = cmds.add_parser("set", help="Set radio state")
+    cmd.add_argument("port", help="USB/TTY/COM port")
+    cmd.add_argument("parameter", help="Parameter to set")
+    cmd.add_argument("value", help="Value to set")
+    cmd.set_defaults(func=main_radio_set)
 
 
 def _parse_args_print_commands(cmds: argparse._SubParsersAction) -> None:  # type: ignore

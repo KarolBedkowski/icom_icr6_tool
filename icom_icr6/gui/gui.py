@@ -19,6 +19,7 @@ from . import (
     awchannels_page,
     banks_page,
     channels_page,
+    control_page,
     dlg_clone,
     dlg_find,
     dlg_import,
@@ -69,6 +70,7 @@ class App(tk.Frame):
         self._ntb.add(self._create_nb_scan_links(), text="Scan Link")
         self._ntb.add(self._create_nb_awchannels(), text="Autowrite channels")
         self._ntb.add(self._create_nb_settings(), text="Settings")
+        self._ntb.add(self._create_nb_control(), text="Control")
         self._ntb.bind("<<NotebookTabChanged>>", self.__on_nb_page_changed)
 
         self._pages: tuple[TabWidget, ...] = (
@@ -78,6 +80,7 @@ class App(tk.Frame):
             self._nb_scan_links,
             self._nb_aw_channels,
             self._nb_settings,
+            self._nb_control,
         )
 
         self._ntb.pack(fill="both", expand=True)
@@ -249,6 +252,10 @@ class App(tk.Frame):
             self, self._change_manager
         )
         return self._nb_settings
+
+    def _create_nb_control(self) -> tk.Widget:
+        self._nb_control = control_page.ControlPage(self, self._change_manager)
+        return self._nb_control
 
     # menu callbacks
 
