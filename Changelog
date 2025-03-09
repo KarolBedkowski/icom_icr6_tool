@@ -1,7 +1,25 @@
 Changelog
 =========
 
-v1.5.0 2024-02-14
+
+v1.6.0 2025-03-09
+-----------------
+
+Bug Fixes
+~~~~~~~~~
+
+- fix CTCS tone list
+
+Features
+~~~~~~~~
+
+- control radio - control radio from cli and gui
+- load region / etcdata from radio
+- store last etcdata and load default file according to it
+- warn on clone when radio region not mach current data
+
+
+v1.5.0 2025-02-14
 -----------------
 
 Bug Fixes
@@ -24,7 +42,7 @@ Miscellaneous Tasks
 
 
 
-v1.4.1 2024-01-30
+v1.4.1 2025-01-30
 -----------------
 
 Bug Fixes
@@ -53,7 +71,7 @@ Refactor
 
 
 
-v1.4.0 2024-01-26
+v1.4.0 2025-01-26
 -----------------
 
 Bug Fixes
@@ -165,7 +183,7 @@ Bug Fixes
 - Fix wrong values order in key beep dropdown
 - Add small delay before send clone end to prevent errors
 - Fix -H argument for channels command
-- Do not load af, att, vcs from bands defaults
+- Do not load af, att, vsc from bands defaults
 - Do not set name on load defaults from band
 - Fix paste into channels list in channels tab
 - Fix pasting channels in banks page
