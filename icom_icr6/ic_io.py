@@ -947,8 +947,8 @@ class DummyCommands(Commands):
         self._tone_mode = 0
         self._vcs = False
         self._affilter = False
-        self._tone_freq = 0
-        self._dtcs = (0, 0)
+        self._tone_freq = 1413
+        self._dtcs = (0, 454)
 
     def get_frequency(self) -> int:
         """Read operating frequency"""

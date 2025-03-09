@@ -53,6 +53,10 @@ class ControlPage(tk.Frame):
         self._var_label_squelch.set("xxxxxx")
         self._var_step = tk.StringVar()
         self._var_step.set("10")
+        self._var_tone = tk.StringVar()
+        self._var_tsql = tk.StringVar()
+        self._var_dtcs = tk.StringVar()
+        self._var_polarity = tk.IntVar()
 
     def _create_body(self) -> None:
         # antenna
@@ -81,6 +85,9 @@ class ControlPage(tk.Frame):
             side=tk.TOP, fill=tk.X, padx=12, pady=12
         )
         self._create_body_squelch(frame).pack(
+            side=tk.TOP, fill=tk.X, padx=12, pady=12
+        )
+        self._create_body_tone(frame).pack(
             side=tk.TOP, fill=tk.X, padx=12, pady=12
         )
 
@@ -247,6 +254,62 @@ class ControlPage(tk.Frame):
 
         return frame
 
+    def _create_body_tone(self, parent: tk.Frame) -> tk.Frame:
+        frame = tk.Frame(parent)
+
+        sframe = tk.Frame(frame)
+        ttk.Label(sframe, text="Tone: ").pack(side=tk.LEFT)
+        ttk.Combobox(
+            sframe,
+            textvariable=self._var_tone,
+            exportselection=False,
+            state="readonly",
+            values=consts.TONE_MODES,
+            postcommand=self._on_change_tone,
+        ).pack(side=tk.LEFT, padx=6, expand=False)
+        sframe.pack(side=tk.TOP, pady=6, fill=tk.X)
+
+        # round to one digit after comma
+        tones = [
+            f"{float(t.replace(',', '.')):0.1f}".replace(".", ",")
+            for t in consts.CTCSS_TONES
+        ]
+
+        sframe = tk.Frame(frame)
+        ttk.Label(sframe, text="TSQL: ").pack(side=tk.LEFT)
+        ttk.Combobox(
+            sframe,
+            textvariable=self._var_tsql,
+            exportselection=False,
+            state="readonly",
+            values=tones,
+            postcommand=self._on_change_tone,
+        ).pack(side=tk.LEFT, padx=6, expand=False)
+        sframe.pack(side=tk.TOP, pady=6, fill=tk.X)
+
+        sframe = tk.Frame(frame)
+        ttk.Label(sframe, text="DTCS: ").pack(side=tk.LEFT)
+        ttk.Combobox(
+            sframe,
+            textvariable=self._var_dtcs,
+            exportselection=False,
+            state="readonly",
+            values=consts.DTCS_CODES,
+            postcommand=self._on_change_tone,
+        ).pack(side=tk.LEFT, padx=6, expand=False)
+
+        ttk.Checkbutton(
+            sframe,
+            text="Polarity reverse",
+            variable=self._var_polarity,
+            onvalue=1,
+            offvalue=0,
+            command=self._on_change_tone,
+        ).pack(side=tk.LEFT, padx=12)
+        sframe.pack(side=tk.TOP, pady=6, fill=tk.X)
+
+        return frame
+
     def _load_data(self) -> None:
         if not self._commands:
             return
@@ -268,6 +331,10 @@ class ControlPage(tk.Frame):
         self._var_label_squelch.set(
             consts.MONITOR_SQUELCH_LEVEL[status.squelch]
         )
+        self._var_tone.set(consts.TONE_MODES[status.tone_mode])
+        self._var_tsql.set(f"{status.tone / 10:0.1f}".replace(".", ","))
+        self._var_dtcs.set(str(status.dtcs_code))
+        self._var_polarity.set(status.dtcs_polarity)
 
     def _on_connect_button(self) -> None:
         if self._radio:
@@ -329,6 +396,22 @@ class ControlPage(tk.Frame):
         self._var_label_volume.set(str(volume))
         if self._commands:
             self._commands.set_squelch(volume)
+
+    def _on_change_tone(self) -> None:
+        if not self._commands:
+            return
+
+        tone = consts.TONE_MODES.index(self._var_tone.get())
+        self._commands.set_tone_mode(tone)
+        match tone:
+            case 1 | 2:
+                tsql = float(self._var_tsql.get().replace(",", ".")) * 10
+                self._commands.set_tone_freq(int(tsql * 10))
+
+            case 3 | 4:
+                dtcs = int(self._var_dtcs.get())
+                polarity = self._var_polarity.get()
+                self._commands.set_dtsc(polarity, dtcs)
 
     def _on_freq_down(self) -> None:
         self._change_freq(-1)
