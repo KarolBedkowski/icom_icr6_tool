@@ -90,6 +90,9 @@ class ControlPage(tk.Frame):
         self._var_goto_bankchannel = tk.StringVar()
         self._var_goto_awchannel = tk.StringVar()
 
+        self._last_volume = -1
+        self._last_squelch = -1
+
     def _create_body(self) -> None:
         # antenna
         # smeter
@@ -437,7 +440,9 @@ class ControlPage(tk.Frame):
         self._var_vcs.set(1 if status.vcs else 0)
         self._var_vcs.set(1 if status.vcs else 0)
         self._var_squelch.set(status.squelch)
+        self._last_squelch = status.squelch
         self._var_volume.set(status.volume)
+        self._last_volume = status.volume
         self._var_label_volume.set(str(status.volume))
         self._var_label_squelch.set(
             consts.MONITOR_SQUELCH_LEVEL[status.squelch]
@@ -602,15 +607,23 @@ class ControlPage(tk.Frame):
     def _on_set_squelch(self, _arg: str) -> None:
         assert self._commands
         sql = self._var_squelch.get()
+        if sql == self._last_squelch:
+            return
+
         self._var_label_squelch.set(consts.MONITOR_SQUELCH_LEVEL[sql])
         self._commands.set_squelch(sql)
+        self._last_squelch = sql
 
     @action_decor
     def _on_set_volume(self, _arg: str) -> None:
         assert self._commands
         volume = self._var_volume.get()
+        if volume == self._last_volume:
+            return
+
         self._var_label_volume.set(str(volume))
         self._commands.set_volume(volume)
+        self._last_volume = volume
 
     @action_decor
     def _on_change_tone(self) -> None:
