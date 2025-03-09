@@ -24,6 +24,13 @@ _LOG = logging.getLogger(__name__)
 T = ty.Callable[..., None]
 
 
+# round to one digit after comma
+_TSQL_FREQ = [
+    f"{float(t.replace(',', '.')):0.1f}".replace(".", ",")
+    for t in consts.CTCSS_TONES
+]
+
+
 def action_decor(method: T) -> T:
     """Action decorator that handle error and execute decorated function
     only when connection exists and not busy."""
@@ -157,16 +164,26 @@ class ControlPage(tk.Frame):
     def _create_body_freq(self, parent: tk.Frame) -> tk.Widget:
         frame = tk.LabelFrame(parent, text="Frequency")
 
-        validator = self.register(validate_freq)
+        sframe = tk.Frame(frame)
         freq = ttk.Entry(
-            frame,
+            sframe,
             textvariable=self._var_freq,
             font=font.Font(size=20),
             width=12,
             validate="all",
-            validatecommand=(validator, "%P"),
+            validatecommand=(self.register(validate_freq), "%P"),
         )
-        freq.pack(side=tk.TOP, padx=12, pady=6)
+        freq.pack(side=tk.LEFT, padx=12, pady=6)
+        freq.bind("<Return>", self._on_set_freq)
+
+        ttk.Button(
+            sframe,
+            text="Set",
+            command=self._on_set_freq,
+            default=tk.ACTIVE,
+        ).pack(side=tk.RIGHT, padx=6, pady=6)
+
+        sframe.pack(side=tk.TOP, padx=12, pady=6)
 
         sframe = tk.Frame(frame)
 
@@ -287,44 +304,41 @@ class ControlPage(tk.Frame):
 
         sframe = tk.Frame(frame)
         ttk.Label(sframe, text="Tone: ").pack(side=tk.LEFT)
-        ttk.Combobox(
+        cb = ttk.Combobox(
             sframe,
             textvariable=self._var_tone,
             exportselection=False,
             state="readonly",
             values=consts.TONE_MODES,
-            postcommand=self._on_change_tone,
-        ).pack(side=tk.LEFT, padx=6, expand=False)
+        )
+        cb.pack(side=tk.LEFT, padx=6, expand=False)
+        cb.bind("<<ComboboxSelected>>", self._on_change_tone)
         sframe.pack(side=tk.TOP, pady=6, fill=tk.X, padx=6)
-
-        # round to one digit after comma
-        tones = [
-            f"{float(t.replace(',', '.')):0.1f}".replace(".", ",")
-            for t in consts.CTCSS_TONES
-        ]
 
         sframe = tk.Frame(frame)
         ttk.Label(sframe, text="TSQL: ").pack(side=tk.LEFT)
-        ttk.Combobox(
+        cb = ttk.Combobox(
             sframe,
             textvariable=self._var_tsql,
             exportselection=False,
             state="readonly",
-            values=tones,
-            postcommand=self._on_change_tone,
-        ).pack(side=tk.LEFT, padx=6, expand=False)
+            values=_TSQL_FREQ,
+        )
+        cb.pack(side=tk.LEFT, padx=6, expand=False)
+        cb.bind("<<ComboboxSelected>>", self._on_change_tone)
         sframe.pack(side=tk.TOP, pady=6, fill=tk.X, padx=6)
 
         sframe = tk.Frame(frame)
         ttk.Label(sframe, text="DTCS: ").pack(side=tk.LEFT)
-        ttk.Combobox(
+        cb = ttk.Combobox(
             sframe,
             textvariable=self._var_dtcs,
             exportselection=False,
             state="readonly",
             values=consts.DTCS_CODES,
-            postcommand=self._on_change_tone,
-        ).pack(side=tk.LEFT, padx=6, expand=False, pady=6)
+        )
+        cb.pack(side=tk.LEFT, padx=6, expand=False, pady=6)
+        cb.bind("<<ComboboxSelected>>", self._on_change_tone)
 
         ttk.Checkbutton(
             sframe,
@@ -532,6 +546,8 @@ class ControlPage(tk.Frame):
         band = self._change_manager.rm.bands[bandidx]
         self._var_freq.set(model.fmt.format_freq(band.freq))
         self._var_mode.set(consts.MODES[band.mode])
+        self._commands.set_frequency(band.freq)
+        self._commands.set_mode(band.mode)
 
     def _on_goto_channel_button(self) -> None:
         if self._busy or not self._commands:
@@ -543,8 +559,7 @@ class ControlPage(tk.Frame):
 
         number = int(val.partition(":")[0])
         channel = self._change_manager.rm.channels[number]
-        self._var_freq.set(model.fmt.format_freq(channel.freq))
-        self._var_mode.set(consts.MODES[channel.mode])
+        self._set_from_channel(channel)
 
     def _on_goto_bankchannel_button(self) -> None:
         if self._busy or not self._commands:
@@ -556,8 +571,7 @@ class ControlPage(tk.Frame):
 
         number = int(val.partition(":")[0].rpartition(" ")[2])
         channel = self._change_manager.rm.channels[number]
-        self._var_freq.set(model.fmt.format_freq(channel.freq))
-        self._var_mode.set(consts.MODES[channel.mode])
+        self._set_from_channel(channel)
 
     def _on_goto_awchannel_button(self) -> None:
         if self._busy or not self._commands:
@@ -569,15 +583,15 @@ class ControlPage(tk.Frame):
 
         number = int(val.partition(":")[0])
         channel = self._change_manager.rm.awchannels[number]
-        self._var_freq.set(model.fmt.format_freq(channel.freq))
-        self._var_mode.set(consts.MODES[channel.mode])
+        self._set_from_channel(channel)
 
     @action_decor
-    def _on_set_freq(self, _var: str, _idx: str, _op: str) -> None:
+    def _on_set_freq(self, _event: tk.Event | None = None) -> None:  # type: ignore
         assert self._commands
         freq = model.fmt.parse_freq(self._var_freq.get())
         freq = fixers.fix_frequency(freq)
         self._commands.set_frequency(freq)
+        self._var_freq.set(model.fmt.format_freq(freq))
 
     @action_decor
     def _on_set_mode(self) -> None:
@@ -624,13 +638,13 @@ class ControlPage(tk.Frame):
         self._last_volume = volume
 
     @action_decor
-    def _on_change_tone(self) -> None:
+    def _on_change_tone(self, _event: tk.Event | None = None) -> None:  # type:ignore
         assert self._commands
         tone = consts.TONE_MODES.index(self._var_tone.get())
         self._commands.set_tone_mode(tone)
         match tone:
             case 1 | 2:
-                tsql = float(self._var_tsql.get().replace(",", ".")) * 10
+                tsql = float(self._var_tsql.get().replace(",", "."))
                 self._commands.set_tone_freq(int(tsql * 10))
 
             case 3 | 4:
@@ -656,6 +670,41 @@ class ControlPage(tk.Frame):
         freq = int(freq + step)
         freq = fixers.fix_frequency(freq)
         self._var_freq.set(model.fmt.format_freq(freq))
+        self._commands.set_frequency(freq)
+
+    def _set_from_channel(self, channel: model.Channel) -> None:
+        assert self._commands
+
+        self._var_freq.set(model.fmt.format_freq(channel.freq))
+        self._commands.set_frequency(channel.freq)
+
+        self._var_mode.set(consts.MODES[channel.mode])
+        self._commands.set_mode(channel.mode)
+
+        self._var_affilter.set(1 if channel.af_filter else 0)
+        self._commands.set_affilter(channel.af_filter)
+
+        self._var_attenuator.set(1 if channel.attenuator else 0)
+        self._commands.set_attenuator(channel.attenuator)
+
+        self._var_vsc.set(1 if channel.vsc else 0)
+        self._commands.set_vsc(channel.vsc)
+
+        self._var_tone.set(consts.TONE_MODES[channel.tone_mode])
+        self._commands.set_tone_mode(channel.tone_mode)
+
+        tsql = _TSQL_FREQ[channel.tsql_freq]
+        self._var_tsql.set(tsql)
+        dtcs = consts.DTCS_CODES[channel.dtcs]
+        self._var_dtcs.set(dtcs)
+        self._var_polarity.set(channel.polarity)
+        match channel.tone_mode:
+            case 1 | 2:
+                tsqlfreq = float(tsql.replace(",", "."))
+                self._commands.set_tone_freq(int(tsqlfreq * 10))
+
+            case 3 | 4:
+                self._commands.set_dtsc(channel.polarity, int(dtcs))
 
     def _set_frame_state(self, frame: tk.Widget, state: str) -> None:
         for widget in frame.children.values():
