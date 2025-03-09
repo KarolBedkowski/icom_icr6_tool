@@ -87,6 +87,7 @@ class ControlPage(tk.Frame):
         self._var_polarity = tk.IntVar()
         self._var_goto_band = tk.StringVar()
         self._var_goto_channel = tk.StringVar()
+        self._var_goto_bankchannel = tk.StringVar()
 
     def _create_body(self) -> None:
         # antenna
@@ -379,6 +380,28 @@ class ControlPage(tk.Frame):
             default=tk.ACTIVE,
         ).grid(row=1, column=2, stick=tk.W, padx=6, pady=6)
 
+        ttk.Label(frame, text="Bank channel: ").grid(
+            row=2, column=0, stick=tk.W, padx=6, pady=6
+        )
+
+        self._bankchannels_combobox = ttk.Combobox(
+            frame,
+            textvariable=self._var_goto_bankchannel,
+            state="readonly",
+            values=[],
+            width=30,
+        )
+        self._bankchannels_combobox.grid(
+            row=2, column=1, stick=tk.W, padx=6, pady=6
+        )
+
+        ttk.Button(
+            frame,
+            text="Goto",
+            command=self._on_goto_bankchannel_button,
+            default=tk.ACTIVE,
+        ).grid(row=2, column=2, stick=tk.W, padx=6, pady=6)
+
         return frame
 
     def _load_data(self) -> None:
@@ -409,14 +432,23 @@ class ControlPage(tk.Frame):
         self._var_dtcs.set(str(status.dtcs_code))
         self._var_polarity.set(status.dtcs_polarity)
 
+        rm = self._change_manager.rm
         self._bands_combobox["values"] = [
-            f"{b.idx}:  {model.fmt.format_freq(b.freq)}"
-            for b in self._change_manager.rm.bands
+            f"{b.idx}:  {model.fmt.format_freq(b.freq)}" for b in rm.bands
         ]
         self._channels_combobox["values"] = [
             f"{c.number}:  {model.fmt.format_freq(c.freq)}  {c.name}"
-            for c in self._change_manager.rm.get_active_channels()
+            for c in rm.get_active_channels()
         ]
+
+        bankchannels = [
+            f"{consts.BANK_NAMES[c.bank]}/{c.bank_pos:>3}  {c.number}:  "
+            f"{model.fmt.format_freq(c.freq)}  {c.name}"
+            for c in rm.get_active_channels()
+            if c.bank != consts.BANK_NOT_SET
+        ]
+        bankchannels.sort()
+        self._bankchannels_combobox["values"] = bankchannels
 
     def _on_connect_button(self) -> None:
         if self._busy:
@@ -488,6 +520,19 @@ class ControlPage(tk.Frame):
             return
 
         number = int(val.partition(":")[0])
+        channel = self._change_manager.rm.channels[number]
+        self._var_freq.set(model.fmt.format_freq(channel.freq))
+        self._var_mode.set(consts.MODES[channel.mode])
+
+    def _on_goto_bankchannel_button(self) -> None:
+        if self._busy or not self._commands:
+            return
+
+        val = self._var_goto_bankchannel.get()
+        if not val:
+            return
+
+        number = int(val.partition(":")[0].rpartition(" ")[2])
         channel = self._change_manager.rm.channels[number]
         self._var_freq.set(model.fmt.format_freq(channel.freq))
         self._var_mode.set(consts.MODES[channel.mode])
