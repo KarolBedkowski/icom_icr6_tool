@@ -88,6 +88,7 @@ class ControlPage(tk.Frame):
         self._var_goto_band = tk.StringVar()
         self._var_goto_channel = tk.StringVar()
         self._var_goto_bankchannel = tk.StringVar()
+        self._var_goto_awchannel = tk.StringVar()
 
     def _create_body(self) -> None:
         # antenna
@@ -341,7 +342,6 @@ class ControlPage(tk.Frame):
         ttk.Label(frame, text="Band: ").grid(
             row=0, column=0, stick=tk.W, padx=6, pady=6
         )
-
         self._bands_combobox = ttk.Combobox(
             frame,
             textvariable=self._var_goto_band,
@@ -350,7 +350,6 @@ class ControlPage(tk.Frame):
             width=30,
         )
         self._bands_combobox.grid(row=0, column=1, stick=tk.W, padx=6, pady=6)
-
         ttk.Button(
             frame,
             text="Goto",
@@ -361,7 +360,6 @@ class ControlPage(tk.Frame):
         ttk.Label(frame, text="Channel: ").grid(
             row=1, column=0, stick=tk.W, padx=6, pady=6
         )
-
         self._channels_combobox = ttk.Combobox(
             frame,
             textvariable=self._var_goto_channel,
@@ -372,7 +370,6 @@ class ControlPage(tk.Frame):
         self._channels_combobox.grid(
             row=1, column=1, stick=tk.W, padx=6, pady=6
         )
-
         ttk.Button(
             frame,
             text="Goto",
@@ -383,7 +380,6 @@ class ControlPage(tk.Frame):
         ttk.Label(frame, text="Bank channel: ").grid(
             row=2, column=0, stick=tk.W, padx=6, pady=6
         )
-
         self._bankchannels_combobox = ttk.Combobox(
             frame,
             textvariable=self._var_goto_bankchannel,
@@ -394,13 +390,32 @@ class ControlPage(tk.Frame):
         self._bankchannels_combobox.grid(
             row=2, column=1, stick=tk.W, padx=6, pady=6
         )
-
         ttk.Button(
             frame,
             text="Goto",
             command=self._on_goto_bankchannel_button,
             default=tk.ACTIVE,
         ).grid(row=2, column=2, stick=tk.W, padx=6, pady=6)
+
+        ttk.Label(frame, text="AW channel: ").grid(
+            row=3, column=0, stick=tk.W, padx=6, pady=6
+        )
+        self._awchannels_combobox = ttk.Combobox(
+            frame,
+            textvariable=self._var_goto_awchannel,
+            state="readonly",
+            values=[],
+            width=30,
+        )
+        self._awchannels_combobox.grid(
+            row=3, column=1, stick=tk.W, padx=6, pady=6
+        )
+        ttk.Button(
+            frame,
+            text="Goto",
+            command=self._on_goto_awchannel_button,
+            default=tk.ACTIVE,
+        ).grid(row=3, column=2, stick=tk.W, padx=6, pady=6)
 
         return frame
 
@@ -439,6 +454,10 @@ class ControlPage(tk.Frame):
         self._channels_combobox["values"] = [
             f"{c.number}:  {model.fmt.format_freq(c.freq)}  {c.name}"
             for c in rm.get_active_channels()
+        ]
+        self._awchannels_combobox["values"] = [
+            f"{c.number}:  {model.fmt.format_freq(c.freq)}"
+            for c in rm.awchannels
         ]
 
         bankchannels = [
@@ -534,6 +553,19 @@ class ControlPage(tk.Frame):
 
         number = int(val.partition(":")[0].rpartition(" ")[2])
         channel = self._change_manager.rm.channels[number]
+        self._var_freq.set(model.fmt.format_freq(channel.freq))
+        self._var_mode.set(consts.MODES[channel.mode])
+
+    def _on_goto_awchannel_button(self) -> None:
+        if self._busy or not self._commands:
+            return
+
+        val = self._var_goto_awchannel.get()
+        if not val:
+            return
+
+        number = int(val.partition(":")[0])
+        channel = self._change_manager.rm.awchannels[number]
         self._var_freq.set(model.fmt.format_freq(channel.freq))
         self._var_mode.set(consts.MODES[channel.mode])
 
