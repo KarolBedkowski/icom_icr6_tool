@@ -60,6 +60,8 @@ class ControlPage(tk.Frame):
         self._var_tsql = tk.StringVar()
         self._var_dtcs = tk.StringVar()
         self._var_polarity = tk.IntVar()
+        self._var_goto_band = tk.StringVar()
+        self._var_goto_channel = tk.StringVar()
 
     def _create_body(self) -> None:
         # antenna
@@ -79,6 +81,7 @@ class ControlPage(tk.Frame):
             self._create_body_opt(frame),
             self._create_body_vol(frame),
             self._create_body_tone(frame),
+            self._create_body_goto(frame),
         ]
 
         for f in self._frames:
@@ -306,6 +309,53 @@ class ControlPage(tk.Frame):
 
         return frame
 
+    def _create_body_goto(self, parent: tk.Frame) -> tk.Widget:
+        frame = ttk.LabelFrame(parent, text="Go to...")
+
+        ttk.Label(frame, text="Band: ").grid(
+            row=0, column=0, stick=tk.W, padx=6, pady=6
+        )
+
+        self._bands_combobox = ttk.Combobox(
+            frame,
+            textvariable=self._var_goto_band,
+            state="readonly",
+            values=[],
+            width=30,
+        )
+        self._bands_combobox.grid(row=0, column=1, stick=tk.W, padx=6, pady=6)
+
+        ttk.Button(
+            frame,
+            text="Goto",
+            command=self._on_goto_band_button,
+            default=tk.ACTIVE,
+        ).grid(row=0, column=2, stick=tk.W, padx=6, pady=6)
+
+        ttk.Label(frame, text="Channel: ").grid(
+            row=1, column=0, stick=tk.W, padx=6, pady=6
+        )
+
+        self._channels_combobox = ttk.Combobox(
+            frame,
+            textvariable=self._var_goto_channel,
+            state="readonly",
+            values=[],
+            width=30,
+        )
+        self._channels_combobox.grid(
+            row=1, column=1, stick=tk.W, padx=6, pady=6
+        )
+
+        ttk.Button(
+            frame,
+            text="Goto",
+            command=self._on_goto_channel_button,
+            default=tk.ACTIVE,
+        ).grid(row=1, column=2, stick=tk.W, padx=6, pady=6)
+
+        return frame
+
     def _load_data(self) -> None:
         _LOG.debug("_load_data")
         if not self._commands:
@@ -333,6 +383,15 @@ class ControlPage(tk.Frame):
         self._var_tsql.set(f"{status.tone / 10:0.1f}".replace(".", ","))
         self._var_dtcs.set(str(status.dtcs_code))
         self._var_polarity.set(status.dtcs_polarity)
+
+        self._bands_combobox["values"] = [
+            f"{b.idx}:  {model.fmt.format_freq(b.freq)}"
+            for b in self._change_manager.rm.bands
+        ]
+        self._channels_combobox["values"] = [
+            f"{c.number}:  {model.fmt.format_freq(c.freq)}  {c.name}"
+            for c in self._change_manager.rm.get_active_channels()
+        ]
 
     def _on_connect_button(self) -> None:
         if self._busy:
@@ -381,6 +440,32 @@ class ControlPage(tk.Frame):
             _LOG.exception("_on_refresh_button load data error")
 
         self._busy = False
+
+    def _on_goto_band_button(self) -> None:
+        if self._busy or not self._commands:
+            return
+
+        val = self._var_goto_band.get()
+        if not val:
+            return
+
+        bandidx = int(val.partition(":")[0])
+        band = self._change_manager.rm.bands[bandidx]
+        self._var_freq.set(model.fmt.format_freq(band.freq))
+        self._var_mode.set(consts.MODES[band.mode])
+
+    def _on_goto_channel_button(self) -> None:
+        if self._busy or not self._commands:
+            return
+
+        val = self._var_goto_channel.get()
+        if not val:
+            return
+
+        number = int(val.partition(":")[0])
+        channel = self._change_manager.rm.channels[number]
+        self._var_freq.set(model.fmt.format_freq(channel.freq))
+        self._var_mode.set(consts.MODES[channel.mode])
 
     def _on_set_freq(self, _var: str, _idx: str, _op: str) -> None:
         if self._commands and not self._busy:
