@@ -714,7 +714,7 @@ class RadioStatus:
     squelch_status: bool
     smeter: int
     tone_mode: int
-    vcs: bool
+    vsc: bool
     receiver_id: str
     tone: int
     dtcs_code: int
@@ -738,7 +738,7 @@ class Commands:
             squelch_status=self.get_squelch_status(),
             smeter=self.get_smeter(),
             tone_mode=self.get_tone_mode(),
-            vcs=self.get_vcs(),
+            vsc=self.get_vsc(),
             receiver_id=self.get_receiver_id(),
             tone=self.get_tone_freq(),
             dtcs_code=dtcs_code,
@@ -869,12 +869,12 @@ class Commands:
 
         _LOG.debug("res=%r", res)
 
-    def get_vcs(self) -> bool:
+    def get_vsc(self) -> bool:
         res = self._sent_get(0x16, b"\x4c")
         return res.payload[1] == 0x01
 
-    def set_vcs(self, vcs: bool) -> None:  # noqa: FBT001
-        res = self._sent_get(0x16, b"\x4c\x01" if vcs else b"\x4c\x00")
+    def set_vsc(self, vsc: bool) -> None:  # noqa: FBT001
+        res = self._sent_get(0x16, b"\x4c\x01" if vsc else b"\x4c\x00")
         _LOG.debug("res=%r", res)
 
     def get_receiver_id(self) -> str:
@@ -949,7 +949,7 @@ class DummyCommands(Commands):
         self._volume = 0
         self._squelch = 0
         self._tone_mode = 0
-        self._vcs = False
+        self._vsc = False
         self._affilter = False
         self._tone_freq = 1413
         self._dtcs = (0, 454)
@@ -1010,12 +1010,12 @@ class DummyCommands(Commands):
         _LOG.info("set_tone_mode=%r", mode)
         self._tone_mode = mode
 
-    def get_vcs(self) -> bool:
-        return self._vcs
+    def get_vsc(self) -> bool:
+        return self._vsc
 
-    def set_vcs(self, vcs: bool) -> None:  # noqa: FBT001
-        _LOG.info("set_vcs=%r", vcs)
-        self._vcs = vcs
+    def set_vsc(self, vsc: bool) -> None:  # noqa: FBT001
+        _LOG.info("set_vsc=%r", vsc)
+        self._vsc = vsc
 
     def get_receiver_id(self) -> str:
         return "fe"

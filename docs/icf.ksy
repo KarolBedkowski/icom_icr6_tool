@@ -365,12 +365,12 @@ types:
       - id: unknown_b10
         type: b4
         doc: always 0 - paddign; probably canceller_freq lower 4 bits
-      - id: vcs
+      - id: vsc
         type: b1
-        doc: enabling vcs - disable canceller
+        doc: enabling vsc - disable canceller
       - id: canceller
         type: b2
-        doc: enabling canceller - disable vcs
+        doc: enabling canceller - disable vsc
 
       # 11-15
       - id: name_pad

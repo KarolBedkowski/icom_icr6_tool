@@ -68,11 +68,10 @@ class ControlPage(tk.Frame):
     def _create_vars(self) -> None:
         self._var_port = tk.StringVar()
         self._var_freq = tk.StringVar()
-        self._var_freq.trace("w", self._on_set_freq)
         self._var_mode = tk.StringVar()
         self._var_attenuator = tk.IntVar()
         self._var_affilter = tk.IntVar()
-        self._var_vcs = tk.IntVar()
+        self._var_vsc = tk.IntVar()
         self._var_volume = tk.IntVar()
         self._var_squelch = tk.IntVar()
         self._var_label_volume = tk.StringVar()
@@ -239,11 +238,11 @@ class ControlPage(tk.Frame):
 
         ttk.Checkbutton(
             frame,
-            text="VCS",
-            variable=self._var_vcs,
+            text="VSC",
+            variable=self._var_vsc,
             onvalue=1,
             offvalue=0,
-            command=self._on_set_vcs,
+            command=self._on_set_vsc,
         ).pack(side=tk.LEFT, padx=12, pady=6)
 
         return frame
@@ -437,8 +436,7 @@ class ControlPage(tk.Frame):
         self._var_mode.set(consts.MODES[status.mode])
         self._var_affilter.set(1 if status.affilter else 0)
         self._var_attenuator.set(1 if status.attenuator else 0)
-        self._var_vcs.set(1 if status.vcs else 0)
-        self._var_vcs.set(1 if status.vcs else 0)
+        self._var_vsc.set(1 if status.vsc else 0)
         self._var_squelch.set(status.squelch)
         self._last_squelch = status.squelch
         self._var_volume.set(status.volume)
@@ -599,9 +597,9 @@ class ControlPage(tk.Frame):
         self._commands.set_attenuator(self._var_attenuator.get() == 1)
 
     @action_decor
-    def _on_set_vcs(self) -> None:
+    def _on_set_vsc(self) -> None:
         assert self._commands
-        self._commands.set_vcs(self._var_vcs.get() == 1)
+        self._commands.set_vsc(self._var_vsc.get() == 1)
 
     @action_decor
     def _on_set_squelch(self, _arg: str) -> None:

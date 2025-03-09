@@ -357,7 +357,7 @@ def main_send_status(args: argparse.Namespace) -> None:
                 status.squelch_status,
                 consts.MONITOR_SQUELCH_LEVEL[status.squelch],
             )
-            print("VCS: ", status.vcs)
+            print("VSC: ", status.vsc)
             print("Tone mode: ", consts.TONE_MODES[status.tone_mode])
             print("Tone freq: ", status.tone)
             print("Dtcs code: ", status.dtcs_code)
@@ -402,7 +402,7 @@ def main_monitor(args: argparse.Namespace) -> None:
                         consts.MONITOR_SQUELCH_LEVEL[status.squelch],
                     )
 
-                print("VCS: ", status.vcs)
+                print("VSC: ", status.vsc)
                 if status.tone_mode in (1, 2):
                     print("Tone mode: ", consts.TONE_MODES[status.tone_mode])
                     print("Tone freq: ", status.tone)
@@ -456,8 +456,8 @@ def main_radio_set(args: argparse.Namespace) -> None:  # noqa:PLR0912,C901
                 c.set_squelch(int(value))
             case "tone_mode" | "tmode":
                 c.set_tone_mode(int(value))
-            case "vcs":
-                c.set_vcs(value_bool)
+            case "vsc":
+                c.set_vsc(value_bool)
             case "affilter" | "af":
                 c.set_affilter(value_bool)
             case "tone":
