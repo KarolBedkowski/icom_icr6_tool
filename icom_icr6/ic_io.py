@@ -938,7 +938,7 @@ class Commands:
 class DummyCommands(Commands):
     def __init__(self, radio: Radio) -> None:
         super().__init__(radio)
-        self._freq = 123456000
+        self._freq = 123450000
         self._mode = 0
         self._att = False
         self._antenna = 0

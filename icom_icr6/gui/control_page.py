@@ -8,9 +8,9 @@ import logging
 import tkinter as tk
 import typing as ty
 from pathlib import Path
-from tkinter import messagebox, ttk
+from tkinter import font, messagebox, ttk
 
-from icom_icr6 import config, consts, fixers, ic_io, model
+from icom_icr6 import config, consts, fixers, ic_io, model, validators
 from icom_icr6.change_manager import ChangeManeger
 from icom_icr6.radio_memory import RadioMemory
 
@@ -48,9 +48,9 @@ class ControlPage(tk.Frame):
         self._var_volume = tk.IntVar()
         self._var_squelch = tk.IntVar()
         self._var_label_volume = tk.StringVar()
-        self._var_label_volume.set("xxxxx")
+        self._var_label_volume.set("        ")
         self._var_label_squelch = tk.StringVar()
-        self._var_label_squelch.set("xxxxxx")
+        self._var_label_squelch.set("        ")
         self._var_step = tk.StringVar()
         self._var_step.set("10")
         self._var_tone = tk.StringVar()
@@ -72,9 +72,6 @@ class ControlPage(tk.Frame):
         self._create_body_freq(frame).pack(
             side=tk.TOP, fill=tk.X, padx=12, pady=12
         )
-        self._create_body_freq_change(frame).pack(
-            side=tk.TOP, fill=tk.X, padx=12, pady=12
-        )
         self._create_body_mode(frame).pack(
             side=tk.TOP, fill=tk.X, padx=12, pady=12
         )
@@ -82,9 +79,6 @@ class ControlPage(tk.Frame):
             side=tk.TOP, fill=tk.X, padx=12, pady=12
         )
         self._create_body_vol(frame).pack(
-            side=tk.TOP, fill=tk.X, padx=12, pady=12
-        )
-        self._create_body_squelch(frame).pack(
             side=tk.TOP, fill=tk.X, padx=12, pady=12
         )
         self._create_body_tone(frame).pack(
@@ -129,31 +123,35 @@ class ControlPage(tk.Frame):
 
         return frame
 
-    def _create_body_freq(self, parent: tk.Frame) -> tk.Frame:
-        frame = tk.Frame(parent)
+    def _create_body_freq(self, parent: tk.Frame) -> tk.Widget:
+        frame = tk.LabelFrame(parent, text="Frequency")
 
-        ttk.Label(frame, text="Frequency: ").pack(side=tk.LEFT)
+        validator = self.register(validate_freq)
+        freq = ttk.Entry(
+            frame,
+            textvariable=self._var_freq,
+            font=font.Font(size=20),
+            width=12,
+            validate="all",
+            validatecommand=(validator, "%P"),
+        )
+        freq.pack(side=tk.TOP, padx=12, pady=6)
 
-        freq = ttk.Entry(frame, textvariable=self._var_freq)
-        freq.pack(side=tk.LEFT, padx=12, pady=6)
+        sframe = tk.Frame(frame)
 
-        return frame
-
-    def _create_body_freq_change(self, parent: tk.Frame) -> tk.Frame:
-        frame = tk.Frame(parent)
-
-        ttk.Label(frame, text="Step: ").pack(side=tk.LEFT)
+        ttk.Label(sframe, text="Step: ").pack(side=tk.LEFT)
 
         ttk.Combobox(
-            frame,
+            sframe,
             textvariable=self._var_step,
             exportselection=False,
             state="readonly",
             values=consts.STEPS[:-2],
+            width=4,
         ).pack(side=tk.LEFT, padx=6, expand=False)
 
         ttk.Button(
-            frame,
+            sframe,
             text="Down",
             width=10,
             command=self._on_freq_down,
@@ -161,19 +159,19 @@ class ControlPage(tk.Frame):
         ).pack(side=tk.RIGHT, padx=5, pady=5)
 
         ttk.Button(
-            frame,
+            sframe,
             text="Up",
             width=10,
             command=self._on_freq_up,
             default=tk.ACTIVE,
         ).pack(side=tk.RIGHT, padx=5, pady=5)
 
+        sframe.pack(side=tk.TOP, padx=12, pady=6)
+
         return frame
 
-    def _create_body_mode(self, parent: tk.Frame) -> tk.Frame:
-        frame = tk.Frame(parent)
-
-        ttk.Label(frame, text="Mode: ").pack(side=tk.LEFT)
+    def _create_body_mode(self, parent: tk.Frame) -> tk.Widget:
+        frame = tk.LabelFrame(parent, text="Mode")
 
         for mode in ("FM", "WFM", "AM"):
             ttk.Radiobutton(
@@ -182,12 +180,12 @@ class ControlPage(tk.Frame):
                 variable=self._var_mode,
                 command=self._on_set_mode,
                 value=mode,
-            ).pack(side=tk.LEFT, padx=12)
+            ).pack(side=tk.LEFT, padx=12, pady=6)
 
         return frame
 
-    def _create_body_opt(self, parent: tk.Frame) -> tk.Frame:
-        frame = tk.Frame(parent)
+    def _create_body_opt(self, parent: tk.Frame) -> tk.Widget:
+        frame = tk.LabelFrame(parent, text="Options")
 
         ttk.Checkbutton(
             frame,
@@ -196,7 +194,7 @@ class ControlPage(tk.Frame):
             onvalue=1,
             offvalue=0,
             command=self._on_set_attenuator,
-        ).pack(side=tk.LEFT, padx=12)
+        ).pack(side=tk.LEFT, padx=12, pady=6)
 
         ttk.Checkbutton(
             frame,
@@ -205,7 +203,7 @@ class ControlPage(tk.Frame):
             onvalue=1,
             offvalue=0,
             command=self._on_set_affilter,
-        ).pack(side=tk.LEFT, padx=12)
+        ).pack(side=tk.LEFT, padx=12, pady=6)
 
         ttk.Checkbutton(
             frame,
@@ -214,14 +212,16 @@ class ControlPage(tk.Frame):
             onvalue=1,
             offvalue=0,
             command=self._on_set_vcs,
-        ).pack(side=tk.LEFT, padx=12)
+        ).pack(side=tk.LEFT, padx=12, pady=6)
 
         return frame
 
-    def _create_body_vol(self, parent: tk.Frame) -> tk.Frame:
-        frame = tk.Frame(parent)
+    def _create_body_vol(self, parent: tk.Frame) -> tk.Widget:
+        frame = ttk.LabelFrame(parent)
 
-        ttk.Label(frame, text="Volume: ").pack(side=tk.LEFT)
+        ttk.Label(frame, text="Volume: ").grid(
+            row=0, column=0, stick=tk.W, padx=6, pady=6
+        )
         ttk.Scale(
             frame,
             from_=0,
@@ -229,17 +229,14 @@ class ControlPage(tk.Frame):
             variable=self._var_volume,
             command=self._on_set_volume,
             length=300,
-        ).pack(side=tk.LEFT, padx=12)
-        ttk.Label(frame, textvariable=self._var_label_volume).pack(
-            side=tk.LEFT
+        ).grid(row=0, column=1, stick=tk.W, padx=6, pady=6)
+        ttk.Label(frame, textvariable=self._var_label_volume).grid(
+            row=0, column=2, stick=tk.W, padx=6, pady=6
         )
 
-        return frame
-
-    def _create_body_squelch(self, parent: tk.Frame) -> tk.Frame:
-        frame = tk.Frame(parent)
-
-        ttk.Label(frame, text="Squelch: ").pack(side=tk.LEFT)
+        ttk.Label(frame, text="Squelch: ").grid(
+            row=1, column=0, stick=tk.W, padx=6, pady=6
+        )
         ttk.Scale(
             frame,
             from_=0,
@@ -247,15 +244,15 @@ class ControlPage(tk.Frame):
             variable=self._var_squelch,
             command=self._on_set_squelch,
             length=300,
-        ).pack(side=tk.LEFT, padx=12)
-        ttk.Label(frame, textvariable=self._var_label_squelch).pack(
-            side=tk.LEFT
+        ).grid(row=1, column=1, stick=tk.W, padx=6, pady=6)
+        ttk.Label(frame, textvariable=self._var_label_squelch).grid(
+            row=1, column=2, stick=tk.W, padx=6, pady=6
         )
 
         return frame
 
-    def _create_body_tone(self, parent: tk.Frame) -> tk.Frame:
-        frame = tk.Frame(parent)
+    def _create_body_tone(self, parent: tk.Frame) -> tk.Widget:
+        frame = tk.LabelFrame(parent)
 
         sframe = tk.Frame(frame)
         ttk.Label(sframe, text="Tone: ").pack(side=tk.LEFT)
@@ -267,7 +264,7 @@ class ControlPage(tk.Frame):
             values=consts.TONE_MODES,
             postcommand=self._on_change_tone,
         ).pack(side=tk.LEFT, padx=6, expand=False)
-        sframe.pack(side=tk.TOP, pady=6, fill=tk.X)
+        sframe.pack(side=tk.TOP, pady=6, fill=tk.X, padx=6)
 
         # round to one digit after comma
         tones = [
@@ -285,7 +282,7 @@ class ControlPage(tk.Frame):
             values=tones,
             postcommand=self._on_change_tone,
         ).pack(side=tk.LEFT, padx=6, expand=False)
-        sframe.pack(side=tk.TOP, pady=6, fill=tk.X)
+        sframe.pack(side=tk.TOP, pady=6, fill=tk.X, padx=6)
 
         sframe = tk.Frame(frame)
         ttk.Label(sframe, text="DTCS: ").pack(side=tk.LEFT)
@@ -296,7 +293,7 @@ class ControlPage(tk.Frame):
             state="readonly",
             values=consts.DTCS_CODES,
             postcommand=self._on_change_tone,
-        ).pack(side=tk.LEFT, padx=6, expand=False)
+        ).pack(side=tk.LEFT, padx=6, expand=False, pady=6)
 
         ttk.Checkbutton(
             sframe,
@@ -306,7 +303,7 @@ class ControlPage(tk.Frame):
             offvalue=0,
             command=self._on_change_tone,
         ).pack(side=tk.LEFT, padx=12)
-        sframe.pack(side=tk.TOP, pady=6, fill=tk.X)
+        sframe.pack(side=tk.TOP, pady=6, fill=tk.X, padx=6)
 
         return frame
 
@@ -433,3 +430,14 @@ class ControlPage(tk.Frame):
         self._commands.set_frequency(freq)
         # TODO: read from radio ?
         self._var_freq.set(model.fmt.format_freq(freq))
+
+
+def validate_freq(freq: str) -> bool:
+    try:
+        nfreq = model.fmt.parse_freq(freq)
+
+    except Exception:
+        _LOG.exception("freq: %r", freq)
+        return False
+
+    return consts.MIN_FREQUENCY <= nfreq <= consts.MAX_FREQUENCY
