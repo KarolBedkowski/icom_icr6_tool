@@ -778,15 +778,15 @@ class Commands:
         return res.payload[0] == 0x10  # noqa: PLR2004
 
     def set_attenuator(self, att: bool) -> None:  # noqa: FBT001
-        res = self._sent_get(0x11, b"\0x10" if att else b"\x00")
-        _LOG.debug("res=%r", res)
+        res = self._sent_get(0x11, b"\x10" if att else b"\x00")
+        _LOG.debug("set_attenuator: att=%r, res=%r", att, res)
 
     def get_antenna(self) -> int:
         res = self._sent_get(0x12)
         return res.payload[0]
 
     def set_antenna(self, antenna: int) -> None:
-        res = self._sent_get(0x12, b"\0x01" if antenna else b"\x00")
+        res = self._sent_get(0x12, b"\x01" if antenna else b"\x00")
         _LOG.debug("res=%r", res)
 
     def get_volume(self) -> int:
@@ -924,10 +924,14 @@ class Commands:
 
     def _sent_get(self, cmd: int, payload: bytes = b"") -> Frame:
         for res in self.radio.write_read(cmd, payload):
+            _LOG.debug(
+                "_sent_get: cmd=%r, payload=%r, res=%r", cmd, payload, res
+            )
+
             if res.src == ADDR_PC:
                 continue
 
-            if res.cmd != cmd:
+            if res.cmd in (0xFE, 0):
                 raise ValueError
 
             return res
